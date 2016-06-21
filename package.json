@@ -1,6 +1,6 @@
 {
   "name": "gstk",
-  "description": "GURPS-Space Toolkit"
+  "description": "GURPS-Space Toolkit",
   "version": "0.0.1",
   "main": "index.html",
   "window":{
