@@ -263,7 +263,7 @@ module.exports = (function(){
   }
 
 
-  function CalcOrbitalInformation(rng, star, roll){
+  function CalcOrbitalInformation(rng, star, roll, primaryMass){
     var multi = 0.05;
     var mod = -6;
     var desc = "Very Close";
@@ -297,7 +297,8 @@ module.exports = (function(){
     star.orbit = {
       description: desc,
       rmin: (1 - e) * oradius,
-      rmax: (1 + e) * oradius
+      rmax: (1 + e) * oradius,
+      period: Math.sqrt((oradius*oradius*oradius)/(primaryMass + star.mass))
     };
   }
 
@@ -351,7 +352,7 @@ module.exports = (function(){
           roll += 6;
         }
 
-        CalcOrbitalInformation(rng, data, roll);
+        CalcOrbitalInformation(rng, data, roll, primary.mass);
 
         data.forbiddenZone = {
           inner: 0.33 * data.orbit.rmin,
@@ -423,6 +424,16 @@ module.exports = (function(){
           if (lum < 0){throw new RangeError("Value must be positive.");}
           data.luminosity = lum;
         }
+      },
+
+      "orbit":{
+	enumerate: true,
+	get:function(){return (typeof(data.orbit) !== 'undefined') ? JSON.parse(JSON.stringify(data.orbit)) : null;}
+      },
+
+      "forbiddenZone":{
+	enumerate: true,
+	get:function(){return (typeof(data.forbiddenZone) !== 'undefined') ? JSON.parse(JSON.stringify(data.forbiddenZone)) : null;}
       },
 
       "primary":{
