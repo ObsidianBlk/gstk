@@ -55,6 +55,8 @@ module.exports = (function () {
     for (var i=0; i < 256; i++){
       state.s[i] = i;
     }
+    state.i = 0;
+    state.j = 0;
     MixSeed(state);
   }
 

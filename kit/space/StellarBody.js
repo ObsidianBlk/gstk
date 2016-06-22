@@ -112,7 +112,7 @@ module.exports = (function(){
     var index = rng.rollDice(6, 3) - 3;
     var ent = TerrestrialSizeClassTable[index];
 
-    console.log(ent);
+    //console.log(ent);
 
     var temp = 0;
     var tempsteprange = 0;
@@ -241,32 +241,6 @@ module.exports = (function(){
     return "infernal";
   }
 
-  function GenGasGiant(body, rng, options){
-    var ggmd = GetGGMassDensityVariance(rng, rng.rollDice(6,3));
-
-    body.type = 0; // 0 = "Gas Giant"
-    body.size = rng.rollDice(6, 3);
-    if (body.size <= 10){
-      body.size = 1; // Small
-      body.mass = ggmd.Smass;
-      body.density = ggmd.Sdensity;
-    } else if (body.size > 10 && body.size <= 16){
-      body.size = 2; // Medium
-      body.mass = ggmd.Mmass;
-      body.density = ggmd.Mdensity;
-    } else {
-      body.size = 3; // Large
-      body.mass = ggmd.Lmass;
-      body.density = ggmd.Ldensity;
-    }
-
-    body.diameter = Math.cbrt(body.mass / body.density);
-    body.rotationalPeriod = GetRotationalPeriod(rng, body.size, body.type);
-    body.axialTilt = GetAxialTilt(rng);
-
-    return body;
-  }
-
   function CalculateHydrographics(rng, size, type){
     var hg = 0;
 
@@ -274,16 +248,23 @@ module.exports = (function(){
       hg = (rng.rollDice(6, 1)+2)*10;
     } else if (type === 8 && (size === 2 || size === 3)){
       hg = rng.rollDice(6, 2)*10;
-      if (hg > 100){hg = 100;}
     } else if (type === 1 && (size === 2 || size === 3)){
       hg = (rng.rollDice(6, 2)-10)*10;
-      if (hg < 0){hg = 0;}
     } else if ((type === 2 || type === 3) && (size === 2 || size === 3)){
       hg = (rng.rollDice(6, 1) + ((size === 3) ? 6 : 4))*10;
-      if (hg > 100){hg = 100;}
     } else if (type === 4 && (size === 2 || size === 3)){
       hg = (rng.rollDice(6, 2)-7) * 10;
-      if (hg < 0){hg = 0;}
+    }
+
+    if (hg !== 0){
+      var variance = hg * 0.05;
+      hg = Math.floor(hg + (rng.value(-1, 1)*variance));
+
+      if (hg < 0){
+	hg = 0;
+      } else if (hg > 100){
+	hg = 100;
+      }
     }
 
     return hg;
@@ -457,6 +438,7 @@ module.exports = (function(){
       mass: 100, // Not a real value at the moment.
       suffocating: false,
       corrosive: false,
+      breathable: false,
       marginal: false,
       toxicity: 0
     };
@@ -508,6 +490,7 @@ module.exports = (function(){
       atm.composition = ["carbon dioxide", "nitrogen"];
     } else if (sc.size === 2 && sc.class === 3){
       atm.composition = ["oxygen", "nitrogen"];
+      atm.breathable = true;
       atm.marginal = (rng.rollDice(6, 3) >= 12);
     } else if (sc.size === 2 && sc.class === 4){
       atm.suffocating = true;
@@ -529,6 +512,7 @@ module.exports = (function(){
       atm.composition = ["helium", "nitrogen"];
     } else if (sc.size === 3 && sc.class === 3){
       atm.composition = ["oxygen", "nitrogen"];
+      atm.breathable = true;
       atm.marginal = (rng.rollDice(6, 3) >= 12);
     } else if (sc.size === 3 && sc.class === 4){
       atm.suffocating = true;
@@ -562,7 +546,6 @@ module.exports = (function(){
     body.atmosphere = atm;
 
     var ag = CalculateAbsorptionAndGreenhouse(sc.size, sc.class, body.hydrographics);
-    console.log(ag);
     var bbcor = ag.ab * (1 + (atm.mass * ag.gh));
     var blackbody = body.temperature / bbcor;
 
@@ -571,7 +554,8 @@ module.exports = (function(){
     // Calculating diameter...
     var Dmin = 0;
     var Dmax = 0;
-    var BK = Math.sqrt(blackbody/(body.density === 0) ? 0.0001 : body.density);
+    var BK = (body.density !== 0) ? Math.sqrt(blackbody/body.density) : 0;
+
     switch(sc.size){
     case 0:
       Dmin = BK*0.004;
@@ -590,21 +574,101 @@ module.exports = (function(){
       Dmax = BK*0.091;
       break;
     }
+
+    body.blackbody = blackbody;
     body.diameter = Dmin + ((Dmax - Dmin)*rng.uniform()); // NOTE: Cheating. The book random effect says something about rolling 2D-2 or something.
     body.surfaceGravity = body.diameter * body.density;
     body.mass = body.density * (body.diameter * body.diameter * body.diameter);
     body.atmosphere.pressure = CalculateAtmosphericPressure(sc.size, sc.type, body.atmosphere.mass, body.surfaceGravity);
     body.resourceIndex = CalculateResources(rng, body.type);
     
-    // TODO: Calculate affinity score.
+    // --- Calculating Affinity Score...
+    var affinity = 0;
+    if (body.atmosphere.breathable === true){
+      // Based on pressure density
+      if ((body.atmosphere.pressure >= 0.01 && body.atmosphere.pressure <= 0.5) || body.atmosphere.pressure > 1.2){
+	affinity += 1;
+      } else if (body.atmosphere.pressure > 0.5 && body.atmosphere.pressure <= 0.8){
+	affinity += 2;
+      } else if (body.atmosphere.pressure > 0.8 && body.atmosphere.pressure <= 1.2){
+	affinity += 3;
+      }
 
+      // Based on temperature
+      if ((body.temperature > 255 && body.temperature <= 266) || (body.temperature > 322 && body.temperature <= 333)){
+	affinity += 1;
+      } else if (body.temerature > 266 && body.temperature <= 322){
+	affinity += 2;
+      }
+
+      // Non-marginal atmosphere bonus...
+      affinity += (body.atmosphere.marginal === true) ? 0 : 1;
+
+    } else {
+      if (body.atmosphere.suffocating === true){
+	if (body.atmosphere.toxicity > 0){
+	  affinity -= 1;
+	  if (body.atmosphere.corrosive === true){
+	    affinity -= 1;
+	  }
+	}
+      }
+    }
+
+    // Affinity adjustment Based on hydrographics
+    if (body.hydrographics >= 1 && body.hydrographics <= 59){
+      affinity += 1;
+    } else if (body.hydrographics > 59 && body.hydrographics <= 90){
+      affinity += 2;
+    } else if (body.hydrographics > 90 && body.hydrographics <= 99){
+      affinity += 1;
+    }
+
+    body.affinity = affinity;
+
+    // --- Misc data.
     body.rotationalPeriod = GetRotationalPeriod(rng, body.size, body.type);
     body.axialTilt = GetAxialTilt(rng);
+
+    // -- Done
+    return body;
+  }
+
+  function GenGasGiant(body, rng, options){
+    var ggmd = GetGGMassDensityVariance(rng, rng.rollDice(6,3));
+
+    body.type = 0; // 0 = "Gas Giant"
+    body.size = rng.rollDice(6, 3);
+    if (body.size <= 10){
+      body.size = 1; // Small
+      body.mass = ggmd.Smass;
+      body.density = ggmd.Sdensity;
+    } else if (body.size > 10 && body.size <= 16){
+      body.size = 2; // Medium
+      body.mass = ggmd.Mmass;
+      body.density = ggmd.Mdensity;
+    } else {
+      body.size = 3; // Large
+      body.mass = ggmd.Lmass;
+      body.density = ggmd.Ldensity;
+    }
+
+    body.diameter = Math.cbrt(body.mass / body.density);
+    body.rotationalPeriod = GetRotationalPeriod(rng, body.size, body.type);
+    body.axialTilt = GetAxialTilt(rng);
+
     return body;
   }
 
   function GenAsteroidBelt(body, rng, options){
     body.type = 1; // 1 = "Asteroid Belt"
+
+    // Calculating temperature
+    var tempsteprange = Math.floor((500 - 140)/24);
+    body.temperature = 140 + (Math.floor(rng.uniform()*tempsteprange) * 24);
+    body.blackbody = body.temperature/0.97;
+
+    body.resourceIndex = CalculateResources(rng, body.type);
 
     return body;
   }

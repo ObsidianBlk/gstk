@@ -8,11 +8,14 @@ module.exports = (function(){
   return {
     run:function(){
       var rng = new PRng();
-      rng.seed(Math.random().toString());
+      //rng.seed(Math.random().toString());
+      rng.seed("Bryan Miller");
       console.log(rng.state);
 
-      var sb = new StellarBody(rng);
-      console.log(sb.data);
+      var s = new Star(rng, {supportGardenWorlds:true});
+      s.generateStellarBodies();
+
+      console.log(s.data);
     }
   };
   
