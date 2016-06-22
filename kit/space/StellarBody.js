@@ -1,6 +1,20 @@
 
 module.exports = (function(){
 
+  var ResourceValueTable = [
+    {desc: "worthless", mod: -5},
+    {desc: "very scant", mod: -4},
+    {desc: "scant", mod: -3},
+    {desc: "very poor", mod: -2},
+    {desc: "poor", mod: -1},
+    {desc: "average", mod: 0},
+    {desc: "abundant", mod: 1},
+    {desc: "very abundant", mod: 2},
+    {desc: "rich", mod: 3},
+    {desc: "very rich", mod: 4},
+    {desc: "motherlode", mod: 5}
+  ];
+
   var GGMassDensityTable = [
     {Smass: 10, Sdensity: 0.42, Mmass: 100, Mdensity: 0.18, Lmass: 600, Ldensity:0.31},
     {Smass: 15, Sdensity: 0.26, Mmass: 150, Mdensity: 0.19, Lmass: 800, Ldensity:0.35},
@@ -14,13 +28,13 @@ module.exports = (function(){
   ];
 
   var TemperatureScaleTable = [
-    {Kmin: 140, kmax:500, step: 24}, // 0
-    {Kmin: 80, kmax: 140, step: 4}, // 1
-    {Kmin: 50, kmax: 80, step: 2}, // 2
-    {Kmin: 140, kmax: 215, step: 5}, // 3
-    {Kmin: 80, kmax: 230, step: 10}, // 4
-    {Kmin: 250, kmax: 340, step: 6}, // 5
-    {Kmin: 500, kmax: 950, step: 30}, // 6
+    {Kmin: 140, Kmax:500, step: 24}, // 0
+    {Kmin: 80, Kmax: 140, step: 4}, // 1
+    {Kmin: 50, Kmax: 80, step: 2}, // 2
+    {Kmin: 140, Kmax: 215, step: 5}, // 3
+    {Kmin: 80, Kmax: 230, step: 10}, // 4
+    {Kmin: 250, Kmax: 340, step: 6}, // 5
+    {Kmin: 500, Kmax: 950, step: 30}, // 6
   ];
 
   var TerrestrialClassTable = [
@@ -98,27 +112,34 @@ module.exports = (function(){
     var index = rng.rollDice(6, 3) - 3;
     var ent = TerrestrialSizeClassTable[index];
 
+    console.log(ent);
+
     var temp = 0;
     var tempsteprange = 0;
-
+    var tempsteppercent = rng.uniform();
+    var tscale = null;
+    
     switch(type){
     case 0:
+      tscale = TemperatureScaleTable[ent.Htsi];
       tempsteprange = Math.floor(
-	(TemperatureScaleTable[ent.Htsi].Kmax - TemperatureScaleTable[ent.Htsi].Kmin)/TemperatureScaleTable[ent.Htsi].step
+	(tscale.Kmax - tscale.Kmin)/tscale.step
       );
-      temp = TemperatureScaleTable[ent.Htsi].Kmin + (Math.floor(rng.uniform()*tempsteprange) * TemperatureScaleTable[ent.Htsi].step);
+      temp = tscale.Kmin + (Math.floor(tempsteppercent*tempsteprange) * tscale.step);
       return {size: ent.Hsize, class: ent.Hclass, temp: temp};
     case 1:
+      tscale = TemperatureScaleTable[ent.Btsi];
       tempsteprange = Math.floor(
-	(TemperatureScaleTable[ent.Btsi].Kmax - TemperatureScaleTable[ent.Btsi].Kmin)/TemperatureScaleTable[ent.Btsi].step
+	(tscale.Kmax - tscale.Kmin)/tscale.step
       );
-      temp = TemperatureScaleTable[ent.Btsi].Kmin + (Math.floor(rng.uniform()*tempsteprange) * TemperatureScaleTable[ent.Btsi].step);
+      temp = tscale.Kmin + (Math.floor(tempsteppercent*tempsteprange) * tscale.step);
       return {size: ent.Bsize, class: ent.Bclass, temp: temp};
     case 2:
+      tscale = TemperatureScaleTable[ent.Gtsi];
       tempsteprange = Math.floor(
-	(TemperatureScaleTable[ent.Gtsi].Kmax - TemperatureScaleTable[ent.Gtsi].Kmin)/TemperatureScaleTable[ent.Gtsi].step
+	(tscale.Kmax - tscale.Kmin)/tscale.step
       );
-      temp = TemperatureScaleTable[ent.Gtsi].Kmin + (Math.floor(rng.uniform()*tempsteprange) * TemperatureScaleTable[ent.Gtsi].step);
+      temp = tscale.Kmin + (Math.floor(tempsteppercent*tempsteprange) * tscale.step);
       return {size: ent.Gsize, class: ent.Gclass, temp: temp};
     }
 
@@ -330,10 +351,100 @@ module.exports = (function(){
     };
   }
 
+
+  function CalculateWorldDensity(rng, size, type){
+    var density = 0;
+
+    if ((size === 0 && type === 1) || (size === 0 && type === 7) || (size === 1 && type === 5) || (size === 1 && type === 1) ||
+        (size === 2 && type === 5) || (size === 2 && type === 8) || (size === 3 && type === 8)){
+      density = 0.3;
+    } else if ((size === 0 && type === 0) || (size === 1 && type === 0)){
+      density = 0.6;
+    } else {
+      density = 0.8;
+    }
+
+    switch(rng.rollDice(6, 3)){
+    case 18:
+      density += 0.1;
+    case 15: case 16: case 17:
+      density += 0.1;
+    case 11: case 12: case 13: case 14:
+      density += 0.1;
+    case 7: case 8: case 9: case 10:
+      density += 0.1;
+    }
+
+    return density;
+  }
+
+
+  function CalculateAtmosphericPressure(size, type, atmMass, surfGravity){
+    var factor = 0;
+
+    if (size === 1 && type === 1){
+      factor = 10;
+    } else if (size === 2 && type === 4){
+      factor = 100;
+    } else if (size === 3 && type === 4){
+      factor = 500;
+    } else if (size === 2 && (type === 8 || type === 1 || type === 2 || type === 3)){
+      factor = 1;
+    } else if (size === 3 && (type === 8 || type === 1 || type === 2 || type === 3)){
+      factor = 5;
+    }
+
+    return atmMass * surfGravity * factor;
+  }
+
+  function CalculateResources(rng, type){
+    if (type === 2){ // Terrestrial
+      switch(rng.rollDice(6, 3)){
+      case 3: case 4:
+        return 3;
+      case 5: case 6: case 7:
+        return 4;
+      case 8: case 9: case 10: case 11: case 12: case 13:
+        return 5;
+      case 14: case 15: case 16:
+        return 6;
+      case 17: case 18:
+        return 7;
+      }
+    } else if (type === 1){ // Asteroid
+      switch(rng.rollDice(6, 3)){
+      case 4:
+        return 1;
+      case 5:
+        return 2;
+      case 6: case 7:
+        return 3;
+      case 8: case 9:
+        return 4;
+      case 10: case 11:
+        return 5;
+      case 12: case 13:
+        return 6;
+      case 14: case 15:
+        return 7;
+      case 16:
+        return 8;
+      case 17:
+        return 9;
+      case 18:
+        return 10;
+      }
+    }
+
+    return 0;
+  }
+  
+
   function GenTerrestrial(body, rng, options){
-    body.type = 1; // 1 = "Asteroid Belt"
+    body.type = 2; // 2 = "Terrestrial"
     var sc = GetTerrestrialSizeClassTemp(rng, options.terrestrialType);
     if (sc.size === -1 || sc.class === -1){
+      console.log("Trying to go asteroid!");
       return false; // This should force Asteroid!
     }
 
@@ -451,10 +562,40 @@ module.exports = (function(){
     body.atmosphere = atm;
 
     var ag = CalculateAbsorptionAndGreenhouse(sc.size, sc.class, body.hydrographics);
+    console.log(ag);
     var bbcor = ag.ab * (1 + (atm.mass * ag.gh));
     var blackbody = body.temperature / bbcor;
 
-    // TODO: Calculate diameter using blackbody.
+    body.density = CalculateWorldDensity(rng, sc.size, sc.class);
+
+    // Calculating diameter...
+    var Dmin = 0;
+    var Dmax = 0;
+    var BK = Math.sqrt(blackbody/(body.density === 0) ? 0.0001 : body.density);
+    switch(sc.size){
+    case 0:
+      Dmin = BK*0.004;
+      Dmax = BK*0.024;
+      break;
+    case 1:
+      Dmin = BK*0.024;
+      Dmax = BK*0.03;
+      break;
+    case 2:
+      Dmin = BK*0.03;
+      Dmax = BK*0.065;
+      break;
+    case 3:
+      Dmin = BK*0.065;
+      Dmax = BK*0.091;
+      break;
+    }
+    body.diameter = Dmin + ((Dmax - Dmin)*rng.uniform()); // NOTE: Cheating. The book random effect says something about rolling 2D-2 or something.
+    body.surfaceGravity = body.diameter * body.density;
+    body.mass = body.density * (body.diameter * body.diameter * body.diameter);
+    body.atmosphere.pressure = CalculateAtmosphericPressure(sc.size, sc.type, body.atmosphere.mass, body.surfaceGravity);
+    body.resourceIndex = CalculateResources(rng, body.type);
+    
     // TODO: Calculate affinity score.
 
     body.rotationalPeriod = GetRotationalPeriod(rng, body.size, body.type);
@@ -463,12 +604,13 @@ module.exports = (function(){
   }
 
   function GenAsteroidBelt(body, rng, options){
-    body.type = 2; // 2 = "Terrestrial"
+    body.type = 1; // 1 = "Asteroid Belt"
 
     return body;
   }
 
   function StellarBody(rng, options){
+    options = (typeof(options) === typeof({})) ? options : {};
     var data = null;
     if (options.makeGasGiant === true){
       data = GenGasGiant({}, rng, options);
@@ -543,6 +685,10 @@ module.exports = (function(){
 	  }
 	  return "UNKNOWN";
 	}
+      },
+
+      "data":{
+        get:function(){return data;}
       }
     });
 

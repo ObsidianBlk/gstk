@@ -44,10 +44,9 @@ module.exports = (function () {
 
   function MixSeed(state){
     var bytes = GetStringBytes(state.seed);
-    var j = 0;
     for (var i=0; i < state.s.length; i++){
-      j += state.s[i] + bytes[i % bytes.length];
-      j %= 256;
+      state.j += state.s[i] + bytes[i % bytes.length];
+      state.j %= 256;
       Swap(state);
     }
   }
