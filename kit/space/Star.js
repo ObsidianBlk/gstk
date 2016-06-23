@@ -44,7 +44,6 @@ module.exports = (function(){
   ];
 
   function GetSETEntry(mass){
-    console.log(typeof(mass));
     for (var i=0; i < StellarEvolutionTable.length; i++){
       if (Math.abs(StellarEvolutionTable[i].mass - mass) < 0.01){
 	return StellarEvolutionTable[i];
@@ -63,7 +62,6 @@ module.exports = (function(){
   }
 
   function StarMassCalc(r1, r2){
-    console.log(r1 + " | " + r2);
     var Mass = function(base, adj, breaks){
       switch (breaks){
       case 2:
@@ -127,7 +125,6 @@ module.exports = (function(){
     case 12:
       return 0.2;
     case 13:
-      console.log(0.15);
       return 0.15;
     }
 
@@ -235,34 +232,16 @@ module.exports = (function(){
 	}
       }
     }
-    /*if (sete.Mspan !== null){
-      star.lumClass = "V";
-      if (star.age > sete.Mspan && sete.Sspan === null){
-	console.log("ping 1");
-	star.lumClass = "D";
-      } else {
-	if (star.age <= sete.Sspan){
-	  star.lumClass = "IV";
-	} else {
-	  if (star.age <= sete.Gspan){
-	    star.lumClass = "III";
-	  } else {
-	    console.log("ping 2");
-	    star.lumClass = "D";
-	  }
-	}
-      }
-    }*/
 
-    if (star.lumClass != "D"){
+    if (star.lumClass !== "D"){
       // -- Calculating actual Luminosity
       if (star.mass <= 0.4){
 	star.luminosity = sete.Lmin + (sete.Lmin*rng.value(-0.1, 0.1));
-      } else if (star.mass <= 0.9){
-	star.luminosity = sete.Lmin + ((star.age/sete.Mspan)*(sete.Lmax - sete.Lmin));
       }
 
-      if (sete.Sspan !== null && star.age > sete.Mspan){
+      if (sete.Sspan === null || star.age <= sete.Mspan){
+        star.luminosity = sete.Lmin + ((star.age/sete.Mspan)*(sete.Lmax - sete.Lmin));
+      } else if (sete.Sspan !== null && star.age > sete.Mspan){
 	// Adjusting for Sub-Giant stage
 	star.temp -= ((star.age - sete.Mspan)/sete.Sspan)*(star.temp-4800); // Higher temprature.
 	star.luminosity = sete.Lmax + (sete.Lmax * rng.value(-0.1, 0.1));
@@ -287,7 +266,7 @@ module.exports = (function(){
   }
 
 
-  function CalcOrbitalInformation(rng, star, roll, primaryMass){
+  function CalcOrbitalInformation(rng, roll, primaryMass, companionMass){
     var multi = 0.05;
     var mod = -6;
     var desc = "Very Close";
@@ -318,11 +297,11 @@ module.exports = (function(){
     e = (roll >= 15) ? 0.95 : roll*0.1;
     if (e < 0){ e = 0;}
 
-    star.orbit = {
+    return {
       description: desc,
       rmin: (1 - e) * oradius,
       rmax: (1 + e) * oradius,
-      period: Math.sqrt((oradius*oradius*oradius)/(primaryMass + star.mass))
+      period: Math.sqrt((oradius*oradius*oradius)/(primaryMass + companionMass))
     };
   }
 
@@ -350,6 +329,9 @@ module.exports = (function(){
   }
 
 
+
+  
+
   /* -------------------------------------------------------------------------------
    * Actual Star class
    * ---------------------------------------------------------------------------- */
@@ -359,31 +341,10 @@ module.exports = (function(){
     var data = GenStar({}, rng, options);
     data.name = rng.generateUUID();
 
-    var primary = (options.primaryStar instanceof Star) ? options.primaryStar : null;
-    var companions = null;
-
     // Calculating Inner and Outer Limit Radii... and Snow line.
     CalculateLimitRadii(rng, data);
 
-    // Calculating orbital information is needed
-    if (primary !== null){
-      var roll = rng.rollDice(6, 3);
-      if (options.supportGardenWorlds === true){
-        if (primary.companionCount === 0){
-          // Assume this is the first companion of the primary star...
-          roll += 4;
-        } else { // Assume this is the second companion of the primary star...
-          roll += 6;
-        }
-
-        CalcOrbitalInformation(rng, data, roll, primary.mass);
-
-        data.forbiddenZone = {
-          innerRadius: 0.33 * data.orbit.rmin,
-          outerRadius: 3 * data.orbit.rmax
-        };
-      }
-    }
+    var stellarBodiesGenerated = false; // This is just a marker so stellar bodies are only created once.
 
     Object.defineProperties(this, {
       "name":{
@@ -467,7 +428,7 @@ module.exports = (function(){
 
       "companionCount":{
         enumerate: true,
-        get:function(){return (companions !== null) ? companions.length : 0;}
+        get:function(){return (typeof(data.companion) !== 'undefined') ? data.companion.length : 0;}
       },
 
       "stellarBodyCount":{
@@ -539,9 +500,9 @@ module.exports = (function(){
       }
       adjustIn = (adjustIn === true) ? true : false;
 
-      var ccount = (companions !== null) ? companions.length : 0;
+      var ccount = (typeof(data.companion) !== 'undefined') ? data.companion.length : 0;
       for (var c=0; c < ccount; c++){
-	var fz = companions[c].forbiddenZone;
+	var fz = data.companion[c].forbiddenZone;
 	if (radius >= fz.innerRadius && radius <= fz.outerRadius){
 	  if (adjustIn === true){
 	    // Adjust it so that it's between .1 and .2 AU away from the innerRadius of forbidden zone
@@ -560,159 +521,221 @@ module.exports = (function(){
       return radius;
     }
 
-    function StoreStellarBody(sb, radius, ecc){
+    function GenerateOrbitAtRadius(radius, arrangementType, geninfo){
       if (typeof(data.stellarBody) === 'undefined'){
-	console.log("Initializing stellarBody list...");
-	data.stellarBody = [];
+        data.stellarBody = [];
       }
-      if (typeof(data.satellite) === 'undefined'){
-	console.log("Initializing satellite orbit hash...");
-	data.satellite = {};
+
+      var firstAfterSnowline = true;
+      if (geninfo.makeGasGiant === true){
+        for (var i=0; i < data.stellarBody.length; i++){
+          if (data.stellarBody[i].radius >= data.limit.snowLine){
+            firstAfterSnowline = false;
+            break;
+          }
+        }
       }
-      
-      if (!(sb.name in data.satellite)){
-	console.log("storing stellar body");
-	var orbitalPeriod = Math.sqrt((radius*radius*radius)/data.mass);
-	var Rmin = (1-ecc)*radius;
-	var Rmax = (1+ecc)*radius;
-	data.stellarBody.push(sb);
-	data.satellite[sb.name] = {avgOrbitalRadius: radius, Rmin: Rmin, Rmax: Rmax, period:orbitalPeriod};
+
+      var eccentricity = GetOrbitalEccentricity(geninfo.makeGasGiant, radius < data.limit.snowLine, arrangementType);
+      var Rmin = (1 - eccentricity)*radius;
+      var Rmax = (1 + eccentricity)*radius;
+
+      data.stellarBody.push({
+        avgRadius: radius,
+        rMin: Rmin,
+        rMax: Rmax,
+        period: Math.sqrt((radius*radius*radius)/data.mass),
+        body: geninfo
+      });
+      // NOTE: StellarBody instance is not actually generated at this step.
+    }
+
+    function GenerateOrbitList(){
+      var radius = 0;
+      // Generation direction... 0 = In | 1 = Out | 2 = Both
+      var gendir = 2; // Assume both directions to start.
+
+      // Start with first Gas Giant...
+      var arrangementType = 0; // None
+      switch(rng.rollDice(6, 3)){
+      case 11: case 12: // Convensional
+	arrangementType = 1;
+	radius = ValidateOrbitalRadius((1 + ((rng.rollDice(6, 2)-2)*0.05)) * data.limit.snowLine);
+	break;
+      case 13: case 14: // Eccentric
+	arrangementType = 2; 
+	radius = ValidateOrbitalRadius((rng.rollDice(6, 1)*0.125)*data.limit.snowLine);
+	break;
+      case 15: case 16: case 17: case 18: // Epistellar
+	arrangementType = 3;
+	radius = ValidateOrbitalRadius((rng.rollDice(6, 3)*0.1)*data.limit.innerRadius);
+	break;
+      }
+
+      if (radius <= 0){
+        // Is inner limit a valid radius (not in a forbidden zone)?
+        radius = ValidateOrbitalRadius(data.limit.innerRadius);
+        gendir = 1;
+        if (radius <= 0){
+          // Ok... how about the outer limit radius?
+          radius = ValidateOrbitalRadius(data.limit.outerRadius);
+          gendir = 0;
+          if (radius <= 0){return;} // Ok... can't find a valid start point. Must not have any space for planets... hehe... space
+        }
+      } else {
+        GenerateOrbitAtRadius(radius, arrangementType, {
+          makeGasGiant: true,
+          contentModifier: 4
+        });
+      }
+
+      var newRadius = 0;
+      var genRadius = 0;
+      var lastRadius = radius;
+      var geninfo = null;
+
+      var MakeGasGiant = function(){
+        switch(arrangementType){
+	case 1:
+	  return (newRadius < data.limit.snowLine) ? false : (rng.rollDice(6, 3) <= 15);
+	case 2:
+	  return (newRadius < data.limit.snowLine) ? (rng.rollDice(6, 3) <= 8) : (rng.rollDice(6, 3) <= 14);
+	case 3:
+	  return (newRadius < data.limit.snowLine) ? (rng.rollDice(6, 3) <= 6) : (rng.rollDice(6, 3) <= 14);
+	}
+        return false;
+      };
+
+      // Generate Inwards!
+      if (gendir === 0 || gendir === 2){
+        genRadius = radius / GetRandomOrbitalSpacing();
+        newRadius = ValidateOrbitalRadius(genRadius, true);
+        while (newRadius > data.limit.innerRadius){
+          if (lastRadius - newRadius > 0.15){
+            geninfo = {
+              makeGasGiant:MakeGasGiant(),
+              contentTypeRoll: rng.rollDice(6, 3)
+            };
+            
+            if (geninfo.makeGasGiant || (geninfo.contentTypeRoll > 3 && newRadius < data.limit.snowLine)){
+              if (geninfo.makeGasGiant === false){
+                if (genRadius !== newRadius){ // Orbit was bumped by forbidden zone!
+                  geninfo.contentTypeRoll -= 6;
+                } else if (newRadius / 2 < data.limit.innerRadius){ // This is the last radius before overtaking the inner limit radius.
+                  geninfo.contentTypeRoll -= 3;
+                }
+                if (geninfo.contentTypeRoll <= 6){
+                  geninfo.makeAsteroidBelt = true;
+                }
+              }
+              GenerateOrbitAtRadius(newRadius, arrangementType, geninfo);
+            }
+          }
+          if (newRadius > data.limit.innerRadius){
+            lastRadius = newRadius;
+            genRadius = newRadius / GetRandomOrbitalSpacing();
+            newRadius = ValidateOrbitalRadius(genRadius, true);
+          }
+        }
+      }
+
+
+      // Generate Outwards!
+      if (gendir === 1 || gendir === 2){
+        lastRadius = radius;
+        genRadius = radius * GetRandomOrbitalSpacing();
+        newRadius = ValidateOrbitalRadius(genRadius);
+        while (newRadius > 0 && newRadius <= data.limit.outerRadius){
+          if (newRadius - lastRadius > 0.15){
+            geninfo = {
+              makeGasGiant:MakeGasGiant(),
+              contentTypeRoll: rng.rollDice(6, 3)
+            };
+            
+            if (geninfo.makeGasGiant || (geninfo.contentTypeRoll > 3 && newRadius < data.limit.snowLine)){
+              if (geninfo.makeGasGiant === false){
+                if (genRadius !== newRadius){ // Orbit was bumped by forbidden zone!
+                  geninfo.contentTypeRoll -= 6;
+                } else if (newRadius * 1.4 > data.limit.outerRadius){ // This is the last radius before overtaking the inner limit radius.
+                  geninfo.contentTypeRoll -= 3;
+                }
+                if (geninfo.contentTypeRoll <= 6){
+                  geninfo.makeAsteroidBelt = true;
+                }
+              }
+              GenerateOrbitAtRadius(newRadius, arrangementType, geninfo);
+            }
+          }
+          if (newRadius > data.limit.innerRadius){
+            lastRadius = newRadius;
+            genRadius = newRadius * GetRandomOrbitalSpacing();
+            newRadius = ValidateOrbitalRadius(genRadius);
+          }
+        }
       }
     }
 
 
     this.getCompanion = function(index){
-      if (companions === null || (index < 0 || index >= companions.length)){
+      if (typeof(data.companion) === 'undefined' || (index < 0 || index >= data.companion.length)){
         throw new RangeError();
       }
-      return companions[index];
+      return data.companion[index];
     };
 
 
     this.generateCompanion = function(){
-      var cmp = new Star({
-        supportGardenWorlds: (options.supportGardenWorlds === true) ? true : false,
-        primaryStar: this
-      }, rng.spawn());
+      if (typeof(data.stellarBody) === 'undefined'){ // Don't want to create new companions after the stellar bodies.
+        if (typeof(data.companion) === 'undefined'){
+          data.companion = [];
+        }
+        if (data.companion.length < 2){
+          var cmp = new Star(rng.spawn(), {
+            supportGardenWorlds: (options.supportGardenWorlds === true) ? true : false
+          });
+          
+          var roll = rng.rollDice(6, 3);
+          if (options.supportGardenWorlds === true){
+            if (data.companion.length === 0){
+              // This is the first companion...
+              roll += 4;
+            } else { // And this is the second companion...
+              roll += 6;
+            }
+          }
 
-      if (companions === null){
-        companions = [];
-      }
-      if (companions.length < 2){
-        companions.push(cmp);
+          var c = {
+            companion: cmp,
+            orbit: CalcOrbitalInformation(rng, roll, data.mass, cmp.mass)
+          };
+          c.forbiddenZone = {
+            innerRadius: 0.33 * c.orbit.rmin,
+            outerRadius: 3 * c.orbit.rmax
+          };
+          
+          data.companion.push(c);
+        }
       }
     };
 
-
-    this.getStellarBody = function(index){
-      if (typeof(data.stellarBody) === 'undefined' || (index < 0 || index >= data.stellarBody.length)){
-	throw new RangeError();
-      }
-      return data.stellarBody[index];
-    };
 
 
     this.generateStellarBodies = function(){
-      console.log("Generating Stellar Bodies");
-      var radius = 0;
-      var gendirection = 0; // 0 = In | 1 = Out | 2 = Both
-      var ecc = 0;
+      if (stellarBodiesGenerated === false){
+        stellarBodiesGenerated = true;
+        GenerateOrbitList();
 
-      // Start with first Gas Giant...
-      var ArrangementType = 0; // None
-      switch(rng.rollDice(6, 3)){
-      case 11: case 12: // Convensional
-	ArrangementType = 1;
-	radius = (1 + ((rng.rollDice(6, 2)-2)*0.05)) * data.limit.snowLine;
-	break;
-      case 13: case 14: // Eccentric
-	ArrangementType = 2; 
-	radius = (rng.rollDice(6, 1)*0.125)*data.limit.snowLine;
-	break;
-      case 15: case 16: case 17: case 18: // Epistellar
-	ArrangementType = 3;
-	radius = (rng.rollDice(6, 3)*0.1)*data.limit.innerRadius;
-	break;
-      }
+        if (typeof(data.stellarBody) !== 'undefined'){
+          // Now... sort the list!
+          data.stellarBody.sort(function(a, b){
+            return (a.avgRadius - b.avgRadius);
+          });
 
-      // If we got a radius... generate and store the stellar body
-      radius = ValidateOrbitalRadius(radius);
-      if (radius > 0){ // Radius is valid... place!
-	var sb = new StellarBody(rng.spawn(), {makeGasGiant:true});
-	ecc = GetOrbitalEccentricity(true, radius < data.limit.snowLine, ArrangementType);
-	StoreStellarBody(sb, radius, ecc);
-	gendirection = 2;
-	// NOTE: Building direction is already determined if we placed an initial Gas Giant.
-      } else { // Determine the building direction...
-	radius = ValidateOrbitalRadius(data.limit.outerRadius);
-	if (radius === -1){
-	  radius = ValidateOrbitalRadius(data.limit.innerRadius);
-	  gendirection = 1; // Assume an outward generation!
-	}
-      }
-
-      if (radius > 0){ // A radius at or under 0 at this point equates to a system that does not support any stellar bodies.
-	// Generate Outward...
-	var GenGasGiant = false;
-	var newRadius = 0;
-	var lastRadius = radius;
-	if (gendirection === 1 || gendirection === 2){
-	  while (lastRadius > data.limit.outerRadius){
-	    newRadius = lastRadius * GetRandomOrbitalSpacing();
-	    if (newRadius < data.limit.outerRadius){
-	      GenGasGiant = false;
-	      if (ArrangementType > 0){
-		switch(ArrangementType){
-		case 1:
-		  GenGasGiant = (newRadius < data.limit.snowLine) ? false : (rng.rollDice(6, 3) <= 15);
-		  break;
-		case 2:
-		  GenGasGiant = (newRadius < data.limit.snowLine) ? (rng.rollDice(6, 3) <= 8) : (rng.rollDice(6, 3) <= 14);
-		  break;
-		case 3:
-		  GenGasGiant = (newRadius < data.limit.snowLine) ? (rng.rollDice(6, 3) <= 6) : (rng.rollDice(6, 3) <= 14);
-		  break;
-		}
-	      }
-	      if (GenGasGiant || rng.rollDice(6, 3) > 3){
-		sb = new StellarBody(rng.spawn(), {makeGasGiant: GenGasGiant});
-		ecc = GetOrbitalEccentricity(GenGasGiant, newRadius < data.limit.snowLine, ArrangementType);
-		StoreStellarBody(sb, newRadius, ecc);
-	      }
-	    }
-	    lastRadius = newRadius;
-	  }
-	}
-
-	// Generate Inward...
-	lastRadius = radius;
-	if (gendirection === 0 || gendirection === 2){
-	  while (lastRadius < data.limit.innerRadius){
-	    newRadius = lastRadius * GetRandomOrbitalSpacing();
-	    if (newRadius > data.limit.innerRadius){
-	      GenGasGiant = false;
-	      if (ArrangementType > 0){
-		switch(ArrangementType){
-		case 1:
-		  GenGasGiant = (newRadius < data.limit.snowLine) ? false : (rng.rollDice(6, 3) <= 15);
-		  break;
-		case 2:
-		  GenGasGiant = (newRadius < data.limit.snowLine) ? (rng.rollDice(6, 3) <= 8) : (rng.rollDice(6, 3) <= 14);
-		  break;
-		case 3:
-		  GenGasGiant = (newRadius < data.limit.snowLine) ? (rng.rollDice(6, 3) <= 6) : (rng.rollDice(6, 3) <= 14);
-		  break;
-		}
-	      }
-	      if (GenGasGiant || rng.rollDice(6, 3) > 3){
-		sb = new StellarBody(rng.spawn(), {makeGasGiant: GenGasGiant});
-		ecc = GetOrbitalEccentricity(GenGasGiant, newRadius < data.limit.snowLine, ArrangementType);
-		StoreStellarBody(sb, newRadius, ecc);
-	      }
-	    }
-	    lastRadius = newRadius;
-	  }
-	}
+          // Finally... build the planets!
+          data.stellarBody.forEach(function(info){
+            info.body = new StellarBody(rng.spawn(), info.body);
+          });
+        }
       }
     };
   }

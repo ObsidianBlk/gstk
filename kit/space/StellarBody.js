@@ -97,17 +97,20 @@ module.exports = (function(){
     };
   };
 
-  function GetTerrestrialSizeClassTemp(rng, type){
-    if (typeof(type) !== 'number' || type < 0 || type > 2){
-      type = rng.rollDice(6,3);
-      if (type <= 7){
-	type = 0;
-      } else if (type >= 8 && type <= 13){
-	type = 1;
-      } else {
-	type = 2;
-      }
-    } else {type = Math.floor(type);}
+  function GetTerrestrialSizeClassTemp(rng, options){
+    options = (typeof(options) === typeof({})) ? options : {};
+    var type = (typeof(options.contentTypeRoll) === 'number') ? Math.floor(options.contentTypeRoll) : rng.rollDice(6,3);
+    if (typeof(options.contentModifier) === 'number'){
+      type += options.contentModifier;
+    }
+    
+    if (type <= 7){
+      type = 0;
+    } else if (type >= 8 && type <= 13){
+      type = 1;
+    } else {
+      type = 2;
+    }
 
     var index = rng.rollDice(6, 3) - 3;
     var ent = TerrestrialSizeClassTable[index];
@@ -423,7 +426,7 @@ module.exports = (function(){
 
   function GenTerrestrial(body, rng, options){
     body.type = 2; // 2 = "Terrestrial"
-    var sc = GetTerrestrialSizeClassTemp(rng, options.terrestrialType);
+    var sc = GetTerrestrialSizeClassTemp(rng, options);
     if (sc.size === -1 || sc.class === -1){
       console.log("Trying to go asteroid!");
       return false; // This should force Asteroid!
@@ -639,6 +642,9 @@ module.exports = (function(){
 
     body.type = 0; // 0 = "Gas Giant"
     body.size = rng.rollDice(6, 3);
+    if (typeof(options.contentModifier) === 'number'){
+      body.size += options.contentModifier;
+    }
     if (body.size <= 10){
       body.size = 1; // Small
       body.mass = ggmd.Smass;
@@ -654,6 +660,7 @@ module.exports = (function(){
     }
 
     body.diameter = Math.cbrt(body.mass / body.density);
+    body.surfaceGravity = body.diameter * body.density;
     body.rotationalPeriod = GetRotationalPeriod(rng, body.size, body.type);
     body.axialTilt = GetAxialTilt(rng);
 
@@ -669,6 +676,13 @@ module.exports = (function(){
     body.blackbody = body.temperature/0.97;
 
     body.resourceIndex = CalculateResources(rng, body.type);
+    body.size = 1;
+    if (body.resourceIndex > 2){
+      body.size = 2;
+      if (body.resourceIndex > 5){
+        body.size = 3;
+      }
+    }
 
     return body;
   }
@@ -691,6 +705,7 @@ module.exports = (function(){
 
     Object.defineProperties(this, {
       "name":{
+        enumerate: true,
 	get:function(){return data.name;},
 	set:function(name){
 	  if (typeof(name) !== 'string'){throw new TypeError("Expected string.");}
@@ -699,6 +714,7 @@ module.exports = (function(){
       },
 
       "type":{
+        enumerate: true,
 	get:function(){
 	  switch(data.type){
 	  case 0:
@@ -713,6 +729,7 @@ module.exports = (function(){
       },
 
       "size":{
+        enumerate: true,
 	get:function(){
 	  switch(data.size){
 	  case 0:
@@ -730,9 +747,9 @@ module.exports = (function(){
 	    case 1:
 	      return "Thin";
 	    case 2:
-	      return "Average";
+	      return "Standard";
 	    case 3:
-	      return "Thick";
+	      return "Dense";
 	    }
 	    break;
 	  case 2:
@@ -755,6 +772,93 @@ module.exports = (function(){
         get:function(){return data;}
       }
     });
+
+
+    if (data.type === 0 || data.type === 2){
+      Object.defineProperties(this, {
+        "mass":{
+          enumerate: true,
+          get:function(){return data.mass;}
+        },
+
+        "density":{
+          enumerate: true,
+          get:function(){return data.density;}
+        },
+
+        "diameter":{
+          enumerate: true,
+          get:function(){return data.diameter;}
+        },
+
+        "surfaceGravity":{
+          enumerate: true,
+          get:function(){return data.surfaceGravity;}
+        },
+
+        "rotationalPeriod":{
+          enumerate: true,
+          get:function(){return data.rotationalPeriod;}
+        },
+
+        "axialTilt":{
+          enumerate: true,
+          get:function(){return data.axialTilt;}
+        }
+      });
+    }
+
+    if (data.type === 1 || data.type === 2){
+      Object.defineProperties(this, {
+        "blackbody":{
+          enumerate:true,
+          get:function(){return data.enumerate;}
+        },
+
+        "resources":{
+          enumerate: true,
+          get:function(){
+            return ResourceValueTable[data.resourceIndex].desc;
+          }
+        },
+
+        "resourceModifier":{
+          enumerate: true,
+          get:function(){
+            return ResourceValueTable[data.resourceIndex].mod;
+          }
+        },
+
+        "temperature":{
+          enumerate: true,
+          get:function(){return data.temperature;}
+        }
+      });
+    }
+
+    if (data.type === 2){
+      Object.defineProperties(this, {
+        "class":{
+          enumerate: true,
+          get:function(){return TerrestrialClassTable[data.class];}
+        },
+
+        "hydrographics":{
+          enumerate: true,
+          get:function(){return data.hydrographics;}
+        },
+
+        "atmosphere":{
+          enumerate: true,
+          get:function(){return JSON.parse(JSON.stringify(data.atmosphere));}
+        },
+
+        "affinity":{
+          enumerate: true,
+          get:function(){return data.affinity;}
+        }
+      });
+    }
 
   }
   StellarBody.prototype.constructor = StellarBody;
