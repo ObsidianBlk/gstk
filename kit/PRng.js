@@ -1,5 +1,30 @@
 
-module.exports = (function () {
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    /* -------------------------------------------------
+       AMD style connection.
+       ------------------------------------------------- */
+    define(factory);
+  } else if (typeof exports === 'object') {
+    /* -------------------------------------------------
+       CommonJS style connection.
+       ------------------------------------------------- */
+    if(typeof module === "object" && module.exports){
+      module.exports = factory();
+    }
+  } else {
+    /* -------------------------------------------------
+       Standard Browser style connection.
+       ------------------------------------------------- */
+    if (typeof(root.GSTK) === 'undefined'){
+      throw new Error("Missing GSTK initilization.");
+    } else if (typeof(root.GSTK.$) === 'undefined'){
+      throw new Error("GSTK improperly initialized.");
+    }
+
+    root.GSTK.$.def (root.GSTK, "PRng", factory());
+  }
+})(this, function () {
 
   // -------------------------------------------------------------------
   // Small set of utility functions.
@@ -194,7 +219,7 @@ module.exports = (function () {
 
   return PRng;
 
-})();
+});
 
 
 

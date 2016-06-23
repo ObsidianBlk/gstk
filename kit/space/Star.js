@@ -1,9 +1,46 @@
 
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    /* -------------------------------------------------
+       AMD style connection.
+       ------------------------------------------------- */
+    define([
+      'kit/PRng',
+      'kit/space/StellarBody'
+    ], factory);
+  } else if (typeof exports === 'object') {
+    /* -------------------------------------------------
+       CommonJS style connection.
+       ------------------------------------------------- */
+    if(typeof module === "object" && module.exports){
+      module.exports = factory(
+	require('../PRng'),
+	require('./StellarBody')
+      );
+    }
+  } else {
+    /* -------------------------------------------------
+       Standard Browser style connection.
+       ------------------------------------------------- */
+    if (typeof(root.GSTK) === 'undefined'){
+      throw new Error("Missing GSTK initilization.");
+    } else if (typeof(root.GSTK.$) === 'undefined'){
+      throw new Error("GSTK improperly initialized.");
+    }
 
-module.exports = (function(){
+    if (root.GSTK.$.exists(root.GSTK, [
+      "PRng",
+      "space.StellarBody"
+    ]) === false){
+      throw new Error("Required component not defined.");
+    }
 
-  var PRng = require('../PRng');
-  var StellarBody = require('./StellarBody');
+    root.GSTK.$.def (root.GSTK, "space.Star", factory(
+      root.GSTK.PRng,
+      root.GSTK.space.StellarBody
+    ));
+  }
+})(this, function (PRng, StellarBody) {
 
 
   var StellarEvolutionTable = [
@@ -299,8 +336,9 @@ module.exports = (function(){
 
     return {
       description: desc,
-      rmin: (1 - e) * oradius,
-      rmax: (1 + e) * oradius,
+      avgRadius: oradius,
+      rMin: (1 - e) * oradius,
+      rMax: (1 + e) * oradius,
       period: Math.sqrt((oradius*oradius*oradius)/(primaryMass + companionMass))
     };
   }
@@ -680,7 +718,26 @@ module.exports = (function(){
       if (typeof(data.companion) === 'undefined' || (index < 0 || index >= data.companion.length)){
         throw new RangeError();
       }
-      return data.companion[index];
+      return {
+	orbit: JSON.parse(JSON.stringify(data.companion[index].orbit)),
+	forbiddenZone: JSON.parse(JSON.stringify(data.companion[index].forbiddenZone)),
+	compansion: data.companion[index].companion
+      };
+    };
+
+    this.getCompanionByName = function(name){
+      if (typeof(data.companion) !== 'undefined'){
+	for (var i=0; i < data.companion.length; i++){
+	  if (data.companion[i].companion.name === name){
+	    return {
+	      orbit: JSON.parse(JSON.stringify(data.companion[i].orbit)),
+	      forbiddenZone: JSON.parse(JSON.stringify(data.companion[i].forbiddenZone)),
+	      compansion: data.companion[i].companion
+	    };
+	  }
+	}
+      }
+      return null;
     };
 
 
@@ -719,6 +776,35 @@ module.exports = (function(){
     };
 
 
+    this.getStellarBody = function(index){
+      if (typeof(data.stellarBody) === 'undefined' || index < 0 || index > data.stellarBody.length){
+	throw new RangeError("Index is out of bounds");
+      }
+      return {
+	avgRadius: data.stellarBody[index].avgRadius,
+        rMin: data.stellarBody[index].rMin,
+        rMax: data.stellarBody[index].rMax,
+        period: data.stellarBody[index].period,
+        body: data.stellarBody[index].body
+      };
+    };
+
+    this.getStellarBodyByName = function(name){
+      if (typeof(data.stellarBody) !== 'undefined'){
+	for (var i=0; i < data.stellarBody.length; i++){
+	  if (data.stellarBody[i].body.name === name){
+	    return {
+	      avgRadius: data.stellarBody[i].avgRadius,
+              rMin: data.stellarBody[i].rMin,
+              rMax: data.stellarBody[i].rMax,
+              period: data.stellarBody[i].period,
+              body: data.stellarBody[i].body
+	    };
+	  }
+	}
+      }
+      return null;
+    };
 
     this.generateStellarBodies = function(){
       if (stellarBodiesGenerated === false){
@@ -738,9 +824,22 @@ module.exports = (function(){
         }
       }
     };
+
+
+    this.containsBreathableBody = function(){
+      if (typeof(data.stellarBody) !== 'undefined'){
+	for (var i=0; i < data.stellarBody.length; i++){
+	  var body = data.stellarBody[i].body;
+	  if (body.type === 2 && data.atmosphere.breathable === true){
+	    return true;
+	  }
+	}
+      }
+      return false;
+    };
   }
   Star.prototype.constructor = Star;
 
 
   return Star;
-})();
+});

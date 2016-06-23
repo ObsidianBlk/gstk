@@ -1,5 +1,38 @@
 
-module.exports = (function(){
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    /* -------------------------------------------------
+       AMD style connection.
+       ------------------------------------------------- */
+    define(['kit/PRng'], factory);
+  } else if (typeof exports === 'object') {
+    /* -------------------------------------------------
+       CommonJS style connection.
+       ------------------------------------------------- */
+    if(typeof module === "object" && module.exports){
+      module.exports = factory(
+	require('../PRng')
+      );
+    }
+  } else {
+    /* -------------------------------------------------
+       Standard Browser style connection.
+       ------------------------------------------------- */
+    if (typeof(root.GSTK) === 'undefined'){
+      throw new Error("Missing GSTK initilization.");
+    } else if (typeof(root.GSTK.$) === 'undefined'){
+      throw new Error("GSTK improperly initialized.");
+    }
+
+    if (root.GSTK.$.exists(root.GSTK, "PRng") === false){
+      throw new Error("Required component not defined.");
+    }
+
+    root.GSTK.$.def (root.GSTK, "space.StellarBody", factory(
+      root.GSTK.PRng
+    ));
+  }
+})(this, function (PRng) {
 
   var ResourceValueTable = [
     {desc: "worthless", mod: -5},
@@ -864,4 +897,4 @@ module.exports = (function(){
   StellarBody.prototype.constructor = StellarBody;
 
   return StellarBody;
-})();
+});

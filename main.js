@@ -1,29 +1,31 @@
 
-module.exports = (function(){
+requirejs.config({
+  baseUrl:"./"
+});
 
-  var PRng = require('./kit/PRng');
-  var Star = require('./kit/space/Star');
-  var StellarBody = require('./kit/space/StellarBody');
+requirejs([
+  'kit/PRng',
+  'kit/space/Region'
+], function(PRng, Region){
 
-  return {
-    run:function(){
-      var rng = new PRng();
-      //rng.seed(Math.random().toString());
-      //rng.seed("Bryan Miller");
-      rng.seed("sadf");
-      console.log(rng.state);
-
-      var s = new Star(rng.spawn(), {supportGardenWorlds:true});
-      if (rng.uniform() > 0.75){
-        s.generateCompanion();
-        if (rng.uniform() > 0.75){
-          s.generateCompanion();
-        }
-      }
-      s.generateStellarBodies();
-
-      console.log(s.data);
+  // --------------------------------
+  // Defining a "Document Ready" function. This is only garanteed to work on Chrome at the moment.
+  function ready(callback){
+    if (document.readyState === "complete"){
+      callback();
+    } else {
+      document.addEventListener('DOMContentLoaded', function (){
+	callback();
+      });
     }
-  };
-  
-})();
+  }
+
+  ready(function(){
+    var rng = new PRng();
+    rng.seed("buffalo");
+    var r = new Region(rng, 40, -2, 2);
+
+    console.log(r.data);
+  });
+
+});

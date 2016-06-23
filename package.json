@@ -3,8 +3,12 @@
   "description": "GURPS-Space Toolkit",
   "version": "0.0.1",
   "main": "index.html",
-  "window":{
-    "title":"GURPS-Space Toolkit",
-    "toolbar":true
+  "window": {
+    "title": "GURPS-Space Toolkit",
+    "toolbar": true
+  },
+  "dependencies": {
+    "d3": "~3.5.17",
+    "requirejs": "~2.2.0"
   }
 }
