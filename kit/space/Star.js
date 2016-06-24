@@ -156,7 +156,6 @@
       return Mass(0.55, 0.05, 3);
     case 10:
       return Mass(0.4, 0.05, 3);
-      break;
     case 11:
       return 0.25;
     case 12:
@@ -274,19 +273,19 @@
       // -- Calculating actual Luminosity
       if (star.mass <= 0.4){
 	star.luminosity = sete.Lmin + (sete.Lmin*rng.value(-0.1, 0.1));
-      }
+      } else {
+	if (sete.Sspan === null || star.age <= sete.Mspan){
+          star.luminosity = sete.Lmin + ((star.age/sete.Mspan)*(sete.Lmax - sete.Lmin));
+	} else if (sete.Sspan !== null && star.age > sete.Mspan){
+	  // Adjusting for Sub-Giant stage
+	  star.temp -= ((star.age - sete.Mspan)/sete.Sspan)*(star.temp-4800); // Higher temprature.
+	  star.luminosity = sete.Lmax + (sete.Lmax * rng.value(-0.1, 0.1));
 
-      if (sete.Sspan === null || star.age <= sete.Mspan){
-        star.luminosity = sete.Lmin + ((star.age/sete.Mspan)*(sete.Lmax - sete.Lmin));
-      } else if (sete.Sspan !== null && star.age > sete.Mspan){
-	// Adjusting for Sub-Giant stage
-	star.temp -= ((star.age - sete.Mspan)/sete.Sspan)*(star.temp-4800); // Higher temprature.
-	star.luminosity = sete.Lmax + (sete.Lmax * rng.value(-0.1, 0.1));
-
-	if (star.age > sete.Sspan){
-	  // Adjusting for Giant stage.
-	  star.temp = 3000 + ((rng.rollDice(6, 2)-2) * 200);
-	  star.luminosity *= 25;
+	  if (star.age > sete.Sspan){
+	    // Adjusting for Giant stage.
+	    star.temp = 3000 + ((rng.rollDice(6, 2)-2) * 200);
+	    star.luminosity *= 25;
+	  }
 	}
       }
     } else {
@@ -296,7 +295,6 @@
     }
 
     // -- Calculating radius...
-    // TODO: Fix ... returning NaN ???
     star.radius = (155000 * Math.sqrt(star.luminosity)) / (star.temp * star.temp);
 
     return star;
@@ -373,9 +371,10 @@
   /* -------------------------------------------------------------------------------
    * Actual Star class
    * ---------------------------------------------------------------------------- */
-  function Star(rng, options){
+  function Star(seed, options){
     options = (typeof(options) !== typeof({})) ? {} : options;
-    
+    var rng = new PRng({seed:seed, initDepth:5000});
+
     var data = GenStar({}, rng, options);
     data.name = rng.generateUUID();
 
@@ -420,6 +419,11 @@
         }
       },
 
+      "radius":{
+	enumerate:true,
+	get:function(){return data.radius;}
+      },
+
       "age":{
         enumerate: true,
         get:function(){return (typeof(data.age) === 'number') ? data.age : 0;},
@@ -459,11 +463,6 @@
 	get:function(){return (typeof(data.forbiddenZone) !== 'undefined') ? JSON.parse(JSON.stringify(data.forbiddenZone)) : null;}
       },
 
-      "primary":{
-        enumerate: true,
-        get:function(){return primary;}
-      },
-
       "companionCount":{
         enumerate: true,
         get:function(){return (typeof(data.companion) !== 'undefined') ? data.companion.length : 0;}
@@ -472,6 +471,68 @@
       "stellarBodyCount":{
 	enumerate: true,
 	get:function(){return (typeof(data.stellarBody) !== 'undefined') ? data.stellarBody.length : 0;}
+      },
+
+      "hasPlanets":{
+	enumerate: true,
+	get:function(){
+	  if (typeof(data.stellarBody) !== 'undefined'){
+	    for (var i=0; i < data.stellarBody.length; i++){
+	      var body = data.stellarBody[i].body;
+	      if (body.typeIndex === 2 || body.typeIndex === 0){
+		return true;
+	      }
+	    }
+	  }
+	  return false;
+	}
+      },
+
+      "planetCount":{
+	enumerate: true,
+	get:function(){
+	  var count = 0;
+	  if (typeof(data.stellarBody) !== 'undefined'){
+	    for (var i=0; i < data.stellarBody.length; i++){
+	      var body = data.stellarBody[i].body;
+	      if (body.typeIndex === 2 || body.typeIndex === 0){
+		count += 1;
+	      }
+	    }
+	  }
+	  return count;
+	}
+      },
+
+      "hasBreathableWorlds":{
+	enumerate: true,
+	get:function(){
+	  if (typeof(data.stellarBody) !== 'undefined'){
+	    for (var i=0; i < data.stellarBody.length; i++){
+	      var body = data.stellarBody[i].body;
+	      if (body.typeIndex === 2 && body.atmosphere.breathable === true){
+		return true;
+	      }
+	    }
+	  }
+	  return false;
+	}
+      },
+
+      "breathableWorldCount":{
+	enumerate: true,
+	get:function(){
+	  var count = 0;
+	  if (typeof(data.stellarBody) !== 'undefined'){
+	    for (var i=0; i < data.stellarBody.length; i++){
+	      var body = data.stellarBody[i].body;
+	      if (body.typeIndex === 2 && body.atmosphere.breathable === true){
+		count += 1;
+	      }
+	    }
+	  }
+	  return count;
+	}
       },
 
       "data":{
@@ -684,6 +745,7 @@
         genRadius = radius * GetRandomOrbitalSpacing();
         newRadius = ValidateOrbitalRadius(genRadius);
         while (newRadius > 0 && newRadius <= data.limit.outerRadius){
+	  //console.log("Outward: " + newRadius + " | Limit: " + data.limit.outerRadius);
           if (newRadius - lastRadius > 0.15){
             geninfo = {
               makeGasGiant:MakeGasGiant(),
@@ -704,7 +766,7 @@
               GenerateOrbitAtRadius(newRadius, arrangementType, geninfo);
             }
           }
-          if (newRadius > data.limit.innerRadius){
+          if (newRadius < data.limit.outerRadius){
             lastRadius = newRadius;
             genRadius = newRadius * GetRandomOrbitalSpacing();
             newRadius = ValidateOrbitalRadius(genRadius);
@@ -747,7 +809,7 @@
           data.companion = [];
         }
         if (data.companion.length < 2){
-          var cmp = new Star(rng.spawn(), {
+          var cmp = new Star(rng.generateUUID(), {
             supportGardenWorlds: (options.supportGardenWorlds === true) ? true : false
           });
           
@@ -819,23 +881,10 @@
 
           // Finally... build the planets!
           data.stellarBody.forEach(function(info){
-            info.body = new StellarBody(rng.spawn(), info.body);
+            info.body = new StellarBody(rng.generateUUID(), info.body);
           });
         }
       }
-    };
-
-
-    this.containsBreathableBody = function(){
-      if (typeof(data.stellarBody) !== 'undefined'){
-	for (var i=0; i < data.stellarBody.length; i++){
-	  var body = data.stellarBody[i].body;
-	  if (body.type === 2 && data.atmosphere.breathable === true){
-	    return true;
-	  }
-	}
-      }
-      return false;
     };
   }
   Star.prototype.constructor = Star;

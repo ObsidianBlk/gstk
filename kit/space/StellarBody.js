@@ -48,7 +48,7 @@
     {desc: "motherlode", mod: 5}
   ];
 
-  var GGMassDensityTable = [
+  var GGMassDensityTable = [ // [Page S115]
     {Smass: 10, Sdensity: 0.42, Mmass: 100, Mdensity: 0.18, Lmass: 600, Ldensity:0.31},
     {Smass: 15, Sdensity: 0.26, Mmass: 150, Mdensity: 0.19, Lmass: 800, Ldensity:0.35},
     {Smass: 20, Sdensity: 0.22, Mmass: 200, Mdensity: 0.20, Lmass: 1000, Ldensity:0.4},
@@ -102,9 +102,24 @@
   ];
 
   function GetGGMassDensityVariance(rng, roll){
-    if (roll > 17){roll = 17;}
-    if (roll < 8){roll = 8;}
-    var index = roll-8;
+    var index = 0;
+    switch(roll){
+    case 9: case 10:
+      index = 1; break;
+    case 11:
+      index = 2; break;
+    case 12:
+      index = 3; break;
+    case 13:
+      index = 4; break;
+    case 14:
+      index = 5; break;
+    case 15:
+      index = 6; break;
+    case 16:
+      index = 7; break;
+    }
+    if (roll >= 17){index = 8;}
 
     // Calculating "half mass difference" between "this" mass and the "next"
     var smdiff = (index <= 1) ? 2.5 : 5;
@@ -461,7 +476,6 @@
     body.type = 2; // 2 = "Terrestrial"
     var sc = GetTerrestrialSizeClassTemp(rng, options);
     if (sc.size === -1 || sc.class === -1){
-      console.log("Trying to go asteroid!");
       return false; // This should force Asteroid!
     }
 
@@ -720,8 +734,10 @@
     return body;
   }
 
-  function StellarBody(rng, options){
+  function StellarBody(seed, options){
     options = (typeof(options) === typeof({})) ? options : {};
+    var rng = new PRng({seed:seed, initDepth:5000});
+
     var data = null;
     if (options.makeGasGiant === true){
       data = GenGasGiant({}, rng, options);
@@ -746,6 +762,11 @@
 	}
       },
 
+      "typeIndex":{
+	enumerate: true,
+	get:function(){return data.type;}
+      },
+
       "type":{
         enumerate: true,
 	get:function(){
@@ -759,6 +780,11 @@
 	  }
 	  return "UNKNOWN";
 	}
+      },
+
+      "sizeIndex":{
+	enumerate: true,
+	get:function(){return data.size;}
       },
 
       "size":{

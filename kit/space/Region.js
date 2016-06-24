@@ -58,7 +58,6 @@
 
     var cp = companionProbability * 0.01;
     var srng = rng.spawn();
-    console.log(srng.seed());
     var s = new Star(srng, {supportGardenWorlds: supportGardenWorlds});
     if (rng.uniform() <= cp){
       s.generateCompanion();
@@ -74,38 +73,62 @@
     return s;
   }
 
+  function DistanceBetween(r1, a1, r2, a2){
+    var x1 = r1*Math.cos(a1);
+    var y1 = r1*Math.sin(a1);
 
-  function GenerateStarLocations(rng, radius, density, systemAtOrigin){
+    var x2 = r2*Math.cos(a2);
+    var y2 = r2*Math.sin(a2);
+
+    return Math.sqrt((x1-x2) + (y1-y2));
+  }
+
+  function GenerateStarLocations(rng, radius, horizon, height, density, systemAtOrigin){
     var systems = [];
+    //sys.z = Math.floor(horizon+rng.value(-(height*0.5), (height*0.5)));
 
-    for (var x=0; x < radius; x++){
-      for (var y=0; y < radius; y++){
-	if ((x*x)+(y*y) < (radius * radius)){
-	  systems.push({
-	    x: x,
-	    y: y,
-	    z: 0,
-	    star: null
-	  });
+    var volume = Math.PI*(radius*radius);
+    var sysCount = volume*(density*0.01);
+
+    var D2R = Math.PI/180;
+    var satisfiedOrigin = (systemAtOrigin === false);
+    for (var i=0; i < sysCount; i++){
+      if (satisfiedOrigin === false){
+	satisfiedOrigin = true;
+	systems.push({
+	  r: 0,
+	  a: 0,
+	  z: 0,
+	  star:null
+	});
+	continue;
+      }
+
+      var r = rng.value(0, radius);
+      var a = rng.value(0, 2*Math.PI);
+      var store = true;
+      for (var _i=0; _i < systems.length; _i++){
+	if (DistanceBetween(r, a, systems[_i].r, systems[_i].a) < 1.0){
+	  store = false;
 	}
       }
-    }
 
-    var dropCount = systems.length - Math.round(systems.length*(density*0.01));
-
-    for (var i=0; i < dropCount; i++){
-      var index = Math.floor(systems.length*rng.uniform());
-      if (systems[index].x === 0 && systems[index].y === 0 && systemAtOrigin === true){
-	i--; // Nope... try again.
-      } else {
-	systems.splice(index, 1);
-      }
+      if (store){
+	systems.push({
+	  r: r,
+	  a: a,
+	  z: Math.floor(horizon+rng.value(-(height*0.5), (height*0.5))),
+	  star: null
+	});
+      } // NOTE: I could shift the i variable back one, but, assuming low density systems, this shouldn't drop too many stars.
     }
 
     return systems;
   }
 
-  function Region(rng, radius, zmin, zmax, options){
+  function Region(seed, radius, zmin, zmax, options){
+    var rng = new PRng({seed:seed, initDepth:5000});
+
     options = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
     if (radius <= 0){
       throw new RangeError("Radius too small");
@@ -137,28 +160,113 @@
     var height = (zmax - zmin >= 1) ? zmax - zmin : 1;
     var horizon = (height > 1) ? Math.floor(height*0.5) : zmin;
 
-    var systems = GenerateStarLocations(rng, radius, options.systemDensity, options.systemAtOrigin);
-    var breathableCount = 0;
+    var systems = GenerateStarLocations(rng, radius, horizon, height, options.systemDensity, options.systemAtOrigin);
+
     systems.forEach(function(sys){
-      sys.z = Math.floor(horizon+rng.value(-(height*0.5), (height*0.5)));
       sys.star = GenerateStar(
 	rng,
 	options.companionProbability,
 	false,
-	false);
-      breathableCount += (sys.star !== null && sys.star.containsBreathableBody() === true) ? 1 : 0; // Not a true count!
+	false
+      );
     });
 
     Object.defineProperties(this, {
+      "systems":{
+	enumerate: true,
+	get:function(){
+	  var sys = [];
+	  for (var i=0; i < systems.length; i++){
+	    sys.push({
+	      r: systems[i].r,
+	      a: systems[i].a,
+	      z: systems[i].z,
+	      star: systems[i].star
+	    });
+	  }
+	  return sys;
+	}
+      },
+
       "systemCount":{
 	enumerate: true,
 	get:function(){return systems.length;}
       },
 
-      "data":{
-	get:function(){return systems;}
+      "systemsWithPlanets":{
+	enumerate: true,
+	get:function(){
+	  var count = 0;
+	  for (var i=0; i < systems.length; i++){
+	    if (systems[i].star.hasPlanets === true){
+	      count += 1;
+	    }
+	  }
+	  return count;
+	}
+      },
+
+      "planetCount":{
+	enumerate: true,
+	get:function(){
+	  var count = 0;
+	  for (var i=0; i < systems.length; i++){
+	    count += systems[i].star.planetCount;
+	  }
+	  return count;
+	}
+      },
+
+      "systemsWithBreathableWorlds":{
+	enumerate: true,
+	get:function(){
+	  var count = 0;
+	  for (var i=0; i < systems.length; i++){
+	    if (systems[i].star.hasBreathableWorlds === true){
+	      count += 1;
+	    }
+	  }
+	  return count;
+	}
+      },
+
+      "breathableWorldCount":{
+	enumerate: true,
+	get:function(){
+	  var count = 0;
+	  for (var i=0; i < systems.length; i++){
+	    count += systems[i].star.breathableWorldCount;
+	  }
+	  return count;
+	}
       }
     });
+
+    this.getStar = function(index){
+      if (index < 0 || index >= systems.length){
+	throw new RangeError("Index out of bounds.");
+      }
+      return {
+	r: systems[index].r,
+	a: systems[index].a,
+	z: systems[index].z,
+	star: systems[index].star
+      };
+    };
+
+    this.getStarByName = function(name){
+      for (var index=0; index < systems.length; index++){
+	if (systems[index].star.name === name){
+	  return {
+	    r: systems[index].r,
+	    a: systems[index].a,
+	    z: systems[index].z,
+	    star: systems[index].star
+	  };
+	}
+      }
+      return null;
+    };
   }
   Region.prototype.constructor = Region;
 

@@ -89,7 +89,20 @@
   // -------------------------------------------------------------------
 
 
-  function PRng(){
+  function PRng(options){
+    options = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
+    if (typeof(options.seed) !== 'string'){
+      options.seed = GetSeedString();
+    }
+    if (typeof(options.initDepth) !== 'number'){
+      options.initDepth = 0;
+    } else {
+      options.initDepth = Math.floor(options.initDepth);
+      if (options.initDepth < 0){
+	options.initDepth = 0;
+      }
+    }
+
     var prng_state = {
       seed: "",
       s: new Array(256),
@@ -128,6 +141,9 @@
       if (typeof(value) !== 'undefined' || prng_state.seed === ""){
 	prng_state.seed = GetSeedString(value);
 	InitState(prng_state);
+	if (options.initDepth > 0){
+	  this.fastforward(options.initDepth);
+	}
       }
       return prng_state.seed;
     };
@@ -213,7 +229,7 @@
 
     // -------------------------------------
     // Initialization!
-    this.seed();
+    this.seed(options.seed);
   }
   PRng.prototype.constructor = PRng;
 
