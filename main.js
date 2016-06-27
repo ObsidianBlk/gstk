@@ -63,7 +63,6 @@ requirejs([
 	return mapScale(d.r*Math.sin(d.a));
       })
       .attr("r", function(d){
-	console.log(starScale(d.star.radius*AU));
 	return starScale(d.star.radius*AU);
       })
       .attr("fill", "#FFFFFF");
@@ -99,6 +98,8 @@ requirejs([
 	.attr("strokeWidth", 1)
 	.attr("stroke", "#0000FF");
     }
+
+    console.log(r);
   });
 
 });
