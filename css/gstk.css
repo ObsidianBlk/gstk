@@ -1,0 +1,46 @@
+
+.region-axis text {
+  font: 10px sans-serif;
+  fill: #09F;
+}
+
+.region-axis line,
+.region-axis circle {
+    fill: none;
+    strokeWidth: 2;
+    stroke: #09F;
+    stroke-dasharray: 1,4;
+}
+
+.region-axis circle:last-of-type {
+    strokeWidth: 2;
+    stroke: #0DF;
+    stroke-dasharray: none;
+}
+
+.star{
+    stroke: none;
+}
+.star.M{
+    fill: #ffbc7c;
+}
+.star.K{
+    fill: #ffddb9;
+}
+.star.G{
+    fill: #fff5eb;
+}
+.star.F{
+    fill: #efefff;
+}
+.star.A{
+    fill: #becfff;
+}
+.star.D{
+    fill: #fff1e0;
+}
+
+.star text{
+    font: 10px sans-serif;
+    fill: #0DF;
+}

@@ -83,48 +83,6 @@
     return Math.sqrt((x1-x2) + (y1-y2));
   }
 
-  function GenerateStarLocations(rng, radius, horizon, height, density, systemAtOrigin){
-    var systems = [];
-    //sys.z = Math.floor(horizon+rng.value(-(height*0.5), (height*0.5)));
-
-    var volume = Math.PI*(radius*radius);
-    var sysCount = volume*(density*0.01);
-
-    var D2R = Math.PI/180;
-    var satisfiedOrigin = (systemAtOrigin === false);
-    for (var i=0; i < sysCount; i++){
-      if (satisfiedOrigin === false){
-	satisfiedOrigin = true;
-	systems.push({
-	  r: 0,
-	  a: 0,
-	  z: 0,
-	  star:null
-	});
-	continue;
-      }
-
-      var r = rng.value(0, radius);
-      var a = rng.value(0, 2*Math.PI);
-      var store = true;
-      for (var _i=0; _i < systems.length; _i++){
-	if (DistanceBetween(r, a, systems[_i].r, systems[_i].a) < 1.0){
-	  store = false;
-	}
-      }
-
-      if (store){
-	systems.push({
-	  r: r,
-	  a: a,
-	  z: Math.floor(horizon+rng.value(-(height*0.5), (height*0.5))),
-	  star: null
-	});
-      } // NOTE: I could shift the i variable back one, but, assuming low density systems, this shouldn't drop too many stars.
-    }
-
-    return systems;
-  }
 
   function Region(seed, radius, zmin, zmax, options){
     var rng = new PRng({seed:seed, initDepth:5000});
@@ -134,6 +92,7 @@
       throw new RangeError("Radius too small");
     }
     
+    options.autoGenerate = (options.autoGenerate === true) ? true : false;
     options.systemAtOrigin = (options.systemAtOrigin === true) ? true : false;
     options.breathableAtOrigin = (options.breathableAtOrigin === true) ? true : false;
     options.systemDensity = (typeof(options.systemDensity) === 'number') ?
@@ -160,22 +119,17 @@
     var height = (zmax - zmin >= 1) ? zmax - zmin : 1;
     var horizon = (height > 1) ? Math.floor(height*0.5) : zmin;
 
-    var systems = GenerateStarLocations(rng, radius, horizon, height, options.systemDensity, options.systemAtOrigin);
-
-    systems.forEach(function(sys){
-      sys.star = GenerateStar(
-	rng,
-	options.companionProbability,
-	false,
-	false
-      );
-    });
+    var systems = [];//GenerateStarLocations(rng, radius, horizon, height, options.systemDensity, options.systemAtOrigin);
+    if (options.autoGenerate === true){
+      this.generate();
+    }
 
     Object.defineProperties(this, {
       "systems":{
 	enumerate: true,
 	get:function(){
-	  var sys = [];
+	  return systems;
+	  /*var sys = [];
 	  for (var i=0; i < systems.length; i++){
 	    sys.push({
 	      r: systems[i].r,
@@ -184,7 +138,7 @@
 	      star: systems[i].star
 	    });
 	  }
-	  return sys;
+	  return sys;*/
 	}
       },
 
@@ -241,6 +195,59 @@
 	}
       }
     });
+
+    this.generate = function(){
+      if (systems.length > 0){return;} // Only generate the region once.
+
+      systems = [];
+      //sys.z = Math.floor(horizon+rng.value(-(height*0.5), (height*0.5)));
+
+      var volume = Math.PI*(radius*radius);
+      var sysCount = volume*(options.systemDensity*0.01);
+
+      var D2R = Math.PI/180;
+      var satisfiedOrigin = (options.systemAtOrigin === false);
+      for (var i=0; i < sysCount; i++){
+	if (satisfiedOrigin === false){
+	  satisfiedOrigin = true;
+	  systems.push({
+	    r: 0,
+	    a: 0,
+	    z: 0,
+	    star:GenerateStar(
+	      rng,
+	      options.companionProbability,
+	      false,
+	      false
+	    )
+	  });
+	  continue;
+	}
+
+	var r = rng.value(0, radius);
+	var a = rng.value(0, 2*Math.PI);
+	var store = true;
+	for (var _i=0; _i < systems.length; _i++){
+	  if (DistanceBetween(r, a, systems[_i].r, systems[_i].a) < 1.0){
+	    store = false;
+	  }
+	}
+
+	if (store){
+	  systems.push({
+	    r: r,
+	    a: a,
+	    z: Math.floor(horizon+rng.value(-(height*0.5), (height*0.5))),
+	    star: GenerateStar(
+	      rng,
+	      options.companionProbability,
+	      false,
+	      false
+	    )
+	  });
+	} // NOTE: I could shift the i variable back one, but, assuming low density systems, this shouldn't drop too many stars.
+      } 
+    };
 
     this.getStar = function(index){
       if (index < 0 || index >= systems.length){

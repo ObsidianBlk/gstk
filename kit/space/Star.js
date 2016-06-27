@@ -625,19 +625,39 @@
         data.stellarBody = [];
       }
 
-      var firstAfterSnowline = true;
-      if (geninfo.makeGasGiant === true){
-        for (var i=0; i < data.stellarBody.length; i++){
-          if (data.stellarBody[i].radius >= data.limit.snowLine){
-            firstAfterSnowline = false;
-            break;
-          }
-        }
-      }
+      var minRadThresh = 1.4;
 
       var eccentricity = GetOrbitalEccentricity(geninfo.makeGasGiant, radius < data.limit.snowLine, arrangementType);
       var Rmin = (1 - eccentricity)*radius;
       var Rmax = (1 + eccentricity)*radius;
+
+      var firstAfterSnowline = true;
+      for (var i=0; i < data.stellarBody.length; i++){
+	if (geninfo.makeGasGiant === true && data.stellarBody[i].radius >= data.limit.snowLine){
+          firstAfterSnowline = false;
+        }
+
+	var LRMin = (i > 0) ? data.stellarBody[i-1].rMin : data.limit.innerRadius;
+	var LRMax = (i > 0) ? data.stellarBody[i-1].rMax : data.limit.innerRadius;
+
+	var URMin = (i+1 < data.stellarBody.length) ? data.stellarBody[i+1].rMin : data.limit.outerRadius;
+	var URMax = (i+1 < data.stellarBody.length) ? data.stellarBody[i+1].rMax : data.limit.outerRadius;
+
+	if (Rmin > LRMin && (Rmin - LRMin) < minRadThresh && URMin > Rmin && (URMin - Rmin) < minRadThresh){
+	  return; // Min radius is out of bounds
+	}
+	if (Rmax > LRMax && (Rmax - LRMax) < minRadThresh && URMax > Rmax && (URMax - Rmax) < minRadThresh){
+	  return; // Max radius out of bounds.
+	}
+      }
+      /*if (geninfo.makeGasGiant === true){
+        for (var i=0; i < data.stellarBody.length; i++){
+          if (data.stellarBody[i].radius >= data.limit.snowLine){
+            firstAfterSnowline = false;
+          }
+        }
+      }*/
+
 
       data.stellarBody.push({
         avgRadius: radius,

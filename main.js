@@ -20,20 +20,22 @@ requirejs([
     }
   }
 
+
+
   ready(function(){
     var AU = Number("1.496e8");
     var mapSize = 1000;
-    var regionRadius = 40;
+    var hmapSize = Math.round(mapSize*0.5);
+    var regionRadius = 42;
     //var seed = "Bryan Miller";
     var seed = Math.random().toString();
     var r = new Region(seed, regionRadius, -2, 2, {systemAtOrigin: true});
+    r.generate();
+
 
     var mapScale = d3.scale.linear()
-      .domain([-regionRadius, regionRadius])
-      .range([0, mapSize]);
-    var gridScale = d3.scale.linear()
       .domain([0, regionRadius])
-      .range([0, mapSize*0.5]);
+      .range([0, hmapSize]);
     var starScale = d3.scale.linear()
       .domain([0, 0.005*AU])
       .range([1.0, 3.0]);
@@ -48,55 +50,94 @@ requirejs([
       .attr("height", mapSize)
       .attr("fill", "#000000");
 
-    var stars = svg.append("g");
-    var grid = svg.append("g");
+    var map = svg.append("g")
+      .attr("transform", "translate(" + (mapSize*0.5) + "," + (mapSize*0.5) + ") scale(0.9)");
+
+    var stars = map.append("g");
 
     // Rendering stars
-    stars.selectAll("circle")
+    stars.selectAll("g")
       .data(r.systems)
       .enter()
-      .append("circle")
-      .attr("cx", function(d){
-	return mapScale(d.r*Math.cos(d.a));
+      .append("g")
+      .attr("class", function(d){
+	return "star " + d.star.type.substring(0, 1);
       })
-      .attr("cy", function(d){
-	return mapScale(d.r*Math.sin(d.a));
+      .attr("transform", function(d){
+	var x = mapScale(d.r*Math.cos(d.a));
+	var y = mapScale(d.r*Math.sin(d.a));
+	return "translate(" + x + ", " + y + ")";
+      })
+      .on("mouseover", handleStarMouseOver)
+      .on("mouseout", handleStarMouseOut)
+      .append("circle")
+      .attr("id", function(d, i){
+	return "circle_" + i;
       })
       .attr("r", function(d){
 	return starScale(d.star.radius*AU);
-      })
-      .attr("fill", "#FFFFFF");
+      });
+
 
     // Rendering grid
     var majorRadius = 5;
-    for (var i=1; i <= regionRadius; i++){
-      if (i%majorRadius !== 0 && i !== regionRadius){
-	grid.append("circle")
-	  .attr("cx", mapScale(0)).attr("cy", mapScale(0))
-	  .attr("r", gridScale(i))
-	  .attr("fill", "none")
-	  .attr("strokeWidth", 0.1)
-	  .attr("stroke", "#000044");
-      } else {
-	grid.append("circle")
-	  .attr("cx", mapScale(0)).attr("cy", mapScale(0))
-	  .attr("r", gridScale(i))
-	  .attr("fill", "none")
-	  .attr("strokeWidth", 2)
-	  .attr("stroke", "#0000FF");
+    var grid = map.append("g").attr("class", "region-axis");
+
+    grid.selectAll("circle")
+      .data(d3.range(0, regionRadius+1, 3))
+      .enter()
+      .append("circle")
+      .attr("r", function(d){return mapScale(d);});
+
+    var a = grid.selectAll("g")
+      .data(d3.range(0, 360, 30))
+      .enter().append("g")
+      .attr("class", "region-axis")
+      .attr("transform", function(d) { return "rotate(" + -d + ")"; });
+
+    a.append("line")
+      .attr("x1", mapScale(1))
+      .attr("x2", mapScale(regionRadius));
+
+    a.append("text")
+      .attr("x", mapScale(regionRadius + 1))
+      .attr("dy", ".35em")
+      .style("text-anchor", function(d) { return d < 270 && d > 90 ? "end" : null; })
+      .attr("transform", function(d) { return d < 270 && d > 90 ? "rotate(180 " + mapScale(regionRadius + 1) + ", 0)" : null; })
+      .text(function(d) { return d + "°"; });
+
+
+    function TrimNameLength(name){
+      if (name.length > 25){
+	return name.substring(0, 22) + "...";
       }
+      return name;
     }
 
-    for (i=0; i < 360; i += 30){
-      var x = regionRadius*Math.cos(i*(Math.PI/180));
-      var y = regionRadius*Math.sin(i*(Math.PI/180));
-      grid.append("line")
-	.attr("x1", mapScale(0))
-	.attr("y1", mapScale(0))
-	.attr("x2", mapScale(x))
-	.attr("y2", mapScale(y))
-	.attr("strokeWidth", 1)
-	.attr("stroke", "#0000FF");
+    // -----------------
+    // EVENT HANDLERS...
+    function handleStarMouseOver(d, i){
+      var star = d.star;
+      var id = "STARTEXT_"+i;
+
+      d3.select(this)
+	.append("text")
+	.attr("id", id)
+	.attr("x", 6)
+	.attr("dominant-baseline", "middle")
+	.text("(" + d.r.toFixed(2) + ", " + d.a.toFixed(2) + ")\n" + TrimNameLength(star.name));
+
+      d3.select("#circle_" + i)
+	.attr("r", 5);
+    }
+
+
+    function handleStarMouseOut(d, i){
+      var id = "STARTEXT_"+i;
+      d3.select("#" + id).remove();
+
+      d3.select("#circle_" + i)
+	.attr("r", starScale(d.star.radius*AU));
     }
 
     console.log(r);
