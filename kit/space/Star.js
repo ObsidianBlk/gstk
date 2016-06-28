@@ -189,11 +189,12 @@
 
   function GenStar(star, rng, options){
     var r1 = 0;
+    star.primaryStar = (typeof(options.primaryStar) !== 'undefined' && options.primaryStar instanceof Star) ? options.primaryStar : null;
 
     // Generate a companion star mass to the given primary star.
-    if (typeof(options.primaryStar) !== 'undefined'){
+    if (star.primaryStar !== null){
       r1 = rng.rollDice(6, 1) - 1;
-      star.mass = options.primaryStar.mass;
+      star.mass = star.primaryStar.mass;
       if (r1 >= 1){
 	if (star.mass >= 1.6){
 	  star.mass += (1.5 - star.mass); // NOTE: This is a subtraction. Don't get confused by the "+="
@@ -234,8 +235,8 @@
     
 
     // -- Calculating Age
-    if (typeof(options.primaryStar) !== 'undefined'){
-      star.age = options.primaryStar.age;
+    if (star.primaryStar !== null){
+      star.age = star.primaryStar.age;
     } else {
       star.age = StarAgeCalc(
 	(options.supportGardenWorlds === true) ? rng.rollDice(6, 2)+2 : rng.rollDice(6, 3),
@@ -395,6 +396,11 @@
         }
       },
 
+      "primaryStar":{
+	enumerate:true,
+	get:function(){return data.primaryStar;}
+      },
+
       "type":{
         enumerate: true,
         get:function(){
@@ -466,6 +472,18 @@
       "companionCount":{
         enumerate: true,
         get:function(){return (typeof(data.companion) !== 'undefined') ? data.companion.length : 0;}
+      },
+
+      "fullSystemRadius":{
+	enumerate:true,
+	get:function(){
+	  var size = data.limit.outerRadius;
+	  for (var c=0; c < this.companionCount; c++){
+	    var p = Math.max(data.companion[c].orbit.rMin, data.companion[c].orbit.rMax);
+	    // TODO: FINISH THIS!!!
+	  }
+	  return 0;
+	}
       },
 
       "stellarBodyCount":{
@@ -825,11 +843,14 @@
 
     this.generateCompanion = function(){
       if (typeof(data.stellarBody) === 'undefined'){ // Don't want to create new companions after the stellar bodies.
+	if (data.primaryStar !== null){return;} // Don't generate a companion of a companion.
+
         if (typeof(data.companion) === 'undefined'){
           data.companion = [];
         }
         if (data.companion.length < 2){
           var cmp = new Star(rng.generateUUID(), {
+	    primaryStar: this,
             supportGardenWorlds: (options.supportGardenWorlds === true) ? true : false
           });
           

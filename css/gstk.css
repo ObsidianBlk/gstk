@@ -1,4 +1,28 @@
 
+html
+body{
+    margin:0;
+    padding:0;
+    background:#000000;
+}
+
+div.panel{
+    position:absolute;
+    background:#000000;
+    margin:0;
+    padding:0;
+    top:0;
+    left:0;
+    width:100%;
+    height:100vh;
+    overflow:hidden;
+}
+
+
+
+
+
+
 .region-axis text {
   font: 10px sans-serif;
   fill: #09F;

@@ -128,18 +128,17 @@
       "systems":{
 	enumerate: true,
 	get:function(){
-	  return systems;
-	  /*var sys = [];
+	  var sys = [];
 	  for (var i=0; i < systems.length; i++){
-	    sys.push({
-	      r: systems[i].r,
-	      a: systems[i].a,
-	      z: systems[i].z,
-	      star: systems[i].star
-	    });
+	    sys.push(WrapSysInformation(systems[i]));
 	  }
-	  return sys;*/
+	  return sys;
 	}
+      },
+
+      "radius":{
+	enumerate:true,
+	get:function(){return radius;}
       },
 
       "systemCount":{
@@ -195,6 +194,42 @@
 	}
       }
     });
+
+    function WrapSysInformation(sys){
+      var wrap = {};
+      Object.defineProperties(wrap, {
+	"r":{
+	  enumerate:true,
+	  get:function(){return sys.r;},
+	  set:function(r){
+	    if (typeof(r) !== 'number'){throw new TypeError("Expecting Number Type.");}
+	    if (r < 0){throw new RangeError("Value expected to be positive.");}
+	    sys.r = r;
+	  }
+	},
+	"a":{
+	  enumerate:true,
+	  get:function(){return sys.a;},
+	  set:function(a){
+	    if (typeof(a) !== 'number'){throw new TypeError("Expecting Number Type.");}
+	    if (a < 0){throw new RangeError("Value expected to be positive.");}
+	    sys.a = a;
+	  }
+	},
+	"z":{
+	  enumerate:true,
+	  get:function(){return sys.z;},
+	  set:function(z){
+	    if (typeof(z) !== 'number'){throw new TypeError("Expecting Number Type.");}
+	    if (z < 0){throw new RangeError("Value expected to be positive.");}
+	    sys.z = z;
+	  }
+	}
+      });
+      wrap.star = sys.star;
+      return wrap;
+    };
+
 
     this.generate = function(){
       if (systems.length > 0){return;} // Only generate the region once.
@@ -273,6 +308,26 @@
 	}
       }
       return null;
+    };
+
+    this.getStarsWithPlanets = function(){
+      var swp = [];
+      for (var i=0; i < systems.length; i++){
+	if (systems[i].star.hasPlanets === true){
+	  swp.push(WrapSysInformation(systems[i]));
+	}
+      }
+      return swp;
+    };
+
+    this.StarsWithBreathableWorlds = function(){
+      var swp = [];
+      for (var i=0; i < systems.length; i++){
+	if (systems[i].star.hasBreathableWorlds === true){
+	  swp.push(WrapSysInformation(systems[i]));
+	}
+      }
+      return swp;
     };
   }
   Region.prototype.constructor = Region;
