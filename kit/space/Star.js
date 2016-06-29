@@ -6,7 +6,8 @@
        ------------------------------------------------- */
     define([
       'kit/PRng',
-      'kit/space/StellarBody'
+      'kit/space/StellarBody',
+      'node_modules/tv4/tv4'
     ], factory);
   } else if (typeof exports === 'object') {
     /* -------------------------------------------------
@@ -15,7 +16,8 @@
     if(typeof module === "object" && module.exports){
       module.exports = factory(
 	require('../PRng'),
-	require('./StellarBody')
+	require('./StellarBody'),
+	require('tv4')
       );
     }
   } else {
@@ -28,19 +30,116 @@
       throw new Error("GSTK improperly initialized.");
     }
 
-    if (root.GSTK.$.exists(root.GSTK, [
-      "PRng",
-      "space.StellarBody"
+    if (root.GSTK.$.exists(root, [
+      "GSTK.PRng",
+      "GSTK.space.StellarBody",
+      "tv4"
     ]) === false){
       throw new Error("Required component not defined.");
     }
 
     root.GSTK.$.def (root.GSTK, "space.Star", factory(
       root.GSTK.PRng,
-      root.GSTK.space.StellarBody
+      root.GSTK.space.StellarBody,
+      root.tv4
     ));
   }
-})(this, function (PRng, StellarBody) {
+})(this, function (PRng, StellarBody, tv4) {
+
+  var StarSchema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "age": {"type": "number"},
+      "limit": {
+	"type": "object",
+	"properties": {
+          "innerRadius": {"type": "number"},
+          "outerRadius": {"type": "number"},
+          "snowLine": {"type": "number"}
+	},
+	"required": [
+          "innerRadius",
+          "outerRadius",
+          "snowLine"
+	]
+      },
+      "lumClass": {"type": "string"},
+      "luminosity": {"type": "number"},
+      "mass": {"type": "number"},
+      "name": {"type": "string"},
+      "primaryStar": {"type": ["string", "null"]},
+      "radius": {"type": "number"},
+      "temp": {"type": "integer"},
+      "type": {"type": "string"},
+      "stellarBody": {
+	"type": "array",
+	"items": {
+          "type": "object",
+          "properties": {
+            "avgRadius": {"type": "number"},
+            "body": {"type": "string"},
+            "period": {"type": "number"},
+            "rMax": {"type": "number"},
+            "rMin": {"type": "number"}
+	  }
+	}
+      },
+      "companion": {
+	"type": "array",
+	"items": {
+          "type": "object",
+          "properties": {
+            "orbit": {
+              "type": "object",
+              "properties": {
+		"description": {"type": "string"},
+		"avgRadius": {"type": "number"},
+		"rMin": {"type": "number"},
+		"rMax": {"type": "number"},
+		"period": {"type": "number"}
+              },
+              "required": [
+		"description",
+		"avgRadius",
+		"rMin",
+		"rMax",
+		"period"
+              ]
+            },
+            "forbiddenZone": {
+              "type": "object",
+              "properties": {
+		"innerRadius": {"type": "number"},
+		"outerRadius": {"type": "number"}
+              },
+              "required": [
+		"innerRadius",
+		"outerRadius"
+              ]
+            },
+            "companion": {"type": "string"}
+          },
+          "required": [
+            "orbit",
+            "forbiddenZone",
+            "companion"
+          ]
+	}
+      }
+    },
+    "required": [
+      "age",
+      "limit",
+      "lumClass",
+      "luminosity",
+      "mass",
+      "name",
+      "radius",
+      "temp",
+      "type"
+    ]
+  };
 
 
   var StellarEvolutionTable = [
@@ -372,17 +471,66 @@
   /* -------------------------------------------------------------------------------
    * Actual Star class
    * ---------------------------------------------------------------------------- */
-  function Star(seed, options){
-    options = (typeof(options) !== typeof({})) ? {} : options;
-    var rng = new PRng({seed:seed, initDepth:5000});
+  function Star(options){
+    options = (typeof(options) !== typeof({})) ? {} : JSON.parse(JSON.stringify(options));
+    if (typeof(options.seed) === 'undefined'){
+      options.seed = Math.random().toString();
+    }
 
-    var data = GenStar({}, rng, options);
-    data.name = rng.generateUUID();
-
-    // Calculating Inner and Outer Limit Radii... and Snow line.
-    CalculateLimitRadii(rng, data);
-
+    var rng = new PRng({seed:options.seed, initDepth:5000});
     var stellarBodiesGenerated = false; // This is just a marker so stellar bodies are only created once.
+    var data = null;
+
+    if (typeof(options.jsonString) === 'string'){
+      try{
+	data = JSON.parse(options.jsonString);
+      } catch (e) {
+	throw e;
+      }
+
+      if (tv4.validate(data, StarSchema) === false){
+	throw new Error(tv4.error);
+      }
+      if (typeof(data.stellarBody) !== 'undefined'){
+	try{
+	  data.stellarBody.forEach(function(sb){
+	    sb.body = new StellarBody({jsonString:sb.body});
+	  });
+	} catch (e) {
+	  throw e;
+	}
+      }
+
+      if (typeof(data.companion) !== 'undefined'){
+	try{
+	  data.companion.forEach(function(c){
+	    c.companion = new Star({jsonString:c.companion});
+	  });
+	} catch (e) {
+	  throw e;
+	}
+      }
+    }
+
+    if (data === null){
+      data = GenStar({}, rng, options);
+      data.name = rng.generateUUID();
+      // Calculating Inner and Outer Limit Radii... and Snow line.
+      CalculateLimitRadii(rng, data);
+    }
+
+    function CountStellarBodyOfType(type){
+      var count = 0;
+      if (typeof(data.stellarBody) !== 'undefined'){
+	for (var i=0; i < data.stellarBody.length; i++){
+	  var body = data.stellarBody[i].body;
+	  if (body.typeIndex === type){
+	    count += 1;
+	  }
+	}
+      }
+      return count;
+    }
 
     Object.defineProperties(this, {
       "name":{
@@ -474,6 +622,19 @@
         get:function(){return (typeof(data.companion) !== 'undefined') ? data.companion.length : 0;}
       },
 
+      "companions":{
+	enumerate: true,
+	get:function(){
+	  var cmp = [];
+	  if (this.companionCount > 0){
+	    for (var i=0; i < data.companion.length; i++){
+	      cmp.push(WrapCompanion(data.companion[i]));
+	    }
+	  }
+	  return cmp;
+	}
+      },
+
       "fullSystemRadius":{
 	enumerate:true,
 	get:function(){
@@ -489,6 +650,19 @@
       "stellarBodyCount":{
 	enumerate: true,
 	get:function(){return (typeof(data.stellarBody) !== 'undefined') ? data.stellarBody.length : 0;}
+      },
+
+      "stellarBodies":{
+	enumerate: true,
+	get:function(){
+	  var sb = [];
+	  if (typeof(data.stellarBody) !== 'undefined'){
+	    for (var i=0; i < data.stellarBody.length; i++){
+	      sb.push(WrapStellarBody(data.stellarBody[i]));
+	    }
+	  }
+	  return sb;
+	}
       },
 
       "hasPlanets":{
@@ -522,7 +696,49 @@
 	}
       },
 
-      "hasBreathableWorlds":{
+      "hasGasGiant":{
+	enumerate: true,
+	get:function(){
+	  return CountStellarBodyOfType(0) > 0;
+	}
+      },
+
+      "GasGiantCount":{
+	enumerate: true,
+	get:function(){
+	  return CountStellarBodyOfType(0);
+	}
+      },
+
+      "hasAsteroid":{
+	enumerate: true,
+	get:function(){
+	  return CountStellarBodyOfType(1) > 0;
+	}
+      },
+
+      "AsteroidCountCount":{
+	enumerate: true,
+	get:function(){
+	  return CountStellarBodyOfType(1);
+	}
+      },
+
+      "hasTerrestrial":{
+	enumerate: true,
+	get:function(){
+	  return CountStellarBodyOfType(2) > 0;
+	}
+      },
+
+      "terrestrialCount":{
+	enumerate: true,
+	get:function(){
+	  return CountStellarBodyOfType(2);
+	}
+      },
+
+      "hasBreathable":{
 	enumerate: true,
 	get:function(){
 	  if (typeof(data.stellarBody) !== 'undefined'){
@@ -537,7 +753,7 @@
 	}
       },
 
-      "breathableWorldCount":{
+      "breathableCount":{
 	enumerate: true,
 	get:function(){
 	  var count = 0;
@@ -643,11 +859,14 @@
         data.stellarBody = [];
       }
 
-      var minRadThresh = 1.4;
-
       var eccentricity = GetOrbitalEccentricity(geninfo.makeGasGiant, radius < data.limit.snowLine, arrangementType);
       var Rmin = (1 - eccentricity)*radius;
       var Rmax = (1 + eccentricity)*radius;
+
+      var dummy = 0;
+      if (geninfo.makeGasGiant){
+	dummy = 5;
+      }
 
       var firstAfterSnowline = true;
       for (var i=0; i < data.stellarBody.length; i++){
@@ -655,26 +874,15 @@
           firstAfterSnowline = false;
         }
 
-	var LRMin = (i > 0) ? data.stellarBody[i-1].rMin : data.limit.innerRadius;
-	var LRMax = (i > 0) ? data.stellarBody[i-1].rMax : data.limit.innerRadius;
-
-	var URMin = (i+1 < data.stellarBody.length) ? data.stellarBody[i+1].rMin : data.limit.outerRadius;
-	var URMax = (i+1 < data.stellarBody.length) ? data.stellarBody[i+1].rMax : data.limit.outerRadius;
-
-	if (Rmin > LRMin && (Rmin - LRMin) < minRadThresh && URMin > Rmin && (URMin - Rmin) < minRadThresh){
-	  return; // Min radius is out of bounds
-	}
-	if (Rmax > LRMax && (Rmax - LRMax) < minRadThresh && URMax > Rmax && (URMax - Rmax) < minRadThresh){
-	  return; // Max radius out of bounds.
+	var SBRmin = data.stellarBody[i].rMin;
+	var SBRmax = data.stellarBody[i].rMax;
+	
+	if (SBRmin < Rmin){
+	  if (SBRmax > Rmax){return;} // Radial crossing
+	} else {
+	  if (SBRmax < Rmax){return;} // Radial crossing
 	}
       }
-      /*if (geninfo.makeGasGiant === true){
-        for (var i=0; i < data.stellarBody.length; i++){
-          if (data.stellarBody[i].radius >= data.limit.snowLine){
-            firstAfterSnowline = false;
-          }
-        }
-      }*/
 
 
       data.stellarBody.push({
@@ -750,6 +958,7 @@
         while (newRadius > data.limit.innerRadius){
           if (lastRadius - newRadius > 0.15){
             geninfo = {
+	      seed: rng.generateUUID(),
               makeGasGiant:MakeGasGiant(),
               contentTypeRoll: rng.rollDice(6, 3)
             };
@@ -786,6 +995,7 @@
 	  //console.log("Outward: " + newRadius + " | Limit: " + data.limit.outerRadius);
           if (newRadius - lastRadius > 0.15){
             geninfo = {
+	      seed: rng.generateUUID(),
               makeGasGiant:MakeGasGiant(),
               contentTypeRoll: rng.rollDice(6, 3)
             };
@@ -813,6 +1023,24 @@
       }
     }
 
+    function WrapCompanion(cmp){
+      var c = {};
+      Object.defineProperties(c, {
+	"orbit":{
+	  enumerate: true,
+	  get:function(){
+	    return JSON.parse(JSON.stringify(cmp.orbit));
+	  }
+	},
+	"forbiddenZone":{
+	  enumerate: true,
+	  get:function(){
+	    return JSON.parse(JSON.stringify(cmp.forbiddenZone));
+	  }
+	}
+      });
+      c.companion = cmp.companion;
+    }
 
     this.getCompanion = function(index){
       if (typeof(data.companion) === 'undefined' || (index < 0 || index >= data.companion.length)){
@@ -821,7 +1049,7 @@
       return {
 	orbit: JSON.parse(JSON.stringify(data.companion[index].orbit)),
 	forbiddenZone: JSON.parse(JSON.stringify(data.companion[index].forbiddenZone)),
-	compansion: data.companion[index].companion
+	companion: data.companion[index].companion
       };
     };
 
@@ -832,7 +1060,7 @@
 	    return {
 	      orbit: JSON.parse(JSON.stringify(data.companion[i].orbit)),
 	      forbiddenZone: JSON.parse(JSON.stringify(data.companion[i].forbiddenZone)),
-	      compansion: data.companion[i].companion
+	      companion: data.companion[i].companion
 	    };
 	  }
 	}
@@ -879,30 +1107,43 @@
     };
 
 
+    function WrapStellarBody(sb){
+      var o = {};
+      Object.defineProperties(o, {
+	"avgRadius":{
+	  enumerate:true,
+	  get:function(){return sb.avgRadius;}
+	},
+	"rMin":{
+	  enumerate:true,
+	  get:function(){return sb.rMin;}
+	},
+	"rMax":{
+	  enumerate:true,
+	  get:function(){return sb.rMax;}
+	},
+	"period":{
+	  enumerate:true,
+	  get:function(){return sb.period;}
+	}
+      });
+
+      o.body = sb.body;
+      return o;
+    };
+
     this.getStellarBody = function(index){
       if (typeof(data.stellarBody) === 'undefined' || index < 0 || index > data.stellarBody.length){
 	throw new RangeError("Index is out of bounds");
       }
-      return {
-	avgRadius: data.stellarBody[index].avgRadius,
-        rMin: data.stellarBody[index].rMin,
-        rMax: data.stellarBody[index].rMax,
-        period: data.stellarBody[index].period,
-        body: data.stellarBody[index].body
-      };
+      return WrapStellarBody(data.stellarBody[index]);
     };
 
     this.getStellarBodyByName = function(name){
       if (typeof(data.stellarBody) !== 'undefined'){
 	for (var i=0; i < data.stellarBody.length; i++){
 	  if (data.stellarBody[i].body.name === name){
-	    return {
-	      avgRadius: data.stellarBody[i].avgRadius,
-              rMin: data.stellarBody[i].rMin,
-              rMax: data.stellarBody[i].rMax,
-              period: data.stellarBody[i].period,
-              body: data.stellarBody[i].body
-	    };
+	    return WrapStellarBody(data.stellarBody[i]);
 	  }
 	}
       }
@@ -922,10 +1163,50 @@
 
           // Finally... build the planets!
           data.stellarBody.forEach(function(info){
-            info.body = new StellarBody(rng.generateUUID(), info.body);
+            info.body = new StellarBody(info.body);
           });
         }
       }
+    };
+
+    this.toString = function(){
+      var cmpStore = (typeof(data.companion) !== 'undefined') ? data.companion : null;
+      var sbStore = (typeof(data.stellarBody) !== 'undefined') ? data.stellarBody : null;
+
+      if (cmpStore !== null){
+	data.companion = [];
+	for (var c=0; c < cmpStore.length; c++){
+	  data.companion.push({
+	    orbit: JSON.parse(JSON.stringify(cmpStore[c].orbit)),
+	    forbiddenZone: JSON.parse(JSON.stringify(cmpStore[c].forbiddenZone)),
+	    companion: cmpStore[c].companion.toString()
+	  });
+	}
+      }
+
+      if (sbStore !== null){
+	data.stellarBody = [];
+	for (var s=0; s < sbStore.length; s++){
+	  data.stellarBody.push({
+	    avgRadius: sbStore[s].avgRadius,
+	    rMin: sbStore[s].rMin,
+	    rMax: sbStore[s].rMax,
+	    period: sbStore[s].period,
+	    body: sbStore[s].body.toString()
+	  });
+	}
+      }
+
+      var jsonStr = JSON.stringify(data);
+      if (cmpStore !== null){
+	data.companion = cmpStore;
+      }
+
+      if (sbStore !== null){
+	data.stellarBody = sbStore;
+      }
+
+      return jsonStr;
     };
   }
   Star.prototype.constructor = Star;

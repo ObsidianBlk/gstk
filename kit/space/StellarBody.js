@@ -4,14 +4,18 @@
     /* -------------------------------------------------
        AMD style connection.
        ------------------------------------------------- */
-    define(['kit/PRng'], factory);
+    define([
+      'kit/PRng',
+      'node_modules/tv4/tv4'
+    ], factory);
   } else if (typeof exports === 'object') {
     /* -------------------------------------------------
        CommonJS style connection.
        ------------------------------------------------- */
     if(typeof module === "object" && module.exports){
       module.exports = factory(
-	require('../PRng')
+	require('../PRng'),
+	require('tv4')
       );
     }
   } else {
@@ -24,15 +28,139 @@
       throw new Error("GSTK improperly initialized.");
     }
 
-    if (root.GSTK.$.exists(root.GSTK, "PRng") === false){
+    if (root.GSTK.$.exists(root, [
+      "GSTK.PRng",
+      "tv4"
+    ]) === false){
       throw new Error("Required component not defined.");
     }
 
     root.GSTK.$.def (root.GSTK, "space.StellarBody", factory(
-      root.GSTK.PRng
+      root.GSTK.PRng,
+      root.tv4
     ));
   }
-})(this, function (PRng) {
+})(this, function (PRng, tv4) {
+
+  // ------------------------------------------------------------------------------------------------------------------
+
+  var TerrestrialSchema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "affinity": {"type": "integer"},
+      "atmosphere": {
+	"type": "object",
+	"properties": {
+          "breathable": {"type": "boolean"},
+          "composition": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "corrosive": {"type": "boolean"},
+          "marginal": {"type": "boolean"},
+          "mass": {"type": "number"},
+          "pressure": {"type": "integer"},
+          "suffocating": {"type": "boolean"},
+          "toxicity": {"type": "integer"}
+	},
+	"required": [
+          "breathable",
+          "composition",
+          "corrosive",
+          "mass",
+          "pressure",
+          "suffocating",
+          "toxicity"
+	]
+      },
+      "axialTilt": {"type": "integer"},
+      "blackbody": {"type": "number"},
+      "class": {"type": "integer"},
+      "density": {"type": "number"},
+      "diameter": {"type": "number"},
+      "hydrographics": {"type": "integer"},
+      "mass": {"type": "number"},
+      "name": {"type": "string"},
+      "resourceIndex": {"type": "integer"},
+      "rotationalPeriod": {"type": "number"},
+      "size": {"type": "integer"},
+      "surfaceGravity": {"type": "number"},
+      "temperature": {"type": "integer"},
+      "type": {"type": "integer"}
+    },
+    "required": [
+      "affinity",
+      "atmosphere",
+      "axialTilt",
+      "blackbody",
+      "class",
+      "density",
+      "diameter",
+      "hydrographics",
+      "mass",
+      "name",
+      "resourceIndex",
+      "rotationalPeriod",
+      "size",
+      "surfaceGravity",
+      "temperature",
+      "type"
+    ]
+  };
+
+
+  var AsteroidSchema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "blackbody": {"type": "number"},
+      "name": {"type": "string"},
+      "resourceIndex": {"type": "integer"},
+      "size": {"type": "integer"},
+      "temperature": {"type": "integer"},
+      "type": {"type": "integer"}
+    },
+    "required": [
+      "blackbody",
+      "name",
+      "resourceIndex",
+      "size",
+      "temperature",
+      "type"
+    ]
+  };
+
+
+  var GasGiantSchema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "axialTilt": {"type": "integer"},
+      "density": {"type": "number"},
+      "diameter": {"type": "number"},
+      "mass": {"type": "number"},
+      "name": {"type": "string"},
+      "rotationalPeriod": {"type": "number"},
+      "size": {"type": "integer"},
+      "surfaceGravity": {"type": "number"},
+      "type": {"type": "integer"}
+    },
+    "required": [
+      "axialTilt",
+      "density",
+      "diameter",
+      "mass",
+      "name",
+      "rotationalPeriod",
+      "size",
+      "surfaceGravity",
+      "type"
+    ]
+  };
+
+
+  // ------------------------------------------------------------------------------------------------------------------
 
   var ResourceValueTable = [
     {desc: "worthless", mod: -5},
@@ -734,23 +862,76 @@
     return body;
   }
 
-  function StellarBody(seed, options){
-    options = (typeof(options) === typeof({})) ? options : {};
-    var rng = new PRng({seed:seed, initDepth:5000});
+  function LoadFromJsonString(jsonString){
+    var body = null;
+    try{
+      body = JSON.parse(jsonString);
+    } catch (e) {
+      console.error("[StellarBody]: Failed to parse jsonString.");
+      return null;
+    }
 
+    if (typeof(body.type) !== 'number'){
+      console.error("[StellarBody]: Missing required property 'type'.");
+      return null;
+    }
+
+    var schema = null;
+    switch(body.type){
+    case 0: // Gas Giant
+      schema = GasGiantSchema; break;
+    case 1: // Asteroid Belt
+      schema = AsteroidSchema; break;
+    case 2: // Terrestrial
+      schema = TerrestrialSchema; break;
+    }
+
+    if (schema !== null){
+      if (tv4.validate(body, schema) === false){
+	console.error(tv4.error);
+	body = null;
+      }
+    } else {
+      console.error("[StellarBody]: 'type' property contains invalid value.");
+    }
+
+    return body;
+  }
+
+  function StellarBody(options){
+    options = (typeof(options) === typeof({})) ? options : {};
+    if (typeof(options.seed) === 'undefined'){
+      options.seed = Math.random().toString();
+    }
+    var rng = new PRng({seed:options.seed, initDepth:5000});
     var data = null;
-    if (options.makeGasGiant === true){
-      data = GenGasGiant({}, rng, options);
-    } else if (options.makAsteroidBelt === true){
-      data = GenAsteroidBelt({}, rng, options);
-    } else { // Always assume generation of a terrestrial planet
-      data = GenTerrestrial({}, rng, options);
-      if (data === false){
+
+    // Build data through random gen
+    if (typeof(options.jsonString) !== 'string'){
+      if (options.makeGasGiant === true){
+	data = GenGasGiant({}, rng, options);
+      } else if (options.makAsteroidBelt === true){
 	data = GenAsteroidBelt({}, rng, options);
+      } else { // Always assume generation of a terrestrial planet
+	data = GenTerrestrial({}, rng, options);
+	if (data === false){
+	  data = GenAsteroidBelt({}, rng, options);
+	}
+      }
+      data.name = rng.generateUUID();
+
+    // Try and load the jsonString data.
+    } else {
+      data = LoadFromJsonString(options.jsonString);
+      if (data === null){
+	data = GenTerrestrial({}, rng, options);
+	data.name = rng.generateUUID();
       }
     }
 
-    data.name = rng.generateUUID();
+    this.toString = function(){
+      return JSON.stringify(data);
+    };
 
     Object.defineProperties(this, {
       "name":{

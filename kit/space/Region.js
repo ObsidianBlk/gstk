@@ -7,7 +7,8 @@
     define([
       'kit/PRng',
       'kit/space/StellarBody', 
-      'kit/space/Star'
+      'kit/space/Star',
+      'node_modules/tv4/tv4'
     ], factory);
   } else if (typeof exports === 'object') {
     /* -------------------------------------------------
@@ -17,7 +18,8 @@
       module.exports = factory(
 	require('../PRng'),
 	require('./StellarBody'),
-	require('./Star')
+	require('./Star'),
+	require('tv4')
       );
     }
   } else {
@@ -30,22 +32,58 @@
       throw new Error("GSTK improperly initialized.");
     }
 
-    if (root.GSTK.$.exists(root.GSTK, ["PRng",
-				       "space.StellarBody",
-				       "space.Star"
-				      ]) === false){
+    if (root.GSTK.$.exists(root, ["GSTK.PRng",
+				  "GSTK.space.StellarBody",
+				  "GSTK.space.Star",
+				  "tv4"
+				 ]) === false){
       throw new Error("Required component not defined.");
     }
 
     root.GSTK.$.def (root.GSTK, "space.Region", factory(
       root.GSTK.PRng,
       root.GSTK.space.StellarBody,
-      root.GSTK.space.Star
+      root.GSTK.space.Star,
+      root.tv4
     ));
   }
-})(this, function (PRng, StellarBody, Star) {
+})(this, function (PRng, StellarBody, Star, tv4) {
 
   var MAX_GEN_RECURSION = 10;
+
+  var RegionSchema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+      "radius": {"type": "number"},
+      "zmin": {"type": "integer"},
+      "zmax": {"type": "integer"},
+      "systems": {
+	"type": "array",
+	"items": {
+          "type": "object",
+          "properties": {
+            "r": {"type": "number"},
+            "a": {"type": "number"},
+            "z": {"type": "number"},
+            "star": {"type": "string"}
+          },
+          "required": [
+            "r",
+            "a",
+            "z",
+            "star"
+          ]
+	}
+      }
+    },
+    "required": [
+      "radius",
+      "zmin",
+      "zmax",
+      "systems"
+    ]
+  };
 
   function GenerateStar(rng, companionProbability, supportGardenWorlds, forceBreathable, depth){
     if (typeof(depth) !== 'number'){
@@ -57,8 +95,11 @@
     forceBreathable = (forceBreathable === true) ? true : false;
 
     var cp = companionProbability * 0.01;
-    var srng = rng.spawn();
-    var s = new Star(srng, {supportGardenWorlds: supportGardenWorlds});
+    var s = new Star({
+      seed: rng.generateUUID(),
+      supportGardenWorlds: supportGardenWorlds
+    });
+
     if (rng.uniform() <= cp){
       s.generateCompanion();
       if (rng.uniform() <= cp){
@@ -84,44 +125,79 @@
   }
 
 
-  function Region(seed, radius, zmin, zmax, options){
-    var rng = new PRng({seed:seed, initDepth:5000});
-
+  function Region(options){
     options = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
+    if (typeof(options.seed) === 'undefined'){
+      options.seed = Math.random().toString();
+    }
+    
+    var radius = (typeof(options.radius) === 'number') ? options.radius : 10;
+    var zmin = (typeof(options.zmin) === 'number') ? Math.floor(options.zmin) : -1;
+    var zmax = (typeof(options.zmax) === 'number') ? Math.floor(options.zmax) : zmin + 2;
+
+    var rng = new PRng({seed:options.seed, initDepth:5000});
+    var systems = [];
+    var height = 0;
+    var horizon = 0;
+
     if (radius <= 0){
       throw new RangeError("Radius too small");
     }
+
+    if (typeof(options.jsonString) === 'string'){
+      var data = null;
+      try{
+	data = JSON.parse(options.jsonString);
+      } catch (e) {
+	throw e;
+      }
+
+      if (tv4.validate(data, RegionSchema) === false){
+	throw new Error(tv4.error);
+      }
+
+      radius = data.radius;
+      zmin = Math.floor(data.zmin);
+      zmax = Math.floor(data.zmax);
+      
+      for (var i=0; i < data.systems.length; i++){
+	try{
+	  systems.push(new Star({jsonString: data.systems[i].star}));
+	} catch (e) {
+	  throw e;
+	}
+      }
+    }
     
-    options.autoGenerate = (options.autoGenerate === true) ? true : false;
-    options.systemAtOrigin = (options.systemAtOrigin === true) ? true : false;
-    options.breathableAtOrigin = (options.breathableAtOrigin === true) ? true : false;
-    options.systemDensity = (typeof(options.systemDensity) === 'number') ?
-      Math.abs(options.systemDensity)%100 :
-      (rng.rollDice(6, 2)-2)*4;
-    if (options.systemDensity < 1){
-      options.systemDensity = 6; // We want SOME stars
-    }
-    options.breathableDensity = (typeof(options.breathableDensity) === 'number') ?
-      Math.abs(options.breathableDensity)%100 :
-      (rng.rollDice(6, 2)-2)*4;
-    if (options.breathableDensity < 1){
-      options.breathableDensity = 0; // We don't NEED breathable planets.
-    }
-    options.companionProbability = (typeof(options.companionProbability) === 'number') ?
-      Math.abs(options.companionProbability)%100 :
-      rng.rollDice(6, 2)*5;
-    if (options.companionProbability < 1){
-      options.companionProbability = 10;
-    }
+    if (systems.length <= 0){
+      height = (zmax - zmin >= 1) ? zmax - zmin : 1;
+      horizon = (height > 1) ? Math.floor(height*0.5) : zmin;
 
-    zmax = Math.floor(zmax);
-    zmin = Math.floor(zmin);
-    var height = (zmax - zmin >= 1) ? zmax - zmin : 1;
-    var horizon = (height > 1) ? Math.floor(height*0.5) : zmin;
+      options.autoGenerate = (options.autoGenerate === true) ? true : false;
+      options.systemAtOrigin = (options.systemAtOrigin === true) ? true : false;
+      options.breathableAtOrigin = (options.breathableAtOrigin === true) ? true : false;
+      options.systemDensity = (typeof(options.systemDensity) === 'number') ?
+	Math.abs(options.systemDensity)%100 :
+	(rng.rollDice(6, 2)-2)*4;
+      if (options.systemDensity < 1){
+	options.systemDensity = 6; // We want SOME stars
+      }
+      options.breathableDensity = (typeof(options.breathableDensity) === 'number') ?
+	Math.abs(options.breathableDensity)%100 :
+	(rng.rollDice(6, 2)-2)*4;
+      if (options.breathableDensity < 1){
+	options.breathableDensity = 0; // We don't NEED breathable planets.
+      }
+      options.companionProbability = (typeof(options.companionProbability) === 'number') ?
+	Math.abs(options.companionProbability)%100 :
+	rng.rollDice(6, 2)*5;
+      if (options.companionProbability < 1){
+	options.companionProbability = 10;
+      }
 
-    var systems = [];//GenerateStarLocations(rng, radius, horizon, height, options.systemDensity, options.systemAtOrigin);
-    if (options.autoGenerate === true){
-      this.generate();
+      if (options.autoGenerate === true){
+	this.generate();
+      }
     }
 
     Object.defineProperties(this, {
@@ -228,6 +304,25 @@
       });
       wrap.star = sys.star;
       return wrap;
+    };
+
+    this.toString = function(){
+      var reg = {
+	radius: radius,
+	zmin: zmin,
+	zmax: zmax,
+	systems:[]
+      };
+      for (var i=0; i < systems.length; i++){
+	reg.systems.push({
+	  r: systems[i].r,
+	  a: systems[i].a,
+	  z: systems[i].z,
+	  star: systems[i].star.toString()
+	});
+      }
+
+      return JSON.stringify(reg);
     };
 
 

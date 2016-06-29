@@ -10,6 +10,8 @@ requirejs([
   'kit/space/StellarBody'
 ], function(PRng, Region, Star, StellarBody){
 
+  var FS = require('fs');
+
   // --------------------------------
   // Defining a "Document Ready" function. This is only garanteed to work on Chrome at the moment.
   function ready(callback){
@@ -203,6 +205,90 @@ requirejs([
   StarSystemRenderer.prototype.constructor = StarSystemRenderer;
 
 
+  // -------------------------------------------------------------------------------------------------------------------------------------
+  // STATES
+  function StateControl(){
+    var states = {};
+    var activeState = null;
+
+    Object.defineProperties(this, {
+      "activeState":{
+	enumerate: true,
+	get:function(){
+	  return (activeState !== null) ? states[activeState] : null;
+	}
+      }
+    });
+
+    this.registerState = function(name, state){
+      if (!(name in states)){
+	state[name] = state;
+	if (activeState === null){
+	  this.activateState(name);
+	}
+      }
+    };
+
+    this.activateState = function(name){
+      if (name in states && activeState !== name){
+	if (activeState !== null){
+	  if (typeof(states[activeState].deactivate) === 'function'){
+	    states[activeState].deactivate();
+	  }
+	}
+	activeState = name;
+	if (typeof(states[activeState].activate) === 'function'){
+	  states[activeState].activate();
+	}
+      }
+    };
+  }
+  StateControl.prototype.constructor = StateControl;
+
+
+  function MainMenu(statectrl, domID){
+    var mm = d3.select("#" + domID);
+    var svg = mm.append("svg")
+      .attr("width", "100%")
+      .attr("height", "100%");
+
+    var btn = svg.append("rect")
+      .attr("x1", 0)
+      .attr("y1", 0)
+      .attr("x2", 64)
+      .attr("y2", 32)
+      .attr("fill", "#FF0000")
+      .attr("stroke", "none")
+      .on("click", (function(){
+	if (this.hidden() === false){
+	  this.show(false);
+	  statectrl.activateState("region");
+	}
+      }).bind(this));
+
+    this.activate = function(){
+      this.show(true);
+    };
+
+    this.deactivate = function(){
+      this.show(false);
+    };
+
+    this.hidden = function(){
+      return mm.classed("hidden");
+    };
+
+    this.show = function(enable){
+      enable = (enable === false) ? false : true;
+      if (enable && mm.classed("hidden")){
+	mm.classed("hidden", false);
+      } else if (enable === false && mm.classed("hidden") === false){
+	mm.classed("hidden", true);
+      }
+    };
+  }
+  MainMenu.prototype.constructor = MainMenu;
+
 
 
   // -------------------------------------------------------------------------------------------------------------------------------------
@@ -212,9 +298,15 @@ requirejs([
     var mapSize = 1000;
     var hmapSize = Math.round(mapSize*0.5);
     var regionRadius = 42;
-    //var seed = "Bryan Miller";
-    var seed = Math.random().toString();
-    var r = new Region(seed, regionRadius, -2, 2, {systemAtOrigin: true});
+    var seed = "Bryan Miller";
+    //var seed = Math.random().toString();
+    var r = new Region({
+      seed: seed,
+      radius: regionRadius,
+      zmin: -2,
+      zmax: 2,
+      systemAtOrigin: true
+    });
     r.generate();
 
     var svg = d3.select("#RegionPanel")
@@ -276,11 +368,6 @@ requirejs([
       mouseOver:mouseOver,
       mouseOut:mouseOut
     });
-
-    // -----------------
-    // EVENT HANDLERS...
-
-    console.log(r);
   });
 
 });
