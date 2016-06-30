@@ -641,9 +641,10 @@
 	  var size = data.limit.outerRadius;
 	  for (var c=0; c < this.companionCount; c++){
 	    var p = Math.max(data.companion[c].orbit.rMin, data.companion[c].orbit.rMax);
-	    // TODO: FINISH THIS!!!
+	    var plimit = p + data.companion[c].companion.limit.outerRadius;
+	    size = (plimit > size) ? plimit : size;
 	  }
-	  return 0;
+	  return size;
 	}
       },
 
@@ -703,10 +704,25 @@
 	}
       },
 
-      "GasGiantCount":{
+      "gasGiantCount":{
 	enumerate: true,
 	get:function(){
 	  return CountStellarBodyOfType(0);
+	}
+      },
+
+      "gasGiants":{
+	enumerate: true,
+	get:function(){
+	  var sb = [];
+	  if (typeof(data.stellarBody) !== 'undefined'){
+	    for (var i=0; i < data.stellarBody.length; i++){
+	      if (data.stellarBody[i].body.typeIndex === 0){
+		sb.push(WrapStellarBody(data.stellarBody[i]));
+	      }
+	    }
+	  }
+	  return sb;
 	}
       },
 
@@ -717,10 +733,25 @@
 	}
       },
 
-      "AsteroidCountCount":{
+      "asteroidCountCount":{
 	enumerate: true,
 	get:function(){
 	  return CountStellarBodyOfType(1);
+	}
+      },
+      
+      "asteroids":{
+	enumerate: true,
+	get:function(){
+	  var sb = [];
+	  if (typeof(data.stellarBody) !== 'undefined'){
+	    for (var i=0; i < data.stellarBody.length; i++){
+	      if (data.stellarBody[i].body.typeIndex === 1){
+		sb.push(WrapStellarBody(data.stellarBody[i]));
+	      }
+	    }
+	  }
+	  return sb;
 	}
       },
 
@@ -735,6 +766,21 @@
 	enumerate: true,
 	get:function(){
 	  return CountStellarBodyOfType(2);
+	}
+      },
+
+      "terrestrials":{
+	enumerate: true,
+	get:function(){
+	  var sb = [];
+	  if (typeof(data.stellarBody) !== 'undefined'){
+	    for (var i=0; i < data.stellarBody.length; i++){
+	      if (data.stellarBody[i].body.typeIndex === 2){
+		sb.push(WrapStellarBody(data.stellarBody[i]));
+	      }
+	    }
+	  }
+	  return sb;
 	}
       },
 

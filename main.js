@@ -4,13 +4,12 @@ requirejs.config({
 });
 
 requirejs([
+  'kit/Emitter',
   'kit/PRng',
   'kit/space/Region',
   'kit/space/Star',
   'kit/space/StellarBody'
-], function(PRng, Region, Star, StellarBody){
-
-  var FS = require('fs');
+], function(Emitter, PRng, Region, Star, StellarBody){
 
   // --------------------------------
   // Defining a "Document Ready" function. This is only garanteed to work on Chrome at the moment.
@@ -24,10 +23,12 @@ requirejs([
     }
   }
 
+  // -------------------------------------------------------------------------------------------------------------------------------------
+  // Global Variables...
+  var AU = Number("1.496e8");
 
   // -------------------------------------------------------------------------------------------------------------------------------------
   // Application functions...
-  var AU = Number("1.496e8");
 
   function TrimNameLength(name, maxlen){
     if (name.length > maxlen){
@@ -38,6 +39,7 @@ requirejs([
 
   function RegionRenderer(svg){
 
+    var scroller = svg.append("g");
     var mapSize = 1;
     var hmapSize = 1;
     var mapScale = d3.scale.linear().domain([0,1]).range([0,1]);
@@ -46,6 +48,15 @@ requirejs([
       .range([1.0, 6.0]);
     var displayMode = 0; // All stars in region.
     var r = null;
+
+    function zoomed() {
+      var x = d3.event.translate[0] * d3.event.scale;
+      var y = d3.event.translate[1] * d3.event.scale;
+      scroller.attr("transform", "translate(" + x + ", " + y + ")scale(" + d3.event.scale + ")");
+    }
+    var zoom = d3.behavior.zoom()
+      .scaleExtent([0.25, 4])
+      .on("zoom", zoomed);
 
     Object.defineProperties(this, {
       "mapSize":{
@@ -62,6 +73,11 @@ requirejs([
 	    }
 	  }
 	}
+      },
+
+      "mapScale":{
+	enumerate:true,
+	get:function(){return mapScale;}
       },
 
       "starScale":{
@@ -89,12 +105,18 @@ requirejs([
 
     this.render = function(options){
       if (r === null){return;}
+      var CompassRange = d3.range(0, 360, 30);
 
-      svg.attr("transform", "translate(" + hmapSize + "," + hmapSize + ") scale(0.9)");
-      svg.selectAll("*").remove();
+      svg.attr("transform", "translate(" + hmapSize + "," + hmapSize + ")").call(zoom);
+      scroller.selectAll("*").remove();
       var data = r.systems;
+	
+      scroller.append("rect")
+	.attr("x", mapScale(-r.radius)).attr("y", mapScale(-r.radius))
+	.attr("width", mapScale(r.radius*2)).attr("height", mapScale(r.radius*2))
+	.attr("fill", "#000000");
 
-      var stars = svg.append("g");
+      var stars = scroller.append("g");
       // Rendering stars
       var starGroups = stars.selectAll("g")
 	.data(data)
@@ -115,6 +137,9 @@ requirejs([
       if (typeof(options.mouseOut) === 'function'){ 
 	starGroups.on("mouseout", options.mouseOut);
       }
+      if (typeof(options.click) === 'function'){
+	starGroups.on("click", options.click);
+      }
 
       starGroups.append("circle")
 	.attr("id", function(d, i){
@@ -124,26 +149,21 @@ requirejs([
 	  return starScale(d.star.radius*AU);
 	});
 
-
-      // Rendering grid
-      var grid = svg.append("g").attr("class", "region-axis");
-
-      grid.selectAll("circle")
+      var rangeOverlay = scroller.append("g").attr("class", "range-axis");
+      rangeOverlay.selectAll("circle")
 	.data(d3.range(0, r.radius+1, 3))
 	.enter()
 	.append("circle")
 	.attr("r", function(d){return mapScale(d);});
 
-      var a = grid.selectAll("g")
-	.data(d3.range(0, 360, 30))
+      var a = rangeOverlay.selectAll("g")
+	.data(CompassRange)
 	.enter().append("g")
-	.attr("class", "region-axis")
-	.attr("transform", function(d) { return "rotate(" + -d + ")"; });
-
+	.attr("class", "range-axis")
+	.attr("transform", function(d) { return "rotate(" + d + ")"; });
       a.append("line")
 	.attr("x1", mapScale(1))
 	.attr("x2", mapScale(r.radius));
-
       a.append("text")
 	.attr("x", mapScale(r.radius + 1))
 	.attr("dy", ".35em")
@@ -155,11 +175,27 @@ requirejs([
   RegionRenderer.prototype.constructor = RegionRenderer;
 
 
+
+
   function StarSystemRenderer(svg){
+    var scroller = svg.append("g");
     var star = null;
     var mapSize = 1;
     var hmapSize = 1;
     var mapScale = d3.scale.linear().domain([0,1]).range([0,1]);
+
+    var starRenderRadius = 6;
+    var terrRenderRadius = [0.25, 0.5, 1, 2, 3];
+    var ggRenderRadius = [2, 2.75, 3.5, 4.5];
+
+    function zoomed() {
+      var x = d3.event.translate[0] * d3.event.scale;
+      var y = d3.event.translate[1] * d3.event.scale;
+      scroller.attr("transform", "translate(" + x + ", " + y + ")scale(" + d3.event.scale + ")");
+    }
+    var zoom = d3.behavior.zoom()
+      .scaleExtent([0.25, 4])
+      .on("zoom", zoomed);
 
     Object.defineProperties(this, {
       "star":{
@@ -175,6 +211,11 @@ requirejs([
 	    }
 	  }
 	  star = s;
+	  if (star !== null){
+	    mapScale.domain([0, star.fullSystemRadius]).range([0, hmapSize]);
+	  } else {
+	    mapScale.domain([0, 1]).range([0, hmapSize]);
+	  }
 	}
       },
 
@@ -185,8 +226,8 @@ requirejs([
 	  if (typeof(size) === 'number' && size > 0){
 	    mapSize = size;
 	    hmapSize = Math.round(mapSize*0.5);
-	    if (r !== null){
-	      mapScale.domain([0, r.radius]).range([0, hmapSize]);
+	    if (star !== null){
+	      mapScale.domain([0, star.fullSystemRadius]).range([0, hmapSize]);
 	    } else {
 	      mapScale.domain([0, 1]).range([0, hmapSize]);
 	    }
@@ -195,11 +236,117 @@ requirejs([
       }
     });
 
-    this.renderer = function(options){
+    function RenderStar(s, g){
+      g.append("g")
+	.attr("class", "star " + s.type.substring(0, 1))
+	.append("circle")
+	.attr("r", starRenderRadius);
+
+      if (s.terrestrialCount > 0){
+	var terr = g.selectAll("g")
+	  .data(s.terrestrials)
+	  .enter();
+
+	terr.append("ellipse")
+	  .attr("rx", function(d){
+	    return mapScale(d.rMin);
+	  })
+	  .attr("ry", function(d){
+	    return mapScale(d.rMax);
+	  })
+	  .attr("fill", "none")
+	  .attr("stroke", "#A37F58")
+	  .attr("strokeWidth", 0.1);
+
+	terr.append("circle")
+	  .attr("cy", function(d){
+	    return mapScale(d.rMax);
+	  })
+	  .attr("r", function(d){
+	    return terrRenderRadius[d.body.sizeIndex];
+	  })
+	  .attr("fill", "#A37F58")
+	  .attr("stroke", "#7D5E3C")
+	  .attr("strokeWidth", 0.1);
+      }
+
+      if (s.gasGiantCount > 0){
+	var gg = g.selectAll("g")
+	  .data(s.gasGiants)
+	  .enter();
+
+	gg.append("ellipse")
+	  .attr("rx", function(d){
+	    return mapScale(d.rMin);
+	  })
+	  .attr("ry", function(d){
+	    return mapScale(d.rMax);
+	  })
+	  .attr("fill", "none")
+	  .attr("stroke", "#CBF5E2")
+	  .attr("strokeWidth", 0.1);
+
+	gg.append("circle")
+	  .attr("cy", function(d){
+	    return mapScale(d.rMax);
+	  })
+	  .attr("r", function(d){
+	    return ggRenderRadius[d.body.sizeIndex];
+	  })
+	  .attr("fill", "#CBF5E2")
+	  .attr("stroke", "#89F5C4")
+	  .attr("strokeWidth", 0.1);
+      }
+
+      if (s.asteroidCount > 0){
+	var a = g.selectAll("g")
+	  .data(s.asteroids)
+	  .enter();
+
+	a.append("ellipse")
+	  .attr("rx", function(d){
+	    return mapScale(d.rMin);
+	  })
+	  .attr("ry", function(d){
+	    return mapScale(d.rMax);
+	  })
+	  .attr("fill", "none")
+	  .attr("stroke", "#CBF5E2")
+	  .attr("strokeWidth", 1.5);
+      }
+    }
+
+    this.render = function(options){
       if (star === null){return;}
 
-      svg.selectAll("*").remove();
-      svg.attr("transform", "translate(" + hmapSize + "," + hmapSize + ") scale(0.9)");
+      svg.attr("transform", "translate(" + hmapSize + "," + hmapSize + ")").call(zoom);
+      scroller.selectAll("*").remove();
+      scroller.append("rect")
+	.attr("x", mapScale(-star.fullSystemRadius)).attr("y", mapScale(-star.fullSystemRadius))
+	.attr("width", mapScale(star.fullSystemRadius*2)).attr("height", mapScale(star.fullSystemRadius*2))
+	.attr("fill", "#000000");
+
+      var primary = scroller.append("g")
+	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");
+      RenderStar(star, primary);
+
+      if (star.companionCount > 0){
+	var companions = star.companions;
+	for (var i=0; i < star.companionCount; i++){
+	  var cdata = companions[i];
+	  scroller.append("ellipse")
+	    .attr("cx", mapScale(0))
+	    .attr("cy", mapScale(0))
+	    .attr("rx", mapScale(cdata.rMin))
+	    .attr("ry", mapScale(cdata.rMax))
+	    .attr("fill", "none")
+	    .attr("stroke", "#FFDD00")
+	    .attr("strokeWidth", 1);
+	  var surf = scroller.append("g")
+	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(cdata.rMax) + ")");
+	  RenderStar(cdata.companion, surf);
+	}
+      }
     };
   }
   StarSystemRenderer.prototype.constructor = StarSystemRenderer;
@@ -207,72 +354,44 @@ requirejs([
 
   // -------------------------------------------------------------------------------------------------------------------------------------
   // STATES
-  function StateControl(){
-    var states = {};
-    var activeState = null;
 
-    Object.defineProperties(this, {
-      "activeState":{
-	enumerate: true,
-	get:function(){
-	  return (activeState !== null) ? states[activeState] : null;
-	}
-      }
-    });
-
-    this.registerState = function(name, state){
-      if (!(name in states)){
-	state[name] = state;
-	if (activeState === null){
-	  this.activateState(name);
-	}
-      }
-    };
-
-    this.activateState = function(name){
-      if (name in states && activeState !== name){
-	if (activeState !== null){
-	  if (typeof(states[activeState].deactivate) === 'function'){
-	    states[activeState].deactivate();
-	  }
-	}
-	activeState = name;
-	if (typeof(states[activeState].activate) === 'function'){
-	  states[activeState].activate();
-	}
-      }
-    };
-  }
-  StateControl.prototype.constructor = StateControl;
-
-
-  function MainMenu(statectrl, domID){
+  function MainMenu(domID, options){
+    Emitter.call(this);
+    var self = this;
     var mm = d3.select("#" + domID);
     var svg = mm.append("svg")
       .attr("width", "100%")
       .attr("height", "100%");
 
-    var btn = svg.append("rect")
-      .attr("x1", 0)
-      .attr("y1", 0)
-      .attr("x2", 64)
-      .attr("y2", 32)
-      .attr("fill", "#FF0000")
-      .attr("stroke", "none")
-      .on("click", (function(){
-	if (this.hidden() === false){
-	  this.show(false);
-	  statectrl.activateState("region");
-	}
-      }).bind(this));
+    var btns = svg.selectAll("g")
+      .data(options.events)
+      .enter()
+      .append("g")
+      .attr("class", options.menuclass)
+      .attr("transform", function (d, i){
+	var x = options.x;
+	var y = options.y + (i*(options.height + options.padding));
+	return "translate(" + x + ", " + y + ")";
+      });
 
-    this.activate = function(){
-      this.show(true);
-    };
+    btns.append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", options.width)
+      .attr("height", options.height);
+    
+    btns.append("text")
+      .attr("dominant-baseline", "middle")
+      .attr("x", options.x + options.textoffset)
+      .attr("y", options.height*0.5)
+      .text(function(d){
+	return d.name;
+      });
 
-    this.deactivate = function(){
-      this.show(false);
-    };
+    btns.on("click", function(d){
+      self.emit(d.event);
+    });
+    
 
     this.hidden = function(){
       return mm.classed("hidden");
@@ -287,63 +406,34 @@ requirejs([
       }
     };
   }
+  MainMenu.prototype.__proto__ = Emitter.prototype;
   MainMenu.prototype.constructor = MainMenu;
 
 
-
   // -------------------------------------------------------------------------------------------------------------------------------------
-  // MAIN
 
-  ready(function(){
-    var mapSize = 1000;
-    var hmapSize = Math.round(mapSize*0.5);
-    var regionRadius = 42;
-    var seed = "Bryan Miller";
-    //var seed = Math.random().toString();
-    var r = new Region({
-      seed: seed,
-      radius: regionRadius,
-      zmin: -2,
-      zmax: 2,
-      systemAtOrigin: true
-    });
-    r.generate();
-
-    var svg = d3.select("#RegionPanel")
+  function RegionCtrl(domID, options){
+    Emitter.call(this);
+    var self = this;
+    var dom = d3.select("#" + domID);
+    var svg = d3.select("#" + domID)
       .append("svg")
       .attr("width", "100%")
       .attr("height", "100%");
-      //.attr("preserveAspectRatio", "xMinYMin meet")
-      //.attr("viewbox", "0 0 " + (regionRadius+20) + " " + (regionRadius+20));
-
-    // Background
-    /*svg.append("g").append("rect")
-      .attr("x", 0)
-      .attr("y", 0)
-      .attr("width", mapSize)
-      .attr("height", mapSize)
-      .attr("fill", "#000000");*/
+    var mapSize = Math.min(window.innerWidth, window.innerHeight);
+    var hmapSize = Math.round(mapSize*0.5);
 
     var map = svg.append("g")
       .attr("transform", "translate(" + hmapSize + "," + hmapSize + ") scale(0.9)");
 
     var regionRenderer = new RegionRenderer(map);
-    regionRenderer.region = r;
+    regionRenderer.pixelsPerParsec = 12;
     regionRenderer.mapSize = Math.min(window.innerWidth, window.innerHeight);
-    
 
-    d3.select(window).on("resize", function(){
-      mapSize = Math.min(window.innerWidth, window.innerHeight);
-      regionRenderer.mapSize = mapSize;
-      regionRenderer.render({
-	mouseOver:mouseOver,
-	mouseOut:mouseOut
-      });
-    });
-
-    function mouseOver(d, i){
+    function handleMouseOver(d, i){
       var star = d.star;
       var id = "STARTEXT_"+i;
+      var id2 = "STARPARSEC_" + i;
 
       d3.select(this)
 	.append("text")
@@ -352,22 +442,166 @@ requirejs([
 	.attr("dominant-baseline", "middle")
 	.text("(" + d.r.toFixed(2) + ", " + d.a.toFixed(2) + ")");
 
+      d3.select(this)
+	.append("circle")
+	.attr("id", id2)
+	.attr("r", regionRenderer.mapScale(3))
+	.attr("fill", "none")
+	.attr("stroke", "#F00")
+	.attr("strokeWidth", 0.5);
+
       d3.select("#circle_" + i)
 	.attr("r", regionRenderer.starScale(0.01*AU));
     }
 
-    function mouseOut(d, i){
+    function handleMouseOut(d, i){
       var id = "STARTEXT_"+i;
+      var id2 = "STARPARSEC_" + i;
       d3.select("#" + id).remove();
+      d3.select("#" + id2).remove();
 
       d3.select("#circle_" + i)
 	.attr("r", regionRenderer.starScale(d.star.radius*AU));
     }
 
-    regionRenderer.render({
-      mouseOver:mouseOver,
-      mouseOut:mouseOut
+    function handleClick(d, i){
+      self.emit("starClicked", d.star);
+    }
+    
+
+    d3.select(window).on("resize", function(){
+      mapSize = Math.min(window.innerWidth, window.innerHeight);
+      hmapSize = Math.round(mapSize*0.5);
+      regionRenderer.mapSize = mapSize;
+      regionRenderer.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
     });
+
+    this.hidden = function(){
+      return dom.classed("hidden");
+    };
+
+    this.show = function(enable){
+      enable = (enable === false) ? false : true;
+      if (enable && dom.classed("hidden")){
+	dom.classed("hidden", false);
+      } else if (enable === false && dom.classed("hidden") === false){
+	dom.classed("hidden", true);
+      }
+    };
+
+    this.generate = function(options){
+      options = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
+      regionRenderer.region = new Region(options);
+      regionRenderer.region.generate();
+      regionRenderer.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    };
+  }
+  RegionCtrl.prototype.__proto__ = Emitter.prototype;
+  RegionCtrl.prototype.constructor = RegionCtrl;
+
+
+
+  // -------------------------------------------------------------------------------------------------------------------------------------
+
+  function StarSystemCtrl(domID, options){
+    Emitter.call(this);
+    var self = this;
+    var dom = d3.select("#" + domID);
+    var svg = d3.select("#" + domID)
+      .append("svg")
+      .attr("width", "100%")
+      .attr("height", "100%");
+    var mapSize = Math.min(window.innerWidth, window.innerHeight);
+    var hmapSize = Math.round(mapSize*0.5);
+
+    var map = svg.append("g")
+      .attr("transform", "translate(" + hmapSize + "," + hmapSize + ") scale(0.9)");
+
+    var starRenderer = new StarSystemRenderer(map);
+    starRenderer.mapSize = Math.min(window.innerWidth, window.innerHeight);
+
+    d3.select(window).on("resize", function(){
+      mapSize = Math.min(window.innerWidth, window.innerHeight);
+      hmapSize = Math.round(mapSize*0.5);
+      starRenderer.mapSize = mapSize;
+      starRenderer.render();
+    });
+
+    this.hidden = function(){
+      return dom.classed("hidden");
+    };
+
+    this.show = function(enable){
+      enable = (enable === false) ? false : true;
+      if (enable && dom.classed("hidden")){
+	dom.classed("hidden", false);
+      } else if (enable === false && dom.classed("hidden") === false){
+	dom.classed("hidden", true);
+      }
+    };
+
+    this.setStar = function(star){
+      starRenderer.star = star;
+      starRenderer.render();
+    };
+  }
+  StarSystemCtrl.prototype.__proto__ = Emitter.prototype;
+  StarSystemCtrl.prototype.constructor = StarSystemCtrl;
+
+
+
+  // -------------------------------------------------------------------------------------------------------------------------------------
+  // MAIN
+
+  ready(function(){
+    var regionRadius = 21;
+    var seed = "Bryan Miller";
+
+    var starsystemctrl = new StarSystemCtrl("StarsystemPanel");
+    var regionctrl = new RegionCtrl("RegionPanel");
+    regionctrl.on("starClicked", function(s){
+      regionctrl.show(false);
+      starsystemctrl.show(true);
+      starsystemctrl.setStar(s);
+    });
+
+    var mainmenu = new MainMenu("MainMenu", {
+      menuclass:"menu",
+      textoffset: 2,
+      x: 10,
+      y: 20,
+      padding: 4,
+      width:128,
+      height:16,
+      events:[
+	{name: "Generate Region", event:"genRegion"},
+	{name: "Load Region", event:"loadRegion"},
+	{name: "Quit", event:"quit"}
+      ]
+    });
+
+    mainmenu.on("genRegion", function(){
+      mainmenu.show(false);
+      regionctrl.show(true);
+      regionctrl.generate({
+	seed: seed,
+	radius: regionRadius,
+	zmin: -2,
+	zmax: 2,
+	systemAtOrigin: true
+      });
+    });
+
+    mainmenu.on("loadRegion", function(){console.log("Load Region!");});
+    mainmenu.on("quit", function(){console.log("Quit! ... Ummm, not yet");});
   });
 
 });

@@ -39,27 +39,51 @@ a.button.pill {
     border-radius: 5px; }
 
 
+.menu {
+    fill: #09F;
+    stroke: none;
+}
+
+.menu text{
+    font: 10px sans-serif;
+    fill: #018
+}
+
+.menu:hover {
+    fill: #0DF;
+}
+
+.menu:hover text{
+    fill: #009;
+}
 
 
 
 
-.region-axis text {
+
+.range-axis text {
   font: 10px sans-serif;
   fill: #09F;
 }
 
-.region-axis line,
-.region-axis circle {
+.range-axis line,
+.range-axis circle {
     fill: none;
-    strokeWidth: 2;
+    strokeWidth: 1;
     stroke: #09F;
     stroke-dasharray: 1,4;
 }
 
-.region-axis circle:last-of-type {
+.range-axis circle:last-of-type{
+    fill: none;
     strokeWidth: 2;
     stroke: #0DF;
     stroke-dasharray: none;
+}
+
+.compass-overlay text{
+    font: 10px sans-serif;
+    fill: #09F;
 }
 
 .star{
