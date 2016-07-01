@@ -76,6 +76,26 @@ requirejs([
 	}
       },
 
+      "displayMode":{
+        enumerate:true,
+        get:function(){return displayMode;},
+        set:function(mode){
+          if (typeof(mode) !== 'number'){
+            throw new TypeError("Expected a number.");
+          }
+          mode = Math.floor(mode);
+          for (var i=0; i < RegionRenderer.DISPLAY_TYPES.length; i++){
+            var type = RegionRenderer.DISPLAY_TYPES[i];
+            if (RegionRenderer.DISPLAY_INFO[type] === mode){
+              displayMode = mode;
+              return;
+            }
+          }
+
+          throw new RangeError("Unknown display mode.");
+        }
+      },
+
       "mapScale":{
 	enumerate:true,
 	get:function(){return mapScale;}
@@ -110,7 +130,19 @@ requirejs([
 
       svg.attr("transform", "translate(" + hmapSize + "," + hmapSize + ")").call(zoom);
       scroller.selectAll("*").remove();
-      var data = r.systems;
+      var data = null;
+      switch (displayMode){
+      case 0:
+        data = r.systems; break;
+      case 1:
+        data = r.emptySystems; break;
+      case 2:
+        data = r.nonEmptySystems; break;
+      case 3:
+        data = r.terrestrialSystems; break;
+      case 4:
+        data = r.habitableSystems; break;
+      }
 	
       scroller.append("rect")
 	.attr("x", mapScale(-r.radius)).attr("y", mapScale(-r.radius))
@@ -174,6 +206,14 @@ requirejs([
     };
   }
   RegionRenderer.prototype.constructor = RegionRenderer;
+  RegionRenderer.DISPLAY_INFO = {
+    "ALL": 0,
+    "NOBODIES": 1,
+    "BODIES": 2,
+    "TERRESTRIAL": 3,
+    "BREATHABLE": 4
+  };
+  RegionRenderer.DISPLAY_TYPES = Object.keys(RegionRenderer.DISPLAY_INFO);
 
 
 
@@ -365,35 +405,6 @@ requirejs([
       .attr("height", "100%");
     var d3m = new D3Menu(svg, options);
     d3m.show(true);
-
-    /*var btns = svg.selectAll("g")
-      .data(options.events)
-      .enter()
-      .append("g")
-      .attr("class", options.menuclass)
-      .attr("transform", function (d, i){
-	var x = options.x;
-	var y = options.y + (i*(options.height + options.padding));
-	return "translate(" + x + ", " + y + ")";
-      });
-
-    btns.append("rect")
-      .attr("x", 0)
-      .attr("y", 0)
-      .attr("width", options.width)
-      .attr("height", options.height);
-    
-    btns.append("text")
-      .attr("dominant-baseline", "middle")
-      .attr("x", options.x + options.textoffset)
-      .attr("y", options.height*0.5)
-      .text(function(d){
-	return d.name;
-      });
-
-    btns.on("click", function(d){
-      self.emit(d.event);
-    });*/
     
 
     this.hidden = function(){
@@ -425,6 +436,16 @@ requirejs([
       .append("svg")
       .attr("width", "100%")
       .attr("height", "100%");
+    var mapSize = Math.min(window.innerWidth, window.innerHeight);
+    var hmapSize = Math.round(mapSize*0.5);
+
+    var map = svg.append("g")
+      .attr("transform", "translate(" + hmapSize + "," + hmapSize + ") scale(0.9)");
+
+    var regionRenderer = new RegionRenderer(map);
+    regionRenderer.pixelsPerParsec = 12;
+    regionRenderer.mapSize = Math.min(window.innerWidth, window.innerHeight);
+
     var d3m = new D3Menu(svg, {
       menuclass:"menu",
       textoffset: 2,
@@ -441,17 +462,69 @@ requirejs([
 	    self.emit(event);
 	  }
 	},
+        {
+          name: "All",
+          event: "allStars",
+          callback:function(event){
+            regionRenderer.displayMode = 0;
+            regionRenderer.render({
+	      mouseOver:handleMouseOver,
+	      mouseOut:handleMouseOut,
+	      click:handleClick
+            });
+          }
+        },
+        {
+          name: "Empty",
+          event: "emptyStars",
+          callback:function(event){
+            regionRenderer.displayMode = 1;
+            regionRenderer.render({
+	      mouseOver:handleMouseOver,
+	      mouseOut:handleMouseOut,
+	      click:handleClick
+            });
+          }
+        },
+        {
+          name: "Non-Empty",
+          event: "nonemptyStars",
+          callback:function(event){
+            regionRenderer.displayMode = 2;
+            regionRenderer.render({
+	      mouseOver:handleMouseOver,
+	      mouseOut:handleMouseOut,
+	      click:handleClick
+            });
+          }
+        },
+        {
+          name: "Terrestrial",
+          event: "terrestrialStars",
+          callback:function(event){
+            regionRenderer.displayMode = 3;
+            regionRenderer.render({
+	      mouseOver:handleMouseOver,
+	      mouseOut:handleMouseOut,
+	      click:handleClick
+            });
+          }
+        },
+        {
+          name: "Habitable",
+          event: "habitableWorlds",
+          callback:function(event){
+            regionRenderer.displayMode = 4;
+            regionRenderer.render({
+	      mouseOver:handleMouseOver,
+	      mouseOut:handleMouseOut,
+	      click:handleClick
+            });
+          }
+        }
       ]
     });
-    var mapSize = Math.min(window.innerWidth, window.innerHeight);
-    var hmapSize = Math.round(mapSize*0.5);
-
-    var map = svg.append("g")
-      .attr("transform", "translate(" + hmapSize + "," + hmapSize + ") scale(0.9)");
-
-    var regionRenderer = new RegionRenderer(map);
-    regionRenderer.pixelsPerParsec = 12;
-    regionRenderer.mapSize = Math.min(window.innerWidth, window.innerHeight);
+    
 
     function handleMouseOver(d, i){
       var star = d.star;
@@ -541,9 +614,27 @@ requirejs([
     var self = this;
     var dom = d3.select("#" + domID);
     var svg = d3.select("#" + domID)
-      .append("svg")
-      .attr("width", "100%")
-      .attr("height", "100%");
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%");
+    var d3m = new D3Menu(svg, {
+      menuclass:"menu",
+      textoffset: 2,
+      x: 10,
+      y: 20,
+      padding: 4,
+      width:128,
+      height:16,
+      events:[
+	{
+	  name: "Back",
+	  event:"region",
+	  callback:function(event){
+	    self.emit(event);
+	  }
+	},
+      ]
+    });
     var mapSize = Math.min(window.innerWidth, window.innerHeight);
     var hmapSize = Math.round(mapSize*0.5);
 
@@ -568,8 +659,10 @@ requirejs([
       enable = (enable === false) ? false : true;
       if (enable && dom.classed("hidden")){
 	dom.classed("hidden", false);
+        d3m.show(true);
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
+        d3m.show(false);
       }
     };
 
@@ -591,6 +684,11 @@ requirejs([
     var seed = "Bryan Miller";
 
     var starsystemctrl = new StarSystemCtrl("StarsystemPanel");
+    starsystemctrl.on("region", function(){
+      starsystemctrl.show(false);
+      regionctrl.show(true);
+    });
+    
     var regionctrl = new RegionCtrl("RegionPanel");
     regionctrl.on("starClicked", function(s){
       regionctrl.show(false);

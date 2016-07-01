@@ -85,7 +85,7 @@
     ]
   };
 
-  function GenerateStar(rng, companionProbability, supportGardenWorlds, forceBreathable, depth){
+  function GenerateStar(rng, seed, companionProbability, supportGardenWorlds, forceBreathable, depth){
     if (typeof(depth) !== 'number'){
       depth = 0;
     }
@@ -96,7 +96,7 @@
 
     var cp = companionProbability * 0.01;
     var s = new Star({
-      seed: rng.generateUUID(),
+      seed: seed,
       supportGardenWorlds: supportGardenWorlds
     });
 
@@ -222,52 +222,108 @@
 	get:function(){return systems.length;}
       },
 
-      "systemsWithPlanets":{
-	enumerate: true,
-	get:function(){
-	  var count = 0;
-	  for (var i=0; i < systems.length; i++){
-	    if (systems[i].star.hasPlanets === true){
-	      count += 1;
-	    }
-	  }
-	  return count;
-	}
+      "emptySystemCount":{
+        enumerate: true,
+        get:function(){
+          var count = 0;
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.stellarBodyCount <= 0){
+              count += 1;
+            }
+          }
+          return count;
+        }
       },
 
-      "planetCount":{
-	enumerate: true,
-	get:function(){
-	  var count = 0;
-	  for (var i=0; i < systems.length; i++){
-	    count += systems[i].star.planetCount;
-	  }
-	  return count;
-	}
+      "emptySystems":{
+        enumerate: true,
+        get:function(){
+          var sys = [];
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.stellarBodyCount <= 0){
+              sys.push(WrapSysInformation(systems[i]));
+            }
+          }
+          return sys;
+        }
       },
 
-      "systemsWithBreathableWorlds":{
-	enumerate: true,
-	get:function(){
-	  var count = 0;
-	  for (var i=0; i < systems.length; i++){
-	    if (systems[i].star.hasBreathableWorlds === true){
-	      count += 1;
-	    }
-	  }
-	  return count;
-	}
+      "nonEmptySystemCount":{
+        enumerate: true,
+        get:function(){
+          var count = 0;
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.stellarBodyCount > 0){
+              count += 1;
+            }
+          }
+          return count;
+        }
       },
 
-      "breathableWorldCount":{
-	enumerate: true,
-	get:function(){
-	  var count = 0;
-	  for (var i=0; i < systems.length; i++){
-	    count += systems[i].star.breathableWorldCount;
-	  }
-	  return count;
-	}
+      "nonEmptySystems":{
+        enumerate: true,
+        get:function(){
+          var sys = [];
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.stellarBodyCount > 0){
+              sys.push(WrapSysInformation(systems[i]));
+            }
+          }
+          return sys;
+        }
+      },
+
+      "terrestrialSystemCount":{
+        enumerate: true,
+        get:function(){
+          var count = 0;
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.terrestrialCount > 0){
+              count += 1;
+            }
+          }
+          return count;
+        }
+      },
+
+      "terrestrialSystems":{
+        enumerate: true,
+        get:function(){
+          var sys = [];
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.terrestrialCount > 0){
+              sys.push(WrapSysInformation(systems[i]));
+            }
+          }
+          return sys;
+        }
+      },
+
+      "habitableSystemCount":{
+        enumerate: true,
+        get:function(){
+          var count = 0;
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.hasBreathable === true){
+              count += 1;
+            }
+          }
+          return count;
+        }
+      },
+
+      "habitableSystems":{
+        enumerate: true,
+        get:function(){
+          var sys = [];
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.hasBreathable === true){
+              sys.push(WrapSysInformation(systems[i]));
+            }
+          }
+          return sys;
+        }
       }
     });
 
@@ -325,6 +381,60 @@
       return JSON.stringify(reg);
     };
 
+    this.addStar = function(ops){
+      ops = (typeof(ops) === typeof({})) ? JSON.parse(JSON.stringify(ops)) : {};
+      if (!(ops.star instanceof Star)){
+        if (typeof(ops.seed) !== 'string'){
+          ops.seed = rng.generateUUID();
+        }
+        if (typeof(ops.companionProbability) !== 'number'){
+          ops.companionProbability = options.companionProbability;
+        }
+      }
+      if (typeof(ops.r) !== 'number'){
+        ops.r = rng.value(0, radius);
+      } else if (ops.r < 0 || ops.r > radius){
+        throw new RangeError("Given radius is out of bounds.");
+      }
+
+      if (typeof(ops.a) !== 'number'){
+        ops.a = rng.value(0, 2*Math.PI);
+      } else {
+        ops.a = Math.abs(ops.a%(2*Math.PI));
+      }
+
+      if (typeof(ops.z) !== 'number'){
+        ops.z = Math.floor(horizon+rng.value(-(height*0.5), (height*0.5)));
+      } else {
+        if (ops.z < (horizon-(height*0.5)) || ops.z > (horizon+(height*0.5))){
+          throw new RangeError("Given Z depth is out of bounds.");
+        }
+      }
+
+      var store = true;
+      for (var _i=0; _i < systems.length; _i++){
+	if (DistanceBetween(ops.r, ops.a, systems[_i].r, systems[_i].a) < 1.0){
+	  store = false;
+	}
+      }
+
+      if (store){
+        systems.push({
+          r: ops.r,
+	  a: ops.a,
+	  z: ops.z,
+	  star: (ops.star instanceof Star) ?
+            ops.star :
+            GenerateStar(
+	    rng,
+            ops.seed,
+	    ops.companionProbability,
+	    false,
+	    false
+	  )
+        });
+      }
+    };
 
     this.generate = function(){
       if (systems.length > 0){return;} // Only generate the region once.
@@ -340,21 +450,16 @@
       for (var i=0; i < sysCount; i++){
 	if (satisfiedOrigin === false){
 	  satisfiedOrigin = true;
-	  systems.push({
-	    r: 0,
-	    a: 0,
-	    z: 0,
-	    star:GenerateStar(
-	      rng,
-	      options.companionProbability,
-	      false,
-	      false
-	    )
-	  });
-	  continue;
-	}
+          this.addStar({
+            r: 0,
+            a: 0
+          });
+	  //continue;
+	} else {
+          this.addStar();
+        }
 
-	var r = rng.value(0, radius);
+	/*var r = rng.value(0, radius);
 	var a = rng.value(0, 2*Math.PI);
 	var store = true;
 	for (var _i=0; _i < systems.length; _i++){
@@ -375,7 +480,7 @@
 	      false
 	    )
 	  });
-	} // NOTE: I could shift the i variable back one, but, assuming low density systems, this shouldn't drop too many stars.
+	}*/ // NOTE: I could shift the i variable back one, but, assuming low density systems, this shouldn't drop too many stars.
       } 
     };
 
@@ -383,46 +488,16 @@
       if (index < 0 || index >= systems.length){
 	throw new RangeError("Index out of bounds.");
       }
-      return {
-	r: systems[index].r,
-	a: systems[index].a,
-	z: systems[index].z,
-	star: systems[index].star
-      };
+      return WrapSysInformation(systems[index]);
     };
 
     this.getStarByName = function(name){
       for (var index=0; index < systems.length; index++){
 	if (systems[index].star.name === name){
-	  return {
-	    r: systems[index].r,
-	    a: systems[index].a,
-	    z: systems[index].z,
-	    star: systems[index].star
-	  };
+	  return WrapSysInformation(systems[index]);
 	}
       }
       return null;
-    };
-
-    this.getStarsWithPlanets = function(){
-      var swp = [];
-      for (var i=0; i < systems.length; i++){
-	if (systems[i].star.hasPlanets === true){
-	  swp.push(WrapSysInformation(systems[i]));
-	}
-      }
-      return swp;
-    };
-
-    this.StarsWithBreathableWorlds = function(){
-      var swp = [];
-      for (var i=0; i < systems.length; i++){
-	if (systems[i].star.hasBreathableWorlds === true){
-	  swp.push(WrapSysInformation(systems[i]));
-	}
-      }
-      return swp;
     };
   }
   Region.prototype.constructor = Region;

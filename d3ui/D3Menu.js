@@ -68,6 +68,7 @@
 
       else if (enable === false && menu !== null){
 	menu.remove();
+        menu = null;
       }
     };
   }
