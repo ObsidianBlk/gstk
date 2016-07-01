@@ -8,8 +8,9 @@ requirejs([
   'kit/PRng',
   'kit/space/Region',
   'kit/space/Star',
-  'kit/space/StellarBody'
-], function(Emitter, PRng, Region, Star, StellarBody){
+  'kit/space/StellarBody',
+  'd3ui/D3Menu'
+], function(Emitter, PRng, Region, Star, StellarBody, D3Menu){
 
   // --------------------------------
   // Defining a "Document Ready" function. This is only garanteed to work on Chrome at the moment.
@@ -362,8 +363,10 @@ requirejs([
     var svg = mm.append("svg")
       .attr("width", "100%")
       .attr("height", "100%");
+    var d3m = new D3Menu(svg, options);
+    d3m.show(true);
 
-    var btns = svg.selectAll("g")
+    /*var btns = svg.selectAll("g")
       .data(options.events)
       .enter()
       .append("g")
@@ -390,7 +393,7 @@ requirejs([
 
     btns.on("click", function(d){
       self.emit(d.event);
-    });
+    });*/
     
 
     this.hidden = function(){
@@ -401,8 +404,10 @@ requirejs([
       enable = (enable === false) ? false : true;
       if (enable && mm.classed("hidden")){
 	mm.classed("hidden", false);
+	d3m.show(true);
       } else if (enable === false && mm.classed("hidden") === false){
 	mm.classed("hidden", true);
+	d3m.show(false);
       }
     };
   }
@@ -420,6 +425,24 @@ requirejs([
       .append("svg")
       .attr("width", "100%")
       .attr("height", "100%");
+    var d3m = new D3Menu(svg, {
+      menuclass:"menu",
+      textoffset: 2,
+      x: 10,
+      y: 20,
+      padding: 4,
+      width:128,
+      height:16,
+      events:[
+	{
+	  name: "Back",
+	  event:"mainmenu",
+	  callback:function(event){
+	    self.emit(event);
+	  }
+	},
+      ]
+    });
     var mapSize = Math.min(window.innerWidth, window.innerHeight);
     var hmapSize = Math.round(mapSize*0.5);
 
@@ -488,8 +511,10 @@ requirejs([
       enable = (enable === false) ? false : true;
       if (enable && dom.classed("hidden")){
 	dom.classed("hidden", false);
+	d3m.show(true);
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
+	d3m.show(false);
       }
     };
 
@@ -572,6 +597,10 @@ requirejs([
       starsystemctrl.show(true);
       starsystemctrl.setStar(s);
     });
+    regionctrl.on("mainmenu", function(){
+      regionctrl.show(false);
+      mainmenu.show(true);
+    });
 
     var mainmenu = new MainMenu("MainMenu", {
       menuclass:"menu",
@@ -582,9 +611,9 @@ requirejs([
       width:128,
       height:16,
       events:[
-	{name: "Generate Region", event:"genRegion"},
-	{name: "Load Region", event:"loadRegion"},
-	{name: "Quit", event:"quit"}
+	{name: "Generate Region", event:"genRegion", callback:function(event){mainmenu.emit(event);}},
+	{name: "Load Region", event:"loadRegion", callback:function(event){mainmenu.emit(event);}},
+	{name: "Quit", event:"quit", callback:function(event){mainmenu.emit(event);}}
       ]
     });
 
