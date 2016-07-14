@@ -51,8 +51,8 @@ requirejs([
     var r = null;
 
     function zoomed() {
-      var x = d3.event.translate[0] * d3.event.scale;
-      var y = d3.event.translate[1] * d3.event.scale;
+      var x = d3.event.translate[0];
+      var y = d3.event.translate[1];
       scroller.attr("transform", "translate(" + x + ", " + y + ")scale(" + d3.event.scale + ")");
     }
     var zoom = d3.behavior.zoom()
@@ -224,14 +224,15 @@ requirejs([
     var mapSize = 1;
     var hmapSize = 1;
     var mapScale = d3.scale.linear().domain([0,1]).range([0,1]);
+    var starScale = d3.scale.linear().domain([0.01, 0.5]).range([0.5, 2]);
+    var bodyScale = d3.scale.linear().domain([0.1, 20]).range([0.5, 2]);
 
-    var starRenderRadius = 6;
-    var terrRenderRadius = [0.25, 0.5, 1, 2, 3];
-    var ggRenderRadius = [2, 2.75, 3.5, 4.5];
+    var gridSize = 0;
+
 
     function zoomed() {
-      var x = d3.event.translate[0] * d3.event.scale;
-      var y = d3.event.translate[1] * d3.event.scale;
+      var x = d3.event.translate[0];
+      var y = d3.event.translate[1];
       scroller.attr("transform", "translate(" + x + ", " + y + ")scale(" + d3.event.scale + ")");
     }
     var zoom = d3.behavior.zoom()
@@ -253,8 +254,12 @@ requirejs([
 	  }
 	  star = s;
 	  if (star !== null){
+	    var buff = Math.max(1, Math.round(star.fullSystemRadius*0.1));
+	    gridSize = star.fullSystemRadius + buff;
+
 	    mapScale.domain([0, star.fullSystemRadius]).range([0, hmapSize]);
 	  } else {
+	    gridSize = 0;
 	    mapScale.domain([0, 1]).range([0, hmapSize]);
 	  }
 	}
@@ -277,66 +282,106 @@ requirejs([
       }
     });
 
+    function RenderGrid(g){
+      g.append("rect")
+	.attr("x", mapScale(-gridSize)).attr("y", mapScale(-gridSize))
+	.attr("width", mapScale(gridSize*2)).attr("height", mapScale(gridSize*2))
+	.attr("fill", "#000000");
+
+      var gsf = Math.floor(gridSize);
+      var lgroup = g.append("g").attr("class", "grid");
+      lgroup.selectAll("line")
+	.data(d3.range(0, gsf, 5))
+	.enter()
+	.append("line")
+	.attr("x1", function(d){return mapScale(d);})
+	.attr("y1", mapScale(-gsf))
+	.attr("x2", function(d){return mapScale(d);})
+	.attr("y2", mapScale(gsf));
+
+      lgroup = g.append("g").attr("class", "grid");
+      lgroup.selectAll("line")
+	.data(d3.range(0, -gsf, -5))
+	.enter()
+	.append("line")
+	.attr("x1", function(d){return mapScale(d);})
+	.attr("y1", mapScale(-gsf))
+	.attr("x2", function(d){return mapScale(d);})
+	.attr("y2", mapScale(gsf));
+
+      lgroup = g.append("g").attr("class", "grid");
+      lgroup.selectAll("line")
+	.data(d3.range(0, gsf, 5))
+	.enter()
+	.append("line")
+	.attr("x1", mapScale(-gsf))
+	.attr("y1", function(d){return mapScale(d);})
+	.attr("x2", mapScale(gsf))
+	.attr("y2", function(d){return mapScale(d);});
+
+      lgroup = g.append("g").attr("class", "grid");
+      lgroup.selectAll("line")
+	.data(d3.range(0, -gsf, -5))
+	.enter()
+	.append("line")
+	.attr("x1", mapScale(-gsf))
+	.attr("y1", function(d){return mapScale(d);})
+	.attr("x2", mapScale(gsf))
+	.attr("y2", function(d){return mapScale(d);});
+    }
+
     function RenderStar(s, g){
       g.append("g")
 	.attr("class", "star " + s.type.substring(0, 1))
 	.append("circle")
-	.attr("r", starRenderRadius);
+	.attr("r", starScale(s.radius));
+      var group = null;
 
       if (s.terrestrialCount > 0){
-	var terr = g.selectAll("g")
-	  .data(s.terrestrials)
-	  .enter();
-
-	terr.append("ellipse")
+	group = g.append("g").attr("class", "orbit-terrestrial");
+	group.selectAll("ellipse")
+	  .data(s.terrestrials).enter()
+	  .append("ellipse")
 	  .attr("rx", function(d){
 	    return mapScale(d.rMin);
 	  })
 	  .attr("ry", function(d){
 	    return mapScale(d.rMax);
-	  })
-	  .attr("fill", "none")
-	  .attr("stroke", "#A37F58")
-	  .attr("strokeWidth", 0.1);
+	  });
 
-	terr.append("circle")
+	group.selectAll("circle")
+	  .data(s.terrestrials).enter()
+	  .append("circle")
 	  .attr("cy", function(d){
 	    return mapScale(d.rMax);
 	  })
 	  .attr("r", function(d){
-	    return terrRenderRadius[d.body.sizeIndex];
-	  })
-	  .attr("fill", "#A37F58")
-	  .attr("stroke", "#7D5E3C")
-	  .attr("strokeWidth", 0.1);
+	    return bodyScale(d.body.diameter);
+	  });
       }
 
       if (s.gasGiantCount > 0){
-	var gg = g.selectAll("g")
-	  .data(s.gasGiants)
-	  .enter();
+	group = g.append("g").attr("class", "orbit-gasgiant");
 
-	gg.append("ellipse")
+	group.selectAll("ellipse")
+	  .data(s.gasGiants).enter()
+	  .append("ellipse")
 	  .attr("rx", function(d){
 	    return mapScale(d.rMin);
 	  })
 	  .attr("ry", function(d){
 	    return mapScale(d.rMax);
-	  })
-	  .attr("fill", "none")
-	  .attr("stroke", "#CBF5E2")
-	  .attr("strokeWidth", 0.1);
+	  });
 
-	gg.append("circle")
+	group.selectAll("circle")
+	  .data(s.gasGiants).enter()
+	  .append("circle")
 	  .attr("cy", function(d){
 	    return mapScale(d.rMax);
 	  })
 	  .attr("r", function(d){
-	    return ggRenderRadius[d.body.sizeIndex];
-	  })
-	  .attr("fill", "#CBF5E2")
-	  .attr("stroke", "#89F5C4")
-	  .attr("strokeWidth", 0.1);
+	    return bodyScale(d.body.diameter);
+	  });
       }
 
       if (s.asteroidCount > 0){
@@ -353,19 +398,28 @@ requirejs([
 	  })
 	  .attr("fill", "none")
 	  .attr("stroke", "#CBF5E2")
-	  .attr("strokeWidth", 1.5);
+	  .attr("stroke-width", 1.5);
       }
     }
 
     this.render = function(options){
       if (star === null){return;}
 
+      var g2 = gridSize*gridSize;
+      var outerRadius = Math.sqrt(g2+g2);
+      var arc = d3.svg.arc()
+	.innerRadius(mapScale(gridSize))
+	.outerRadius(mapScale(outerRadius))
+	.startAngle(0)
+	.endAngle(360);
+
+      zoom.scale(1);
+      zoom.translate([0, 0]);
+      scroller.attr("transform", "translate(0, 0)scale(1)");
+
       svg.attr("transform", "translate(" + hmapSize + "," + hmapSize + ")").call(zoom);
       scroller.selectAll("*").remove();
-      scroller.append("rect")
-	.attr("x", mapScale(-star.fullSystemRadius)).attr("y", mapScale(-star.fullSystemRadius))
-	.attr("width", mapScale(star.fullSystemRadius*2)).attr("height", mapScale(star.fullSystemRadius*2))
-	.attr("fill", "#000000");
+      RenderGrid(scroller);
 
       var primary = scroller.append("g")
 	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");
@@ -378,16 +432,19 @@ requirejs([
 	  scroller.append("ellipse")
 	    .attr("cx", mapScale(0))
 	    .attr("cy", mapScale(0))
-	    .attr("rx", mapScale(cdata.rMin))
-	    .attr("ry", mapScale(cdata.rMax))
+	    .attr("rx", mapScale(cdata.orbit.rMin))
+	    .attr("ry", mapScale(cdata.orbit.rMax))
 	    .attr("fill", "none")
 	    .attr("stroke", "#FFDD00")
-	    .attr("strokeWidth", 1);
+	    .attr("stroke-width", 1);
 	  var surf = scroller.append("g")
-	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(cdata.rMax) + ")");
+	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(cdata.orbit.rMax) + ")");
 	  RenderStar(cdata.companion, surf);
 	}
       }
+
+      scroller.append("path")
+	.attr("d", arc);
     };
   }
   StarSystemRenderer.prototype.constructor = StarSystemRenderer;

@@ -69,14 +69,14 @@ a.button.pill {
 .range-axis line,
 .range-axis circle {
     fill: none;
-    strokeWidth: 1;
+    stroke-width: 1;
     stroke: #09F;
     stroke-dasharray: 1,4;
 }
 
 .range-axis circle:last-of-type{
     fill: none;
-    strokeWidth: 2;
+    stroke-width: 2;
     stroke: #0DF;
     stroke-dasharray: none;
 }
@@ -84,6 +84,35 @@ a.button.pill {
 .compass-overlay text{
     font: 10px sans-serif;
     fill: #09F;
+}
+
+.grid line{
+    stroke-width: 0.4;
+    stroke: #09F;
+}
+
+.orbit-terrestrial ellipse{
+    fill: none;
+    stroke: #A37F58;
+    stroke-width: 0.25;
+}
+
+.orbit-terrestrial circle{
+    fill: #A37F58;
+    stroke: #7D5E3C;
+    stroke-width: 0.75;
+}
+
+.orbit-gasgiant ellipse{
+    fill: none;
+    stroke: #CBF5E2;
+    stroke-width: 0.25;
+}
+
+.orbit-gasgiant circle{
+    fill: #CBF5E2;
+    stroke: #89F5C4;
+    stroke-width: 0.75;
 }
 
 .star{

@@ -162,6 +162,9 @@
 
   // ------------------------------------------------------------------------------------------------------------------
 
+  var E2Mile = 3959;
+  var E2KM = 6371;
+
   var ResourceValueTable = [
     {desc: "worthless", mod: -5},
     {desc: "very scant", mod: -4},
@@ -1029,6 +1032,16 @@
         "diameter":{
           enumerate: true,
           get:function(){return data.diameter;}
+        },
+
+	"diameterMiles":{
+          enumerate: true,
+          get:function(){return data.diameter*(E2Mile*2);}
+        },
+
+	"diameterKM":{
+          enumerate: true,
+          get:function(){return data.diameter*(E2KM*2);}
         },
 
         "surfaceGravity":{

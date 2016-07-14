@@ -142,6 +142,9 @@
   };
 
 
+  var AU2Mile = Number("9.296e+7");
+  var AU2KM = Number("1.496e+8");
+
   var StellarEvolutionTable = [
     {mass: 0.10, type: "M7", temp: 3100, Lmin: 0.0012, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
     {mass: 0.15, type: "M6", temp: 3200, Lmin: 0.0036, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
@@ -472,52 +475,12 @@
    * Actual Star class
    * ---------------------------------------------------------------------------- */
   function Star(options){
-    options = (typeof(options) !== typeof({})) ? {} : JSON.parse(JSON.stringify(options));
-    if (typeof(options.seed) === 'undefined'){
-      options.seed = Math.random().toString();
-    }
+    options = (typeof(options) !== typeof({})) ? {} : options;
 
-    var rng = new PRng({seed:options.seed, initDepth:5000});
+    var rng = new PRng({seed:(typeof(options.seed)!=='undefined') ? options.seed : Math.random().toString(), initDepth:5000});
     var stellarBodiesGenerated = false; // This is just a marker so stellar bodies are only created once.
     var data = null;
-
-    if (typeof(options.jsonString) === 'string'){
-      try{
-	data = JSON.parse(options.jsonString);
-      } catch (e) {
-	throw e;
-      }
-
-      if (tv4.validate(data, StarSchema) === false){
-	throw new Error(tv4.error);
-      }
-      if (typeof(data.stellarBody) !== 'undefined'){
-	try{
-	  data.stellarBody.forEach(function(sb){
-	    sb.body = new StellarBody({jsonString:sb.body});
-	  });
-	} catch (e) {
-	  throw e;
-	}
-      }
-
-      if (typeof(data.companion) !== 'undefined'){
-	try{
-	  data.companion.forEach(function(c){
-	    c.companion = new Star({jsonString:c.companion});
-	  });
-	} catch (e) {
-	  throw e;
-	}
-      }
-    }
-
-    if (data === null){
-      data = GenStar({}, rng, options);
-      data.name = rng.generateUUID();
-      // Calculating Inner and Outer Limit Radii... and Snow line.
-      CalculateLimitRadii(rng, data);
-    }
+    var primaryStar = null; // Will be set to a Star object if this star is a companion.
 
     function CountStellarBodyOfType(type){
       var count = 0;
@@ -544,9 +507,23 @@
         }
       },
 
+      "isPrimaryStar":{
+	enumerate: true,
+	get:function(){return (primaryStar === null);}
+      },
+
       "primaryStar":{
 	enumerate:true,
-	get:function(){return data.primaryStar;}
+	get:function(){return primaryStar;},
+	set:function(star){
+	  if (!(star instanceof Star)){
+	    throw new TypeError("Expected a Star object instance.");
+	  }
+	  if (star !== this){
+	    primaryStar = star;
+	    data.primaryStar = star.name;
+	  }
+	}
       },
 
       "type":{
@@ -578,6 +555,16 @@
 	get:function(){return data.radius;}
       },
 
+      "radiusMiles":{
+	enumerate:true,
+	get:function(){return data.radius*AU2Mile;}
+      },
+
+      "radiusKM":{
+	enumerate:true,
+	get:function(){return data.radius*AU2KM;}
+      },
+
       "age":{
         enumerate: true,
         get:function(){return (typeof(data.age) === 'number') ? data.age : 0;},
@@ -607,7 +594,7 @@
         }
       },
 
-      "orbit":{
+      /*"orbit":{
 	enumerate: true,
 	get:function(){return (typeof(data.orbit) !== 'undefined') ? JSON.parse(JSON.stringify(data.orbit)) : null;}
       },
@@ -615,6 +602,11 @@
       "forbiddenZone":{
 	enumerate: true,
 	get:function(){return (typeof(data.forbiddenZone) !== 'undefined') ? JSON.parse(JSON.stringify(data.forbiddenZone)) : null;}
+      },*/
+
+      "limit":{
+	enumerate: true,
+	get:function(){return (typeof(data.limit) !== 'undefined') ? JSON.parse(JSON.stringify(data.limit)) : null;}
       },
 
       "companionCount":{
@@ -1086,28 +1078,29 @@
 	}
       });
       c.companion = cmp.companion;
+      return c;
     }
 
     this.getCompanion = function(index){
       if (typeof(data.companion) === 'undefined' || (index < 0 || index >= data.companion.length)){
         throw new RangeError();
       }
-      return {
+      return WrapCompanion(data.companion[index]);/*{
 	orbit: JSON.parse(JSON.stringify(data.companion[index].orbit)),
 	forbiddenZone: JSON.parse(JSON.stringify(data.companion[index].forbiddenZone)),
 	companion: data.companion[index].companion
-      };
+      };*/
     };
 
     this.getCompanionByName = function(name){
       if (typeof(data.companion) !== 'undefined'){
 	for (var i=0; i < data.companion.length; i++){
 	  if (data.companion[i].companion.name === name){
-	    return {
+	    return WrapCompanion(data.companion[i]);/*{
 	      orbit: JSON.parse(JSON.stringify(data.companion[i].orbit)),
 	      forbiddenZone: JSON.parse(JSON.stringify(data.companion[i].forbiddenZone)),
 	      companion: data.companion[i].companion
-	    };
+	    };*/
 	  }
 	}
       }
@@ -1123,7 +1116,8 @@
           data.companion = [];
         }
         if (data.companion.length < 2){
-          var cmp = new Star(rng.generateUUID(), {
+          var cmp = new Star({
+	    seed: rng.generateUUID(),
 	    primaryStar: this,
             supportGardenWorlds: (options.supportGardenWorlds === true) ? true : false
           });
@@ -1143,8 +1137,8 @@
             orbit: CalcOrbitalInformation(rng, roll, data.mass, cmp.mass)
           };
           c.forbiddenZone = {
-            innerRadius: 0.33 * c.orbit.rmin,
-            outerRadius: 3 * c.orbit.rmax
+            innerRadius: 0.33 * c.orbit.rMin,
+            outerRadius: 3 * c.orbit.rMax
           };
           
           data.companion.push(c);
@@ -1254,6 +1248,57 @@
 
       return jsonStr;
     };
+
+
+    // ------------------------------------------------------
+    // Actually generating star HERE!
+
+    if (typeof(options.jsonString) === 'string'){
+      try{
+	data = JSON.parse(options.jsonString);
+      } catch (e) {
+	throw e;
+      }
+
+      if (tv4.validate(data, StarSchema) === false){
+	throw new Error(tv4.error);
+      }
+      if (typeof(data.stellarBody) !== 'undefined'){
+	try{
+	  data.stellarBody.forEach(function(sb){
+	    sb.body = new StellarBody({jsonString:sb.body});
+	  });
+	} catch (e) {
+	  throw e;
+	}
+      }
+
+      if (typeof(data.companion) !== 'undefined'){
+	try{
+	  data.companion.forEach(function(c){
+	    c.companion = new Star({primaryStar:this, jsonString:c.companion});
+	  });
+	} catch (e) {
+	  throw e;
+	}
+      }
+    }
+
+    if (data === null){
+      data = GenStar({}, rng, options);
+      data.name = rng.generateUUID();
+      // Calculating Inner and Outer Limit Radii... and Snow line.
+      CalculateLimitRadii(rng, data);
+    }
+
+    if (options.primaryStar instanceof Star){
+      if (typeof(data.primaryStar) === 'string' && data.primaryStar !== options.primaryStar.name){
+	console.error("Name of primary star is mismatched!");
+	//throw new Error("Name of primary star is mismatched!");
+      }
+      data.primaryStar = options.primaryStar.name;
+      primaryStar = options.primaryStar;
+    }
   }
   Star.prototype.constructor = Star;
 
