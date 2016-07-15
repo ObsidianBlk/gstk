@@ -725,7 +725,7 @@
 	}
       },
 
-      "asteroidCountCount":{
+      "asteroidCount":{
 	enumerate: true,
 	get:function(){
 	  return CountStellarBodyOfType(1);

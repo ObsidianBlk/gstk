@@ -86,33 +86,46 @@ a.button.pill {
     fill: #09F;
 }
 
-.grid line{
+.grid {
+    fill: none;
     stroke-width: 0.4;
     stroke: #09F;
+}
+
+.grid text{
+    font: 10px sans-serif;
+    fill: #09F;
 }
 
 .orbit-terrestrial ellipse{
     fill: none;
     stroke: #A37F58;
-    stroke-width: 0.25;
+    stroke-width: 1;
 }
 
 .orbit-terrestrial circle{
     fill: #A37F58;
     stroke: #7D5E3C;
-    stroke-width: 0.75;
+    stroke-width: 1;
 }
 
 .orbit-gasgiant ellipse{
     fill: none;
     stroke: #CBF5E2;
-    stroke-width: 0.25;
+    stroke-width: 1.5;
 }
 
 .orbit-gasgiant circle{
     fill: #CBF5E2;
     stroke: #89F5C4;
-    stroke-width: 0.75;
+    stroke-width: 1;
+}
+
+.orbit-asteroids ellipse{
+    fill: none;
+    stroke: #CBF5E2;
+    stroke-width: 3;
+    stroke-dasharray: 3,2;
 }
 
 .star{

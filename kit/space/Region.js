@@ -324,6 +324,32 @@
           }
           return sys;
         }
+      },
+
+      "asteroidSystemCount":{
+        enumerate: true,
+        get:function(){
+          var count = 0;
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.hasAsteroid === true){
+              count += 1;
+            }
+          }
+          return count;
+        }
+      },
+
+      "asteroidSystems":{
+        enumerate: true,
+        get:function(){
+          var sys = [];
+          for (var i=0; i < systems.length; i++){
+            if (systems[i].star.hasAsteroid === true){
+              sys.push(WrapSysInformation(systems[i]));
+            }
+          }
+          return sys;
+        }
       }
     });
 

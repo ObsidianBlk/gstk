@@ -38,6 +38,30 @@ requirejs([
     return name;
   }
 
+
+  function DOMEventNotifier(){
+    Emitter.call(this);
+    d3.select(window).on("resize", (function(){
+      this.emit("resize", window.innerWidth, window.innerHeight);
+    }).bind(this));
+
+    d3.select("body").on("keydown", (function(){
+      this.emit("keydown", d3.event);
+    }).bind(this));
+
+    d3.select("body").on("keyup", (function(){
+      this.emit("keyup", d3.event);
+    }).bind(this));
+  }
+  DOMEventNotifier.prototype.__proto__ = Emitter.prototype;
+  DOMEventNotifier.prototype.constructor = DOMEventNotifier;
+  var DOMEN = new DOMEventNotifier();
+
+
+
+
+
+
   function RegionRenderer(svg){
 
     var scroller = svg.append("g");
@@ -142,6 +166,8 @@ requirejs([
         data = r.terrestrialSystems; break;
       case 4:
         data = r.habitableSystems; break;
+      case 5:
+	data = r.asteroidSystems; break;
       }
 	
       scroller.append("rect")
@@ -211,7 +237,8 @@ requirejs([
     "NOBODIES": 1,
     "BODIES": 2,
     "TERRESTRIAL": 3,
-    "BREATHABLE": 4
+    "BREATHABLE": 4,
+    "ASTEROIDS": 5
   };
   RegionRenderer.DISPLAY_TYPES = Object.keys(RegionRenderer.DISPLAY_INFO);
 
@@ -224,20 +251,41 @@ requirejs([
     var mapSize = 1;
     var hmapSize = 1;
     var mapScale = d3.scale.linear().domain([0,1]).range([0,1]);
-    var starScale = d3.scale.linear().domain([0.01, 0.5]).range([0.5, 2]);
-    var bodyScale = d3.scale.linear().domain([0.1, 20]).range([0.5, 2]);
+    var starScale = d3.scale.linear().domain([0.01, 0.5]).range([4, 6]);
+    var bodyScale = d3.scale.linear().domain([0.1, 20]).range([2, 4]);
 
-    var gridSize = 0;
+    var renderScale = 1.0;
+    var renderRadius = 0;
+
+    var axis = null;
+    var xAxis = d3.svg.axis().scale(mapScale);
+    var yAxis = d3.svg.axis().scale(mapScale).orient("right");
+
+    var scaleGridPos = [0, 0];
 
 
+    var self = this;
     function zoomed() {
       var x = d3.event.translate[0];
       var y = d3.event.translate[1];
-      scroller.attr("transform", "translate(" + x + ", " + y + ")scale(" + d3.event.scale + ")");
+
+      renderScale = d3.event.scale;
+      renderRadius = star.fullSystemRadius*renderScale;
+      var buff = Math.max(1, Math.round(renderRadius*0.1));
+      UpdateMapScale();
+
+      scroller.attr("transform", "translate(" + x + ", " + y + ")");
+      self.render();
     }
     var zoom = d3.behavior.zoom()
-      .scaleExtent([0.25, 4])
+      .scaleExtent([0.25, 1])
       .on("zoom", zoomed);
+
+    function UpdateMapScale(){
+      var radius = (star !== null) ? renderRadius : 1;
+      mapScale.domain([0, radius]).range([0, hmapSize]);
+      UpdateScaleGrid();
+    }
 
     Object.defineProperties(this, {
       "star":{
@@ -254,14 +302,14 @@ requirejs([
 	  }
 	  star = s;
 	  if (star !== null){
-	    var buff = Math.max(1, Math.round(star.fullSystemRadius*0.1));
-	    gridSize = star.fullSystemRadius + buff;
-
-	    mapScale.domain([0, star.fullSystemRadius]).range([0, hmapSize]);
-	  } else {
-	    gridSize = 0;
-	    mapScale.domain([0, 1]).range([0, hmapSize]);
+	    zoom.scaleExtent([1/star.fullSystemRadius, 1]);
+	    if (star.fullSystemRadius < renderRadius || renderRadius === 0){
+	      renderRadius = star.fullSystemRadius;
+	      renderScale = 1.0;
+	      zoom.scale(1.0);
+	    }
 	  }
+	  UpdateMapScale();
 	}
       },
 
@@ -272,62 +320,61 @@ requirejs([
 	  if (typeof(size) === 'number' && size > 0){
 	    mapSize = size;
 	    hmapSize = Math.round(mapSize*0.5);
-	    if (star !== null){
-	      mapScale.domain([0, star.fullSystemRadius]).range([0, hmapSize]);
-	    } else {
-	      mapScale.domain([0, 1]).range([0, hmapSize]);
-	    }
+	    UpdateMapScale();
+	  }
+	}
+      },
+
+      "scaleGridShowing":{
+	enumerate:true,
+	get:function(){return (axis !== null);},
+	set:function(enable){
+	  if (enable === false && axis !== null){
+	    axis.remove();
+	    axis = null;
+	  } else if (axis === null){
+	    axis = svg.append("g")
+	      .attr("id", "axis")
+	      .attr("class", "grid")
+	      .attr("transform", "translate(" + scaleGridPos[0] + ", " + scaleGridPos[1] + ")");
+	    axis.append("g").attr("id", "xaxis").call(xAxis);
+	    axis.append("g").attr("id", "yaxis").call(yAxis);
 	  }
 	}
       }
     });
 
-    function RenderGrid(g){
-      g.append("rect")
-	.attr("x", mapScale(-gridSize)).attr("y", mapScale(-gridSize))
-	.attr("width", mapScale(gridSize*2)).attr("height", mapScale(gridSize*2))
-	.attr("fill", "#000000");
+    function UpdateScaleGrid(){
+      if (axis !== null){
+	axis.select("#xaxis").call(xAxis);
+	axis.select("#yaxis").call(yAxis);
+      }
+    }
 
-      var gsf = Math.floor(gridSize);
-      var lgroup = g.append("g").attr("class", "grid");
-      lgroup.selectAll("line")
-	.data(d3.range(0, gsf, 5))
-	.enter()
-	.append("line")
-	.attr("x1", function(d){return mapScale(d);})
-	.attr("y1", mapScale(-gsf))
-	.attr("x2", function(d){return mapScale(d);})
-	.attr("y2", mapScale(gsf));
+    function RenderOrbits(g, objs, clsname, noCircle){
+      noCircle = (noCircle === true) ? true : false;
+      var group = g.append("g").attr("class", clsname);
+      group.selectAll("ellipse")
+	.data(objs).enter()
+	.append("ellipse")
+	.attr("rx", function(d){
+	  return mapScale(d.rMin);
+	})
+	.attr("ry", function(d){
+	  return mapScale(d.rMax);
+	});
 
-      lgroup = g.append("g").attr("class", "grid");
-      lgroup.selectAll("line")
-	.data(d3.range(0, -gsf, -5))
-	.enter()
-	.append("line")
-	.attr("x1", function(d){return mapScale(d);})
-	.attr("y1", mapScale(-gsf))
-	.attr("x2", function(d){return mapScale(d);})
-	.attr("y2", mapScale(gsf));
-
-      lgroup = g.append("g").attr("class", "grid");
-      lgroup.selectAll("line")
-	.data(d3.range(0, gsf, 5))
-	.enter()
-	.append("line")
-	.attr("x1", mapScale(-gsf))
-	.attr("y1", function(d){return mapScale(d);})
-	.attr("x2", mapScale(gsf))
-	.attr("y2", function(d){return mapScale(d);});
-
-      lgroup = g.append("g").attr("class", "grid");
-      lgroup.selectAll("line")
-	.data(d3.range(0, -gsf, -5))
-	.enter()
-	.append("line")
-	.attr("x1", mapScale(-gsf))
-	.attr("y1", function(d){return mapScale(d);})
-	.attr("x2", mapScale(gsf))
-	.attr("y2", function(d){return mapScale(d);});
+      if (noCircle === false){
+	group.selectAll("circle")
+	  .data(objs).enter()
+	  .append("circle")
+	  .attr("cy", function(d){
+	    return mapScale(d.rMax);
+	  })
+	  .attr("r", function(d){
+	    return bodyScale(d.body.diameter);
+	  });
+      }
     }
 
     function RenderStar(s, g){
@@ -335,91 +382,35 @@ requirejs([
 	.attr("class", "star " + s.type.substring(0, 1))
 	.append("circle")
 	.attr("r", starScale(s.radius));
-      var group = null;
 
       if (s.terrestrialCount > 0){
-	group = g.append("g").attr("class", "orbit-terrestrial");
-	group.selectAll("ellipse")
-	  .data(s.terrestrials).enter()
-	  .append("ellipse")
-	  .attr("rx", function(d){
-	    return mapScale(d.rMin);
-	  })
-	  .attr("ry", function(d){
-	    return mapScale(d.rMax);
-	  });
-
-	group.selectAll("circle")
-	  .data(s.terrestrials).enter()
-	  .append("circle")
-	  .attr("cy", function(d){
-	    return mapScale(d.rMax);
-	  })
-	  .attr("r", function(d){
-	    return bodyScale(d.body.diameter);
-	  });
+	RenderOrbits(g, s.terrestrials, "orbit-terrestrial");
       }
 
       if (s.gasGiantCount > 0){
-	group = g.append("g").attr("class", "orbit-gasgiant");
-
-	group.selectAll("ellipse")
-	  .data(s.gasGiants).enter()
-	  .append("ellipse")
-	  .attr("rx", function(d){
-	    return mapScale(d.rMin);
-	  })
-	  .attr("ry", function(d){
-	    return mapScale(d.rMax);
-	  });
-
-	group.selectAll("circle")
-	  .data(s.gasGiants).enter()
-	  .append("circle")
-	  .attr("cy", function(d){
-	    return mapScale(d.rMax);
-	  })
-	  .attr("r", function(d){
-	    return bodyScale(d.body.diameter);
-	  });
+	RenderOrbits(g, s.gasGiants, "orbit-gasgiant");
       }
 
       if (s.asteroidCount > 0){
-	var a = g.selectAll("g")
-	  .data(s.asteroids)
-	  .enter();
-
-	a.append("ellipse")
-	  .attr("rx", function(d){
-	    return mapScale(d.rMin);
-	  })
-	  .attr("ry", function(d){
-	    return mapScale(d.rMax);
-	  })
-	  .attr("fill", "none")
-	  .attr("stroke", "#CBF5E2")
-	  .attr("stroke-width", 1.5);
+	RenderOrbits(g, s.asteroids, "orbit-asteroids", true);
       }
     }
 
     this.render = function(options){
       if (star === null){return;}
 
-      var g2 = gridSize*gridSize;
-      var outerRadius = Math.sqrt(g2+g2);
-      var arc = d3.svg.arc()
-	.innerRadius(mapScale(gridSize))
-	.outerRadius(mapScale(outerRadius))
-	.startAngle(0)
-	.endAngle(360);
-
-      zoom.scale(1);
-      zoom.translate([0, 0]);
-      scroller.attr("transform", "translate(0, 0)scale(1)");
-
-      svg.attr("transform", "translate(" + hmapSize + "," + hmapSize + ")").call(zoom);
+      svg.call(zoom);
       scroller.selectAll("*").remove();
-      RenderGrid(scroller);
+      
+      scroller.append("circle")
+	.attr("r", mapScale(star.fullSystemRadius))
+	.attr("stroke", "none")
+	.attr("fill", "#000");
+      scroller.append("circle")
+	.attr("r", mapScale(star.fullSystemRadius))
+	.attr("stroke", "#9F0")
+	.attr("stroke-wdith", "2")
+	.attr("fill", "none");
 
       var primary = scroller.append("g")
 	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");
@@ -442,9 +433,14 @@ requirejs([
 	  RenderStar(cdata.companion, surf);
 	}
       }
+    };
 
-      scroller.append("path")
-	.attr("d", arc);
+    this.scaleGridPosition = function(x, y){
+      scaleGridPos[0] = x;
+      scaleGridPos[1] = y;
+      if (axis !== null){
+	axis.attr("transform", "translate(" + scaleGridPos[0] + ", " + scaleGridPos[1] + ")");
+      }
     };
   }
   StarSystemRenderer.prototype.constructor = StarSystemRenderer;
@@ -578,6 +574,18 @@ requirejs([
 	      click:handleClick
             });
           }
+        },
+	{
+          name: "Asteroid",
+          event: "asteroidWorlds",
+          callback:function(event){
+            regionRenderer.displayMode = 5;
+            regionRenderer.render({
+	      mouseOver:handleMouseOver,
+	      mouseOut:handleMouseOut,
+	      click:handleClick
+            });
+          }
         }
       ]
     });
@@ -622,8 +630,18 @@ requirejs([
     }
     
 
-    d3.select(window).on("resize", function(){
+    /*d3.select(window).on("resize", function(){
       mapSize = Math.min(window.innerWidth, window.innerHeight);
+      hmapSize = Math.round(mapSize*0.5);
+      regionRenderer.mapSize = mapSize;
+      regionRenderer.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    });*/
+    DOMEN.on("resize", function(width, height){
+      mapSize = Math.min(width, height);
       hmapSize = Math.round(mapSize*0.5);
       regionRenderer.mapSize = mapSize;
       regionRenderer.render({
@@ -695,17 +713,48 @@ requirejs([
     var mapSize = Math.min(window.innerWidth, window.innerHeight);
     var hmapSize = Math.round(mapSize*0.5);
 
-    var map = svg.append("g")
-      .attr("transform", "translate(" + hmapSize + "," + hmapSize + ") scale(0.9)");
-
+    var map = svg.append("g");
     var starRenderer = new StarSystemRenderer(map);
     starRenderer.mapSize = Math.min(window.innerWidth, window.innerHeight);
 
-    d3.select(window).on("resize", function(){
+    map.on("mousemove", function(){
+      var pos = d3.mouse(this);
+      starRenderer.scaleGridPosition(pos[0], pos[1]);
+    });
+
+    /*d3.select(window).on("resize", function(){
       mapSize = Math.min(window.innerWidth, window.innerHeight);
       hmapSize = Math.round(mapSize*0.5);
       starRenderer.mapSize = mapSize;
       starRenderer.render();
+    });*/
+    DOMEN.on("resize", function(width, height){
+      mapSize = Math.min(width, height);
+      hmapSize = Math.round(mapSize*0.5);
+      starRenderer.mapSize = mapSize;
+      starRenderer.render();
+    });
+
+    /*d3.select("body").on("keydown", function(){
+      if (d3.event.ctrlKey){
+	starRenderer.scaleGridShowing = true;
+      }
+    });*/
+    DOMEN.on("keydown", function(event){
+      if (event.ctrlKey){
+	starRenderer.scaleGridShowing = true;
+      }
+    });
+
+    /*d3.select("body").on("keyup", function(){
+      if(d3.event.ctrlKey === false && starRenderer.scaleGridShowing === true){
+	starRenderer.scaleGridShowing = false;
+      }
+    });*/
+    DOMEN.on("keyup", function(event){
+      if (event.ctrlKey === false && starRenderer.scaleGridShowing === true){
+	starRenderer.scaleGridShowing = false;
+      }
     });
 
     this.hidden = function(){
