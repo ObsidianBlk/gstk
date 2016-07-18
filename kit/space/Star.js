@@ -78,7 +78,7 @@
           "type": "object",
           "properties": {
             "avgRadius": {"type": "number"},
-            "body": {"type": "string"},
+            "body": {"type": "object"},
             "period": {"type": "number"},
             "rMax": {"type": "number"},
             "rMin": {"type": "number"}
@@ -118,7 +118,7 @@
 		"outerRadius"
               ]
             },
-            "companion": {"type": "string"}
+            "companion": {"type": "object"}
           },
           "required": [
             "orbit",
@@ -809,7 +809,7 @@
 
       "data":{
         enumerate: true,
-        get:function(){return data;}
+        get:function(){return JSON.parse(this.toString());}
       }
     });
 
@@ -1219,7 +1219,7 @@
 	  data.companion.push({
 	    orbit: JSON.parse(JSON.stringify(cmpStore[c].orbit)),
 	    forbiddenZone: JSON.parse(JSON.stringify(cmpStore[c].forbiddenZone)),
-	    companion: cmpStore[c].companion.toString()
+	    companion: cmpStore[c].companion.data
 	  });
 	}
       }
@@ -1232,7 +1232,7 @@
 	    rMin: sbStore[s].rMin,
 	    rMax: sbStore[s].rMax,
 	    period: sbStore[s].period,
-	    body: sbStore[s].body.toString()
+	    body: sbStore[s].body.data
 	  });
 	}
       }
@@ -1253,9 +1253,13 @@
     // ------------------------------------------------------
     // Actually generating star HERE!
 
-    if (typeof(options.jsonString) === 'string'){
+    if (typeof(options.jsonString) === 'string' || typeof(options.data) === typeof({})){
       try{
-	data = JSON.parse(options.jsonString);
+	if (typeof(options.data) === typeof({})){
+	  data = JSON.parse(JSON.stringify(options.data));
+	} else {
+	  data = JSON.parse(options.jsonString);
+	}
       } catch (e) {
 	throw e;
       }
@@ -1266,7 +1270,7 @@
       if (typeof(data.stellarBody) !== 'undefined'){
 	try{
 	  data.stellarBody.forEach(function(sb){
-	    sb.body = new StellarBody({jsonString:sb.body});
+	    sb.body = new StellarBody({data:sb.body});
 	  });
 	} catch (e) {
 	  throw e;
@@ -1276,7 +1280,7 @@
       if (typeof(data.companion) !== 'undefined'){
 	try{
 	  data.companion.forEach(function(c){
-	    c.companion = new Star({primaryStar:this, jsonString:c.companion});
+	    c.companion = new Star({primaryStar:this, data:c.companion});
 	  });
 	} catch (e) {
 	  throw e;

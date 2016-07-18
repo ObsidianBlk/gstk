@@ -66,7 +66,7 @@
             "r": {"type": "number"},
             "a": {"type": "number"},
             "z": {"type": "number"},
-            "star": {"type": "string"}
+            "star": {"type": "object"}
           },
           "required": [
             "r",
@@ -388,7 +388,7 @@
       return wrap;
     };
 
-    this.toString = function(){
+    this.toString = function(pretty){
       var reg = {
 	radius: radius,
 	zmin: zmin,
@@ -400,16 +400,34 @@
 	  r: systems[i].r,
 	  a: systems[i].a,
 	  z: systems[i].z,
-	  star: systems[i].star.toString()
+	  star: systems[i].star.data
 	});
       }
 
+      if (pretty === true){
+	return JSON.stringify(reg, null, 2);
+      }
       return JSON.stringify(reg);
     };
 
     this.addStar = function(ops){
-      ops = (typeof(ops) === typeof({})) ? JSON.parse(JSON.stringify(ops)) : {};
-      if (!(ops.star instanceof Star)){
+      var star = null;
+      ops = (typeof(ops) === typeof({})) ? ops : {};
+      if (typeof(ops.star) !== 'undefined'){
+	if (ops.star instanceof Star){
+	  star = ops.star;
+	} else if (typeof(ops.star) === typeof({})){
+	  try{
+	    star = new Star({data: ops.data});
+	  } catch (e) {throw e;}
+	} else if (typeof(ops.star) === 'string'){
+	  try{
+	    star = new Star({jsonString: ops.jsonString});
+	  } catch (e) {throw e;}
+	} else {
+	  throw new TypeError("Invalid data type given for star.");
+	}
+      } else {
         if (typeof(ops.seed) !== 'string'){
           ops.seed = rng.generateUUID();
         }
@@ -417,6 +435,7 @@
           ops.companionProbability = options.companionProbability;
         }
       }
+
       if (typeof(ops.r) !== 'number'){
         ops.r = rng.value(0, radius);
       } else if (ops.r < 0 || ops.r > radius){
@@ -432,9 +451,9 @@
       if (typeof(ops.z) !== 'number'){
         ops.z = Math.floor(horizon+rng.value(-(height*0.5), (height*0.5)));
       } else {
-        if (ops.z < (horizon-(height*0.5)) || ops.z > (horizon+(height*0.5))){
+        /*if (ops.z < (horizon-(height*0.5)) || ops.z > (horizon+(height*0.5))){
           throw new RangeError("Given Z depth is out of bounds.");
-        }
+        }*/
       }
 
       var store = true;
@@ -449,8 +468,8 @@
           r: ops.r,
 	  a: ops.a,
 	  z: ops.z,
-	  star: (ops.star instanceof Star) ?
-            ops.star :
+	  star: (star instanceof Star) ?
+            star :
             GenerateStar(
 	    rng,
             ops.seed,
@@ -462,51 +481,64 @@
       }
     };
 
-    this.generate = function(){
+    this.generate = function(str_or_obj){
       if (systems.length > 0){return;} // Only generate the region once.
 
-      systems = [];
-      //sys.z = Math.floor(horizon+rng.value(-(height*0.5), (height*0.5)));
-
-      var volume = Math.PI*(radius*radius);
-      var sysCount = volume*(options.systemDensity*0.01);
-
-      var D2R = Math.PI/180;
-      var satisfiedOrigin = (options.systemAtOrigin === false);
-      for (var i=0; i < sysCount; i++){
-	if (satisfiedOrigin === false){
-	  satisfiedOrigin = true;
-          this.addStar({
-            r: 0,
-            a: 0
-          });
-	  //continue;
-	} else {
-          this.addStar();
-        }
-
-	/*var r = rng.value(0, radius);
-	var a = rng.value(0, 2*Math.PI);
-	var store = true;
-	for (var _i=0; _i < systems.length; _i++){
-	  if (DistanceBetween(r, a, systems[_i].r, systems[_i].a) < 1.0){
-	    store = false;
+      str_or_obj = (typeof(str_or_obj) !== 'string' && typeof(str_or_obj) !== typeof({})) ? null : str_or_obj;
+      if (str_or_obj !== null){
+	var data = null;
+	try{
+	  if (typeof(str_or_obj) === typeof({})){
+	    data = JSON.parse(JSON.stringify(str_or_obj));
+	  } else {
+	    data = JSON.parse(str_or_obj);
 	  }
+	} catch (e) {
+	  throw e;
 	}
 
-	if (store){
-	  systems.push({
-	    r: r,
-	    a: a,
-	    z: Math.floor(horizon+rng.value(-(height*0.5), (height*0.5))),
-	    star: GenerateStar(
-	      rng,
-	      options.companionProbability,
-	      false,
-	      false
-	    )
-	  });
-	}*/ // NOTE: I could shift the i variable back one, but, assuming low density systems, this shouldn't drop too many stars.
+	if (tv4.validate(data, RegionSchema) === false){
+	  throw new Error(tv4.error);
+	}
+
+	radius = data.radius;
+	zmin = Math.floor(data.zmin);
+	zmax = Math.floor(data.zmax);
+	
+	for (var i=0; i < data.systems.length; i++){
+	  try{
+	    this.addStar(data.systems[i]);
+	    /*systems.push({
+	      r: data.systems[i].r,
+	      a: data.systems[i].a,
+	      z: data.systems[i].z,
+	      star: new Star({data: data.systems[i].star})
+	    });*/
+	  } catch (e) {
+	    throw e;
+	  }
+	}
+      } else {
+
+	systems = [];
+
+	var volume = Math.PI*(radius*radius);
+	var sysCount = volume*(options.systemDensity*0.01);
+
+	var D2R = Math.PI/180;
+	var satisfiedOrigin = (options.systemAtOrigin === false);
+	for (var i=0; i < sysCount; i++){
+	  if (satisfiedOrigin === false){
+	    satisfiedOrigin = true;
+            this.addStar({
+              r: 0,
+              a: 0
+            });
+	    //continue;
+	  } else {
+            this.addStar();
+          }
+	}
       } 
     };
 

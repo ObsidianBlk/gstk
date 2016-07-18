@@ -515,6 +515,13 @@ requirejs([
 	    self.emit(event);
 	  }
 	},
+	{
+	  name: "Export",
+	  event: "exportJSON",
+	  callback:function(event){
+	    self.emit(event, regionRenderer.region.toString(true));
+	  }
+	},
         {
           name: "All",
           event: "allStars",
@@ -667,9 +674,18 @@ requirejs([
     };
 
     this.generate = function(options){
-      options = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
-      regionRenderer.region = new Region(options);
-      regionRenderer.region.generate();
+      if (typeof(options.jsonString) === 'string'){
+	try{
+	  regionRenderer.region = new Region();
+	  regionRenderer.region.generate(options.jsonString);
+	} catch (e) {
+	  throw e;
+	}
+      } else {
+	options = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
+	regionRenderer.region = new Region(options);
+	regionRenderer.region.generate();
+      }
       regionRenderer.render({
 	mouseOver:handleMouseOver,
 	mouseOut:handleMouseOut,
@@ -783,6 +799,38 @@ requirejs([
 
 
   // -------------------------------------------------------------------------------------------------------------------------------------
+
+  function JSONControl(domID){
+    Emitter.call(this);
+
+    var self = this;
+    var dom = d3.select("#" + domID);
+    dom.select("#btn_jsonload").on("click", function(){
+      self.emit("load", dom.select("#jsonsrc").property("value"));
+    });
+
+    dom.select("#btn_close").on("click", function(){
+      self.emit("close");
+    });
+
+    this.show = function(enable, data){
+      enable = (enable === false) ? false : true;
+      if (enable && dom.classed("hidden")){
+	dom.classed("hidden", false);
+	if (typeof(data) === 'string'){
+	  dom.select("#jsonsrc").property("value", data);
+	}
+      } else if (enable === false && dom.classed("hidden") === false){
+	dom.classed("hidden", true);
+      }
+    };
+  }
+  JSONControl.prototype.__proto__ = Emitter.prototype;
+  JSONControl.prototype.constructor = JSONControl;
+
+
+
+  // -------------------------------------------------------------------------------------------------------------------------------------
   // MAIN
 
   ready(function(){
@@ -804,6 +852,10 @@ requirejs([
     regionctrl.on("mainmenu", function(){
       regionctrl.show(false);
       mainmenu.show(true);
+    });
+    regionctrl.on("exportJSON", function(jstr){
+      regionctrl.show(false);
+      loader.show(true, jstr);
     });
 
     var mainmenu = new MainMenu("MainMenu", {
@@ -833,8 +885,31 @@ requirejs([
       });
     });
 
-    mainmenu.on("loadRegion", function(){console.log("Load Region!");});
+    mainmenu.on("loadRegion", function(){
+      mainmenu.show(false);
+      loader.show(true);
+    });
     mainmenu.on("quit", function(){console.log("Quit! ... Ummm, not yet");});
+
+
+    var loader = new JSONControl("jsonsrc");
+    loader.on("close", function(){
+      loader.show(false);
+      mainmenu.show(true);
+    });
+
+    loader.on("load", function(jstr){
+      loader.show(false);
+      try{
+	regionctrl.generate({jsonString:jstr});
+      } catch (e){
+	console.error(e);
+	mainmenu.show(true);
+	return;
+      }
+
+      regionctrl.show(true);
+    });
   });
 
 });

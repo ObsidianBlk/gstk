@@ -66,7 +66,6 @@
 	},
 	"required": [
           "breathable",
-          "composition",
           "corrosive",
           "mass",
           "pressure",
@@ -901,6 +900,16 @@
     return body;
   }
 
+
+
+
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------------------------------------------------------
+
+
+
   function StellarBody(options){
     options = (typeof(options) === typeof({})) ? options : {};
     if (typeof(options.seed) === 'undefined'){
@@ -909,8 +918,20 @@
     var rng = new PRng({seed:options.seed, initDepth:5000});
     var data = null;
 
+    // Try and load the jsonString data.
+    if (typeof(options.jsonString) === 'string' || typeof(options.data) === typeof({})){
+      if (typeof(options.data) === typeof({})){
+	data = LoadFromJsonString(JSON.stringify(options.data));
+      } else if (typeof(options.jsonString) === 'string'){
+	data = LoadFromJsonString(options.jsonString);
+      }
+      if (data === null){
+	data = GenTerrestrial({}, rng, options);
+	data.name = rng.generateUUID();
+      }
+
     // Build data through random gen
-    if (typeof(options.jsonString) !== 'string'){
+    } else {
       if (options.makeGasGiant === true){
 	data = GenGasGiant({}, rng, options);
       } else if (options.makAsteroidBelt === true){
@@ -922,14 +943,6 @@
 	}
       }
       data.name = rng.generateUUID();
-
-    // Try and load the jsonString data.
-    } else {
-      data = LoadFromJsonString(options.jsonString);
-      if (data === null){
-	data = GenTerrestrial({}, rng, options);
-	data.name = rng.generateUUID();
-      }
     }
 
     this.toString = function(){
@@ -1012,6 +1025,7 @@
       },
 
       "data":{
+	enumerate:true,
         get:function(){return data;}
       }
     });
