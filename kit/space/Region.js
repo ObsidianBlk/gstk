@@ -418,7 +418,7 @@
 	  star = ops.star;
 	} else if (typeof(ops.star) === typeof({})){
 	  try{
-	    star = new Star({data: ops.data});
+	    star = new Star({data: ops.star});
 	  } catch (e) {throw e;}
 	} else if (typeof(ops.star) === 'string'){
 	  try{
@@ -464,19 +464,21 @@
       }
 
       if (store){
-        systems.push({
-          r: ops.r,
-	  a: ops.a,
-	  z: ops.z,
-	  star: (star instanceof Star) ?
-            star :
-            GenerateStar(
+	if (star === null){
+	  star = GenerateStar(
 	    rng,
             ops.seed,
 	    ops.companionProbability,
 	    false,
 	    false
-	  )
+	  );
+	}
+
+        systems.push({
+          r: ops.r,
+	  a: ops.a,
+	  z: ops.z,
+	  star: star
         });
       }
     };

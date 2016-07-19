@@ -52,6 +52,14 @@ requirejs([
     d3.select("body").on("keyup", (function(){
       this.emit("keyup", d3.event);
     }).bind(this));
+
+    this.getWidth = function(){
+      return window.innerWidth;
+    };
+
+    this.getHeight = function(){
+      return window.innerHeight;
+    };
   }
   DOMEventNotifier.prototype.__proto__ = Emitter.prototype;
   DOMEventNotifier.prototype.constructor = DOMEventNotifier;
@@ -82,6 +90,8 @@ requirejs([
     var zoom = d3.behavior.zoom()
       .scaleExtent([0.25, 4])
       .on("zoom", zoomed);
+    zoom.translate([DOMEN.getWidth()*0.5, DOMEN.getHeight()*0.5]);
+    scroller.attr("transform", "translate(" + (DOMEN.getWidth()*0.5) + ", " + (DOMEN.getHeight()*0.5) + ")");
 
     Object.defineProperties(this, {
       "mapSize":{
@@ -138,11 +148,6 @@ requirejs([
 	    throw new TypeError("Expected a Region instance or null.");
 	  }
 	  r = reg;
-	  if (r !== null){
-	    mapScale.domain([0, r.radius]).range([0, hmapSize]);
-	  } else {
-	    mapScale.domain([0, 1]).range([0, hmapSize]);
-	  }
 	}
       }
     });
@@ -151,8 +156,9 @@ requirejs([
     this.render = function(options){
       if (r === null){return;}
       var CompassRange = d3.range(0, 360, 30);
+      mapScale.domain([0, r.radius]).range([0, hmapSize]);
 
-      svg.attr("transform", "translate(" + hmapSize + "," + hmapSize + ")").call(zoom);
+      svg.call(zoom);
       scroller.selectAll("*").remove();
       var data = null;
       switch (displayMode){
@@ -170,9 +176,9 @@ requirejs([
 	data = r.asteroidSystems; break;
       }
 	
-      scroller.append("rect")
-	.attr("x", mapScale(-r.radius)).attr("y", mapScale(-r.radius))
-	.attr("width", mapScale(r.radius*2)).attr("height", mapScale(r.radius*2))
+      scroller.append("circle")
+	.attr("r", mapScale(r.radius))
+	.attr("stroke", "none")
 	.attr("fill", "#000000");
 
       var stars = scroller.append("g");
@@ -280,6 +286,8 @@ requirejs([
     var zoom = d3.behavior.zoom()
       .scaleExtent([0.25, 1])
       .on("zoom", zoomed);
+    zoom.translate([DOMEN.getWidth()*0.5, DOMEN.getHeight()*0.5]);
+    scroller.attr("transform", "translate(" + (DOMEN.getWidth()*0.5) + ", " + (DOMEN.getHeight()*0.5) + ")");
 
     function UpdateMapScale(){
       var radius = (star !== null) ? renderRadius : 1;
@@ -489,15 +497,14 @@ requirejs([
       .append("svg")
       .attr("width", "100%")
       .attr("height", "100%");
-    var mapSize = Math.min(window.innerWidth, window.innerHeight);
+    var mapSize = Math.min(DOMEN.getWidth(), DOMEN.getHeight());
     var hmapSize = Math.round(mapSize*0.5);
 
-    var map = svg.append("g")
-      .attr("transform", "translate(" + hmapSize + "," + hmapSize + ") scale(0.9)");
+    var map = svg.append("g");
 
     var regionRenderer = new RegionRenderer(map);
     regionRenderer.pixelsPerParsec = 12;
-    regionRenderer.mapSize = Math.min(window.innerWidth, window.innerHeight);
+    regionRenderer.mapSize = mapSize;
 
     var d3m = new D3Menu(svg, {
       menuclass:"menu",
@@ -636,17 +643,6 @@ requirejs([
       self.emit("starClicked", d.star);
     }
     
-
-    /*d3.select(window).on("resize", function(){
-      mapSize = Math.min(window.innerWidth, window.innerHeight);
-      hmapSize = Math.round(mapSize*0.5);
-      regionRenderer.mapSize = mapSize;
-      regionRenderer.render({
-	mouseOver:handleMouseOver,
-	mouseOut:handleMouseOut,
-	click:handleClick
-      });
-    });*/
     DOMEN.on("resize", function(width, height){
       mapSize = Math.min(width, height);
       hmapSize = Math.round(mapSize*0.5);
@@ -726,24 +722,18 @@ requirejs([
 	},
       ]
     });
-    var mapSize = Math.min(window.innerWidth, window.innerHeight);
+    var mapSize = Math.min(DOMEN.getWidth(), DOMEN.getHeight());
     var hmapSize = Math.round(mapSize*0.5);
 
     var map = svg.append("g");
     var starRenderer = new StarSystemRenderer(map);
-    starRenderer.mapSize = Math.min(window.innerWidth, window.innerHeight);
+    starRenderer.mapSize = mapSize;
 
     map.on("mousemove", function(){
       var pos = d3.mouse(this);
       starRenderer.scaleGridPosition(pos[0], pos[1]);
     });
 
-    /*d3.select(window).on("resize", function(){
-      mapSize = Math.min(window.innerWidth, window.innerHeight);
-      hmapSize = Math.round(mapSize*0.5);
-      starRenderer.mapSize = mapSize;
-      starRenderer.render();
-    });*/
     DOMEN.on("resize", function(width, height){
       mapSize = Math.min(width, height);
       hmapSize = Math.round(mapSize*0.5);
@@ -751,22 +741,12 @@ requirejs([
       starRenderer.render();
     });
 
-    /*d3.select("body").on("keydown", function(){
-      if (d3.event.ctrlKey){
-	starRenderer.scaleGridShowing = true;
-      }
-    });*/
     DOMEN.on("keydown", function(event){
       if (event.ctrlKey){
 	starRenderer.scaleGridShowing = true;
       }
     });
 
-    /*d3.select("body").on("keyup", function(){
-      if(d3.event.ctrlKey === false && starRenderer.scaleGridShowing === true){
-	starRenderer.scaleGridShowing = false;
-      }
-    });*/
     DOMEN.on("keyup", function(event){
       if (event.ctrlKey === false && starRenderer.scaleGridShowing === true){
 	starRenderer.scaleGridShowing = false;

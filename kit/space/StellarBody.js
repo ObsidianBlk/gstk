@@ -918,7 +918,7 @@
     var rng = new PRng({seed:options.seed, initDepth:5000});
     var data = null;
 
-    // Try and load the jsonString data.
+    // Try and load the jsonString/Object data.
     if (typeof(options.jsonString) === 'string' || typeof(options.data) === typeof({})){
       if (typeof(options.data) === typeof({})){
 	data = LoadFromJsonString(JSON.stringify(options.data));
@@ -926,6 +926,7 @@
 	data = LoadFromJsonString(options.jsonString);
       }
       if (data === null){
+	console.error("[StellarBody] Failed to load data.");
 	data = GenTerrestrial({}, rng, options);
 	data.name = rng.generateUUID();
       }
