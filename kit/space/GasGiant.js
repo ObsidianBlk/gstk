@@ -49,6 +49,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "type": "object",
     "properties": {
+      "_type": {"type": "integer"},
       "axialTilt": {"type": "integer"},
       "density": {"type": "number"},
       "diameter": {"type": "number"},
@@ -57,7 +58,6 @@
       "rotationalPeriod": {"type": "number"},
       "size": {"type": "integer"},
       "surfaceGravity": {"type": "number"},
-      "type": {"type": "integer"},
       "companion": {
 	"type": "array",
 	"items": {
@@ -85,6 +85,7 @@
             "companion"
           ]
 	}
+      }
     },
     "required": [
       "axialTilt",
@@ -95,7 +96,7 @@
       "rotationalPeriod",
       "size",
       "surfaceGravity",
-      "type"
+      "_type"
     ]
   };
 
@@ -269,6 +270,7 @@
   function GasGiant(options){
     StellarBody.call(this);
     this.schema = GasGiantSchema;
+    this.data._type = GasGiant.Type;
     options = (typeof(options) === typeof({})) ? options : {};
 
     var rng = new PRng({
@@ -280,7 +282,6 @@
     if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
       this.from(options.from);
     } else {
-      this.data.type = GasGiant.Type;
       Generate(this.data, rng, options);
       this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
     }
@@ -410,4 +411,7 @@
   GasGiant.prototype.constructor = GasGiant;
   GasGiant.Type = 1;
 
+
+  StellarBody.RegisterType(GasGiant);
+  return GasGiant;
 });
