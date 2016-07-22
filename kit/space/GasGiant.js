@@ -50,6 +50,7 @@
     "type": "object",
     "properties": {
       "_type": {"type": "integer"},
+      "blackbody": {"type": "number"},
       "axialTilt": {"type": "integer"},
       "density": {"type": "number"},
       "diameter": {"type": "number"},
@@ -78,7 +79,15 @@
 		"period"
               ]
             },
-            "body": {"type": "object"}
+            "body": {
+	      "type": "object",
+	      "properties": {
+		"_type": {"type": "number"}
+	      },
+	      "required":[
+		"_type"
+	      ]
+	    }
           },
           "required": [
             "orbit",
@@ -88,6 +97,7 @@
       }
     },
     "required": [
+      "blackbody",
       "axialTilt",
       "density",
       "diameter",
@@ -264,6 +274,19 @@
     SetSize(body, rng, options);
     body.rotationalPeriod = GetRotationalPeriod(rng, body.size);
     body.axialTilt = GetAxialTilt(rng);
+
+    if (typeof(options.parent) !== 'undefined' && typeof(options.parent.luminosity) === 'number' && typeof(options.orbitalRadius) === 'number'){
+      var l = options.parent.luminosity;
+      var r = options.orbitalRadius;
+      body.blackbody = 278*(Math.pow(l, 0.25)/Math.sqrt(r));
+    } else if (typeof(options.blackbody) === 'number'){
+      body.blackbody = options.blackbody;
+    } else {
+      // NOTE: GURPS Space does not have (that I saw) any information about calculating Gas Giant blackbody values (in a total random way). As such
+      // blackbody is a random value between 30k and 140k, which roughly fits the blackbody values of the Jovian planets in the Sol system.
+      // (as given by GURPS Space on page 124)
+      body.blackbody = rng.value(30, 140);
+    }
   }
 
 
@@ -272,6 +295,8 @@
     this.schema = GasGiantSchema;
     this.data._type = GasGiant.Type;
     options = (typeof(options) === typeof({})) ? options : {};
+
+    var parent = (options.parent instanceof StellarBody) ? options.parent : null;
 
     var rng = new PRng({
       seed:(typeof(options.seed) !== 'undefined') ? 
@@ -313,6 +338,22 @@
     }
 
     Object.defineProperties(this, {
+      "parent":{
+	enumerate: true,
+	get:function(){return parent;},
+	set:function(p){
+	  if (parent === null && p instanceof StellarBody){
+	    parent = p;
+	  } else if (parent !== null && p === null){
+	    parent = null;
+	  } else if (p !== null && !(p instanceof StellarBody)){
+	    throw new TypeError("Can only parent to a StellarBody instance object.");
+	  } else if (parent !== null && parent !== p){
+	    throw new Error("Cannot parent to an already parented object. Unparent first.");
+	  }
+	}
+      },
+
       "sizeIndex":{
 	enumerate: true,
 	get:function(){return this.data.size;},
@@ -337,6 +378,11 @@
 	  }
 	  return "UNKNOWN";
 	}
+      },
+
+      "blackbody":{
+	enumerate: true,
+	get:function(){return this.data.blackbody;}
       },
 
       "mass":{
@@ -398,14 +444,53 @@
       }
     });
 
+    var _toString = this.toString;
+    this.toString = function(pretty){
+      var cmp = (typeof(this.data.companion) !== 'undefined') ? this.data.companion : null;
+      var list = [];
+      if (cmp !== null){
+	list = [];
+	cmp.forEach(function(c){
+	  list.push({
+	    avgRadius: c.avgRadius,
+	    rMin: c.rMin,
+	    rMax: c.rMax,
+	    period: c.period,
+	    body: JSON.parse(c.body.toString())
+	  });
+	});
+	this.data.companion = list;
+      }
+
+      var res = _toString(pretty);
+
+      if (cmp !== null){
+	this.data.companion = cmp;
+      }
+      return res;
+    };
+
     var _from = this.from;
     this.from = function(str_or_obj){
       try{
 	_from(str_or_obj);
       } catch (e){throw e;}
 
-      // TODO: Do stuff to handle moons... like check if there're companions.
+      if (typeof(this.data.companion) !== 'undefined'){
+	this.data.companion.forEach(function(cmp){
+	  cmp.body = StellarBody.BuildType(cmp.body._type, {
+	    from: cmp.body,
+	    parent: this
+	  });
+	});
+	this.data.companion = this.data.companion.filter(function(cmp){
+	  return (cmp.body !== null);
+	});
+      }
     };
+
+
+    // TODO: Add functions for adding/removing companions.
   }
   GasGiant.prototype.__proto__ = StellarBody.prototype;
   GasGiant.prototype.constructor = GasGiant;

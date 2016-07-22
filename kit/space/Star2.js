@@ -5,7 +5,10 @@
        ------------------------------------------------- */
     define([
       'kit/PRng',
-      'kit/space/StellarBody2',
+      'kit/space/StellarBody',
+      'kit/space/GasGiant',
+      'kit/space/Terrestrial',
+      'kit/space/AsteroidBelt',
       'node_modules/tv4/tv4'
     ], factory);
   } else if (typeof exports === 'object') {
@@ -15,7 +18,10 @@
     if(typeof module === "object" && module.exports){
       module.exports = factory(
 	require('../PRng'),
-	require('./StellarBody2'),
+	require('./StellarBody'),
+	require('./GasGiant'),
+	require('./Terrestrial'),
+	require('./AsteroidBelt'),
 	require('tv4')
       );
     }
@@ -32,6 +38,9 @@
     if (root.GSTK.$.exists(root, [
       "GSTK.PRng",
       "GSTK.space.StellarBody",
+      "GSTK.space.GasGiant",
+      "GSTK.space.Terrestrial",
+      "GSTK.space.AsteroidBelt",
       "tv4"
     ]) === false){
       throw new Error("Required component not defined.");
@@ -40,10 +49,13 @@
     root.GSTK.$.def (root.GSTK, "space.Star", factory(
       root.GSTK.PRng,
       root.GSTK.space.StellarBody,
+      root.GSTK.space.GasGiant,
+      root.GSTK.space.Terrestrial,
+      root.GSTK.space.AsteroidBelt,
       root.tv4
     ));
   }
-})(this, function (PRng, StellarBody, tv4) {
+})(this, function (PRng, StellarBody, GasGiant, Terrestrial, AsteroidBelt, tv4) {
 
   var StarSchema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -72,6 +84,7 @@
       "radius": {"type": "number"},
       "temp": {"type": "integer"},
       "sequence": {"type": "string"},
+      "arrangement": {"type": "number"},
       "body": {
 	"type": "array",
 	"items": {
@@ -118,12 +131,20 @@
 		"outerRadius"
               ]
             },
-            "companion": {"type": "object"}
+            "body": {
+	      "type": "object",
+	      "properties": {
+		"_type": {"type": "number"}
+	      },
+	      "required":[
+		"_type"
+	      ]
+	    }
           },
           "required": [
             "orbit",
             "forbiddenZone",
-            "companion"
+            "body"
           ]
 	}
       }
@@ -138,7 +159,8 @@
       "name",
       "radius",
       "temp",
-      "sequence"
+      "sequence",
+      "arrangement"
     ]
   };
 
@@ -422,6 +444,17 @@
       outerRadius: 40 * lmass,
       snowLine: 4.85 * Math.sqrt(sete.Lmin)
     };
+
+    // -- Calculating the "Gas Giant Arrangement Type". This will effect how standard stellar bodies are placed around star.
+    var roll = rng.rollDice(6, 3);
+    data.arrangement = 0; // No Gas Giant.
+    if (roll > 10 && roll <= 12){
+      data.arrangement = 1; // Standard.
+    } else if (roll > 12 && roll <= 14){
+      data.arrangement = 2; // Eccentric
+    } else if (roll > 14 && roll <= 18){
+      data.arrangement = 3; // Epistellar
+    }
   }
 
 
@@ -464,7 +497,7 @@
 	  }
 	}
       });
-      c.companion = cmp.companion;
+      c.body = cmp.body;
       return c;
     }
 
@@ -492,6 +525,99 @@
 
       o.body = sb.body;
       return o;
+    }
+
+    function RadiusFromBlackbody(bb){
+      var lum = this.data.luminosity;
+      return Math.pow((Math.pow(lum, 0.25)*278)/bb, 2);
+    }
+
+    function GetOrbitalEccentricity(gasGiant, inSnowLine, arrangement){
+      var roll = rng.rollDice(6, 3);
+      if (gasGiant){
+	if (arrangement === 2 && inSnowLine){
+	  roll += 4;
+	} else if (arrangement === 3){
+	  roll -= 6;
+	}
+      } else if (arrangement === 1){
+	roll -= 6;
+      }
+
+      if (roll <= 3){return 0 + rng.value(-0.025, 0.025);}
+      switch(roll){
+      case 4: case 5: case 6:
+	return 0.05 + rng.value(-0.025, 0.025);
+      case 7: case 8: case 9:
+	return 0.1 + rng.value(-0.025, 0.025);
+      case 10: case 11:
+	return 0.15 + rng.value(-0.025, 0.025);
+      case 12:
+	return 0.2 + rng.value(-0.05, 0.05);
+      case 13:
+	return 0.3 + rng.value(-0.05, 0.05);
+      case 14:
+	return 0.4 + rng.value(-0.05, 0.05);
+      case 15:
+	return 0.5 + rng.value(-0.05, 0.05);
+      case 16:
+	return 0.6 + rng.value(-0.05, 0.05);
+      case 17:
+	return 0.7 + rng.value(-0.05, 0.05);
+      }
+      return 0.8 + rng.value(-0.05, 0.05);
+    }
+
+    function ConfirmRadius(rMin, rMax){
+      var count = 0;
+      // Check for conflicts with already placed stellar bodies...
+      if (typeof(this.data.body) !== 'undefined'){
+	count = this.data.body.length;
+	for (var i=0; i < count; i++){
+	  var body = this.data.body[i];
+	  // First check radial crossing...
+	  if (body.rMin < rMin){
+	    if (body.rMax > rMax){return false;} // Radial crossing
+	  } else {
+	    if (body.rMax < rMax){return false;} // Radial crossing
+	  }
+
+	  // Check if too close...
+	  if (Math.abs(rMin - body.rMin) < 1.4 || Math.abs(rMax - body.rMax) < 1.4){
+	    return false;
+	  }
+	}
+      }
+
+      // Check for conflict with any existing companion stars.
+      if (typeof(this.data.companion) !== 'undefined'){
+	count = this.data.companion.length;
+	for (var c=0; c < count; c++){
+	  var fz = this.data.companion[c].forbiddenZone;
+	  if (rMin >= fz.innerRadius && rMin <= fz.outerRadius){return false;}
+	  if (rMax >= fz.innerRadius && rMax <= fz.outerRadius){return false;}
+	}
+      }
+
+      return true;
+    }
+
+    function GetRandomOrbitalSpacing(){
+      switch(rng.rollDice(6, 3)){
+      case 3: case 4:
+	return 1.4;
+      case 5: case 6:
+	return 1.5;
+      case 7: case 8:
+	return 1.6;
+      case 9: case 10: case 11: case 12:
+	return 1.7;
+      case 13: case 14:
+	return 1.8;
+      case 15: case 16:
+	return 1.9;
+      }
+      return 2.0;
     }
 
 
@@ -688,7 +814,10 @@
       }
 
       if (typeof(this.data.body) !== 'undefined'){
-
+	count = this.data.body.length;
+	for (var i=0; i < count; i++){
+	  this.data.body[i].body = StellarBody.BuildType(this.data.body[i].body._type, {from: this.data.body[i].body});
+	}
       }
     };
 
@@ -746,7 +875,7 @@
           }
 
           var c = {
-            companion: cmp,
+            body: cmp,
             orbit: CalcOrbitalInformation(rng, this.data.mass, cmp.mass, opts)//CalcOrbitalInformation(rng, roll, data.mass, cmp.mass)
           };
           c.forbiddenZone = {
@@ -757,6 +886,247 @@
           this.data.companion.push(c);
         }
       }
+    };
+
+    function GetGasGiantSize(inSnowline){
+      var roll = rng.rollDice(6, 3) + ((inSnowline) ? 4 : 0);
+      if (roll >= 17){
+	return 2;
+      } else if (roll > 10 && roll < 17){
+	return 1;
+      }
+      return 0;
+    }
+
+    function GetBodyType(){
+
+    }
+
+    function GenerateRandomGasGiants(lastRadius, direction, current, max){
+      if (current >= max){return;}
+      var spacing = GetRandomOrbitalSpacing();
+      var radius = (direction === 0) ? (lastRadius / spacing) : (lastRadius * spacing);
+      var b = {
+	avgRadius: radius,
+	rMin: 0,
+	rMax: 0,
+	period: 0,
+	body: null
+      };
+
+      var e = 0;
+      var add = false;
+      if (radius >= this.data.limit.innerRadius && radius <= this.data.limit.outerRadius){
+	if (radius < this.data.limit.snowLine){
+	  if (this.data.arrangement > 1){
+	    if ((this.data.arrangement === 2 && rng.rollDice(6, 3) <= 8) || (this.data.arrangement === 3 && rng.rollDice(6, 3) <= 6)){
+	      e = GetOrbitalEccentricity(true, true, this.data.arrangement);
+	      b.rMin = (1-e) * radius;
+	      b.rMax = (1+e) * radius;
+	      add = ConfirmRadius(b.rMin, b.rMax);
+	    }
+	  }
+	} else {
+	  if ((this.data.arrangement === 1 && rng.rollDice(6, 3) <= 15) || (this.data.arrangement > 1 && rng.rollDice(6, 3) <= 14)){
+	    e = GetOrbitalEccentricity(true, false, this.data.arrangement);
+	    b.rMin = (1-e) * radius;
+	    b.rMax = (1+e) * radius;
+	    add = ConfirmRadius(b.rMin, b.rMax);
+	  }
+	}
+
+	if (add){
+	  var size = GetGasGiantSize(true);
+	  b.period = Math.sqrt(Math.pow(radius, 3)/this.data.mass);
+	  b.body = new GasGiant({
+	    seed: rng.generateUUID(),
+	    parent: this,
+	    sizeIndex: size
+	  });
+	  this.data.body.push(b);
+	}
+
+	GenerateRandomGasGiants(radius, direction, this.data.body.length, max);
+      }
+    }
+
+
+    function GenerateRandomBodies(lastRadius, direction, current, max){
+      if (current >= max){return;}
+      var spacing = GetRandomOrbitalSpacing();
+      var radius = (direction === 0) ? (lastRadius / spacing) : (lastRadius * spacing);
+      var b = {
+	avgRadius: radius,
+	rMin: 0,
+	rMax: 0,
+	period: 0,
+	body: null
+      };
+
+      var e = 0;
+      var add = false;
+      if (radius >= this.data.limit.innerRadius && radius <= this.data.limit.outerRadius){
+	// TODO: You know... actually something important!!
+	if (radius < this.data.limit.snowLine){
+
+	} else {
+
+	}
+
+	GenerateRandomBodies(radius, direction, this.data.body.length, max);
+      }
+    }
+
+    this.generateSystemBodies = function(maxBodies){
+      maxBodies = (typeof(maxBodies) === 'number' && maxBodies >= 1) ? Math.floor(maxBodies) : Infinity;
+      if (typeof(this.data.body) === 'undefined'){
+	this.data.body = [];
+      }
+      if(this.data.arrangement > 0){
+	// Generate first gas giant...
+	var radius = 0;
+	switch (this.data.arrangement){
+	case 1:
+	  radius = (1 + ((rng.rollDice(6, 2)-2)*0.05)) * this.data.limit.snowLine;
+	  break;
+	case 2:
+	  radius = (rng.rollDice(6, 1)*0.125)*this.data.limit.snowLine;
+	  break;
+	case 3:
+	  radius = (rng.rollDice(6, 3)*0.1)*this.data.limit.innerRadius;
+	  break;
+	}
+	var e = GetOrbitalEccentricity(
+	  true,
+	  (radius < this.data.limit.snowLine),
+	  this.data.arrangement
+	);
+	var body = new GasGiant({
+	  seed: rng.generateUUID(),
+	  parent: this,
+	  orbitalRadius: radius
+	});
+
+	this.data.body.push({
+	  avgRadius: radius,
+	  rMin: (1-e) * radius,
+	  rMax: (1+e) * radius,
+	  period: Math.sqrt(Math.pow(radius, 3)/this.data.mass),
+	  body: body
+	});
+
+	GenerateRandomGasGiants(radius, 1, this.data.body.length, maxBodies);
+	GenerateRandomGasGiants(radius, 0, this.data.body.length, maxBodies);
+      } else {
+	GenerateRandomBodies(this.data.limit.innerRadius, 0, 0, maxBodies);
+      }
+    };
+
+    this.addBody = function(body, options){
+      if (!(body instanceof StellarBody)){
+	throw new TypeError("Unknown/Unsupported object given");
+      }
+      if (body instanceof Star){
+	throw new TypeError("Star instance objects not allowed as basic orbital bodies.");
+      }
+      if (typeof(body.parent) === 'undefined' || body.parent !== null){
+	throw new Error("StellarBody instance object either does not support parenting or is already parented to another StellarBody.");
+      }
+
+      var r =0;
+      var e = 0;
+      var b = {
+	avgRadius: 0,
+	rMin: 0,
+	rMax: 0,
+	period: 0,
+	body: null
+      };
+
+      if (body instanceof Terrestrial || body instanceof AsteroidBelt || body instanceof GasGiant){
+	b.avgRadius = RadiusFromBlackbody(body.blackbody);
+	if (typeof(options.radius) === 'number' && options.ignoreBlackbody === true){
+	  if (options.radius > this.data.limit.innerRadius && options.radius < this.data.limit.outerRadius){
+	    b.avgRadius = options.radius;
+	  }
+	}
+	if (typeof(options.eccentricity) === 'number'){
+	  e = options.eccentricity;
+	  if (e < 0){
+	    e = 0.0;
+	  } else if (e > 0.9){
+	    e = 0.9;
+	  }
+	} else {
+	  e = GetOrbitalEccentricity(
+	    (body instanceof GasGiant),
+	    (r < this.data.limit.snowLine),
+	    this.data.arrangement
+	  );
+	}
+
+	b.rMin = (1-e) * b.avgRadius;
+	b.rMax = (1+e) * b.avgRadius;
+	if (ConfirmRadius(b.rMin, b.rMax) === true){
+	  b.period = Math.sqrt(Math.pow(b.avgRadius, 3)/this.data.mass);
+	  b.body = body;
+	  if (typeof(this.data.body) === 'undefined'){
+	    this.data.body = [];
+	  }
+	  b.body.parent = this;
+	  this.data.body.push(b);
+	  this.data.body.sort(function(a, b){
+	    return a.avgRadius - b.avgRadius;
+	  });
+	  return true;
+	}
+      } else {
+	if (typeof(options.radius) === 'number'){
+	  // NOTE: This is not a StellarBody with solid rules, so, any radius over the inner limit is fine, even if it's in the
+	  // forbidden or past the outter limit.
+	  if (options.radius > this.data.limit.innerRadius){
+	    b.avgRadius = options.radius;
+	  }
+	}
+	if (b.avgRadius <= 0){
+	  b.avgRadius = rng.value(this.data.limit.innerRadius, this.data.limit.outerRadius);
+	}
+
+	if (typeof(options.eccentricity) === 'number'){
+	  e = options.eccentricity;
+	  if (e < 0){
+	    e = 0.0;
+	  } else if (e > 0.9){
+	    e = 0.9;
+	  }
+	} // If no eccentricity is given, assume none (0, which is default anyway).
+
+	b.rMin = (1-e) * b.avgRadius;
+	b.rMax = (1+e) * b.avgRadius;
+	if (ConfirmRadius(b.rMin, b.rMax) === true){
+	  if (typeof(options.period) === 'number'){
+	    b.period = options.period;
+	    if (b.period < 0){
+	      b.period = 0;
+	    }
+	  } else {
+	    b.period = Math.sqrt(Math.pow(b.avgRadius, 3)/this.data.mass);
+	  }
+	  b.body = body;
+	  if (typeof(this.data.body) === 'undefined'){
+	    this.data.body = [];
+	  }
+	  b.body.parent = this;
+	  this.data.body.push(b);
+	  this.data.body.sort(function(a, b){
+	    return a.avgRadius - b.avgRadius;
+	  });
+	  return true;
+	}
+
+      }
+
+      return false;
     };
   }
   Star.prototype.__proto__ = StellarBody.prototype;
