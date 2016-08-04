@@ -9,8 +9,11 @@ requirejs([
   'kit/space/Region',
   'kit/space/Star',
   'kit/space/StellarBody',
+  'kit/space/GasGiant',
+  'kit/space/Terrestrial',
+  'kit/space/AsteroidBelt',
   'd3ui/D3Menu'
-], function(Emitter, PRng, Region, Star, StellarBody, D3Menu){
+], function(Emitter, PRng, Region, Star, StellarBody, GasGiant, Terrestrial, AsteroidBelt, D3Menu){
 
   // --------------------------------
   // Defining a "Document Ready" function. This is only garanteed to work on Chrome at the moment.
@@ -188,7 +191,7 @@ requirejs([
 	.enter()
 	.append("g")
 	.attr("class", function(d){
-	  return "star " + d.star.type.substring(0, 1);
+	  return "star " + d.star.sequence.substring(0, 1);
 	})
 	.attr("transform", function(d){
 	  var x = mapScale(d.r*Math.cos(d.a));
@@ -304,8 +307,8 @@ requirejs([
 	    throw new TypeError("Expected Star instance or null.");
 	  }
 	  if (s !== null){
-	    if (s.primaryStar !== null){
-	      s = s.primaryStar;
+	    if (s.parent !== null){
+	      s = s.parent;
 	    }
 	  }
 	  star = s;
@@ -387,20 +390,20 @@ requirejs([
 
     function RenderStar(s, g){
       g.append("g")
-	.attr("class", "star " + s.type.substring(0, 1))
+	.attr("class", "star " + s.sequence.substring(0, 1))
 	.append("circle")
 	.attr("r", starScale(s.radius));
 
-      if (s.terrestrialCount > 0){
-	RenderOrbits(g, s.terrestrials, "orbit-terrestrial");
+      if (s.hasBodiesOfType(Terrestrial.Type)){
+	RenderOrbits(g, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
       }
 
-      if (s.gasGiantCount > 0){
-	RenderOrbits(g, s.gasGiants, "orbit-gasgiant");
+      if (s.hasBodiesOfType(GasGiant.Type)){
+	RenderOrbits(g, s.getBodiesOfType(GasGiant.Type), "orbit-gasgiant");
       }
 
-      if (s.asteroidCount > 0){
-	RenderOrbits(g, s.asteroids, "orbit-asteroids", true);
+      if (s.hasBodiesOfType(AsteroidBelt.Type)){
+	RenderOrbits(g, s.getBodiesOfType(AsteroidBelt.Type), "orbit-asteroids", true);
       }
     }
 
@@ -438,7 +441,7 @@ requirejs([
 	    .attr("stroke-width", 1);
 	  var surf = scroller.append("g")
 	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(cdata.orbit.rMax) + ")");
-	  RenderStar(cdata.companion, surf);
+	  RenderStar(cdata.body, surf);
 	}
       }
     };
@@ -816,13 +819,13 @@ requirejs([
   ready(function(){
     var regionRadius = 21;
     var seed = "Bryan Miller";
-    var region = new Region({
+    /*var region = new Region({
       seed: seed,
       radius: regionRadius,
       autoGenerate: true
     });
     console.log(region);
-    return; // Temporary cutoff!
+    return;*/ // Temporary cutoff!
 
     var starsystemctrl = new StarSystemCtrl("StarsystemPanel");
     starsystemctrl.on("region", function(){

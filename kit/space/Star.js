@@ -737,7 +737,7 @@
 	  for (var c=0; c < this.companionCount; c++){
 	    var orbit = this.data.companion[c].orbit;
 	    var p = Math.max(orbit.rMin, orbit.rMax);
-	    var plimit = p + this.data.companion[c].companion.limit.outerRadius;
+	    var plimit = p + this.data.companion[c].body.limit.outerRadius;
 	    size = (plimit > size) ? plimit : size;
 	  }
 	  return size;
@@ -843,6 +843,34 @@
 	for (var i=0; i < count; i++){
 	  var b = this.data.body[i];
 	  if (b.body.type === type){
+	    list.push(WrapBody(b));
+	  }
+	}
+      }
+      return list;
+    };
+
+    this.hasHabitable = function(){
+      if (typeof(this.data.body) !== 'undefined'){
+        var count = this.data.body.length;
+	for (var i=0; i < count; i++){
+	  var b = this.data.body[i].body;
+	  if (b instanceof Terrestrial && b.atmosphere.breathable === true){
+	    return true;
+	  }
+	}
+      }
+      return false;
+    };
+
+
+    this.getHabitable = function(){
+      var list = [];
+      if (typeof(this.data.body) !== 'undefined'){
+        var count = this.data.body.length;
+	for (var i=0; i < count; i++){
+	  var b = this.data.body[i];
+	  if (b.body instanceof Terrestrial && b.body.atmosphere.breathable === true){
 	    list.push(WrapBody(b));
 	  }
 	}

@@ -194,22 +194,6 @@
       if (options.systemDensity < 1){
 	options.systemDensity = 6; // We want SOME stars
       }
-      /*options.breathableDensity = (typeof(options.breathableDensity) === 'number') ?
-	Math.abs(options.breathableDensity)%100 :
-	(rng.rollDice(6, 2)-2)*4;
-      if (options.breathableDensity < 1){
-	options.breathableDensity = 0; // We don't NEED breathable planets.
-      }
-      options.companionProbability = (typeof(options.companionProbability) === 'number') ?
-	Math.abs(options.companionProbability)%100 :
-	rng.rollDice(6, 2)*5;
-      if (options.companionProbability < 1){
-	options.companionProbability = 10;
-      }*/
-
-      /*if (options.autoGenerate === true){
-	this.generate();
-      }*/
     }
 
     Object.defineProperties(this, {
@@ -239,7 +223,7 @@
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.stellarBodyCount <= 0){
+            if (systems[i].star.bodyCount <= 0){
               count += 1;
             }
           }
@@ -252,7 +236,7 @@
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.stellarBodyCount <= 0){
+            if (systems[i].star.bodyCount <= 0){
               sys.push(WrapSysInformation(systems[i]));
             }
           }
@@ -265,7 +249,7 @@
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.stellarBodyCount > 0){
+            if (systems[i].star.bodyCount > 0){
               count += 1;
             }
           }
@@ -278,7 +262,7 @@
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.stellarBodyCount > 0){
+            if (systems[i].star.bodyCount > 0){
               sys.push(WrapSysInformation(systems[i]));
             }
           }
@@ -291,7 +275,7 @@
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.terrestrialCount > 0){
+            if (systems[i].star.hasBodiesOfType(Terrestrial.Type) === true){
               count += 1;
             }
           }
@@ -304,7 +288,7 @@
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.terrestrialCount > 0){
+            if (systems[i].star.hasBodiesOfType(Terrestrial.Type) === true){
               sys.push(WrapSysInformation(systems[i]));
             }
           }
@@ -317,7 +301,7 @@
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.hasBreathable === true){
+            if (systems[i].star.hasHabitable() === true){
               count += 1;
             }
           }
@@ -330,7 +314,7 @@
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.hasBreathable === true){
+            if (systems[i].star.hasHabitable() === true){
               sys.push(WrapSysInformation(systems[i]));
             }
           }
@@ -343,7 +327,7 @@
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.hasAsteroid === true){
+            if (systems[i].star.hasBodiesOfType(AsteroidBelt.Type) === true){
               count += 1;
             }
           }
@@ -356,7 +340,7 @@
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
-            if (systems[i].star.hasAsteroid === true){
+            if (systems[i].star.hasBodiesOfType(AsteroidBelt.Type) === true){
               sys.push(WrapSysInformation(systems[i]));
             }
           }
@@ -398,6 +382,24 @@
       });
       wrap.star = sys.star;
       return wrap;
+    };
+
+    this.getSystemsContaining = function(type_or_list){
+      if (typeof(type_or_list) === 'number'){
+        return this.getSystemsContaining([type_or_list]);
+      } else if (type_or_list instanceof Array){
+        var sys = [];
+        for (var i=0; i < systems.length; i++){
+          var star = systems[i].star;
+          for (var t=0; t < type_or_list.length; t++){
+            if (star.hasBodiesOfType(type_or_list[t]) === true){
+              sys.push(WrapSysInformation(systems[i]));
+            }
+          }
+        }
+        return sys;
+      }
+      throw new TypeError("Unsupported argument value.");
     };
 
     this.toString = function(pretty){
