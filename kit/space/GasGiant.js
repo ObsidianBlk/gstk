@@ -16,7 +16,7 @@
       module.exports = factory(
 	require('../PRng'),
 	require('tv4'),
-	require('StellarBody')
+	require('./StellarBody')
       );
     }
   } else {

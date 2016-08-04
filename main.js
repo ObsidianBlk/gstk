@@ -816,6 +816,13 @@ requirejs([
   ready(function(){
     var regionRadius = 21;
     var seed = "Bryan Miller";
+    var region = new Region({
+      seed: seed,
+      radius: regionRadius,
+      autoGenerate: true
+    });
+    console.log(region);
+    return; // Temporary cutoff!
 
     var starsystemctrl = new StarSystemCtrl("StarsystemPanel");
     starsystemctrl.on("region", function(){

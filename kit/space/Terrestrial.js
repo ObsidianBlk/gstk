@@ -156,6 +156,9 @@
       } else if (size > 3){
 	size = 3;
       }
+    } else {
+      size = rng.rollDice(6, 1) - 3;
+      if (size < 0){size = 0;}
     }
 
     var cls = 0; // 0 = Rock

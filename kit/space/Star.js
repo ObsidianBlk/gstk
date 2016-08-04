@@ -1,4 +1,3 @@
-
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     /* -------------------------------------------------
@@ -7,6 +6,9 @@
     define([
       'kit/PRng',
       'kit/space/StellarBody',
+      'kit/space/GasGiant',
+      'kit/space/Terrestrial',
+      'kit/space/AsteroidBelt',
       'node_modules/tv4/tv4'
     ], factory);
   } else if (typeof exports === 'object') {
@@ -17,6 +19,9 @@
       module.exports = factory(
 	require('../PRng'),
 	require('./StellarBody'),
+	require('./GasGiant'),
+	require('./Terrestrial'),
+	require('./AsteroidBelt'),
 	require('tv4')
       );
     }
@@ -33,6 +38,9 @@
     if (root.GSTK.$.exists(root, [
       "GSTK.PRng",
       "GSTK.space.StellarBody",
+      "GSTK.space.GasGiant",
+      "GSTK.space.Terrestrial",
+      "GSTK.space.AsteroidBelt",
       "tv4"
     ]) === false){
       throw new Error("Required component not defined.");
@@ -41,15 +49,19 @@
     root.GSTK.$.def (root.GSTK, "space.Star", factory(
       root.GSTK.PRng,
       root.GSTK.space.StellarBody,
+      root.GSTK.space.GasGiant,
+      root.GSTK.space.Terrestrial,
+      root.GSTK.space.AsteroidBelt,
       root.tv4
     ));
   }
-})(this, function (PRng, StellarBody, tv4) {
+})(this, function (PRng, StellarBody, GasGiant, Terrestrial, AsteroidBelt, tv4) {
 
   var StarSchema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "type": "object",
     "properties": {
+      "_type":{"type": "number"},
       "age": {"type": "number"},
       "limit": {
 	"type": "object",
@@ -71,8 +83,9 @@
       "primaryStar": {"type": ["string", "null"]},
       "radius": {"type": "number"},
       "temp": {"type": "integer"},
-      "type": {"type": "string"},
-      "stellarBody": {
+      "sequence": {"type": "string"},
+      "arrangement": {"type": "number"},
+      "body": {
 	"type": "array",
 	"items": {
           "type": "object",
@@ -118,17 +131,26 @@
 		"outerRadius"
               ]
             },
-            "companion": {"type": "object"}
+            "body": {
+	      "type": "object",
+	      "properties": {
+		"_type": {"type": "number"}
+	      },
+	      "required":[
+		"_type"
+	      ]
+	    }
           },
           "required": [
             "orbit",
             "forbiddenZone",
-            "companion"
+            "body"
           ]
 	}
       }
     },
     "required": [
+      "_type",
       "age",
       "limit",
       "lumClass",
@@ -137,68 +159,71 @@
       "name",
       "radius",
       "temp",
-      "type"
+      "sequence",
+      "arrangement"
     ]
   };
 
+  function CalcOrbitalInformation(rng, primaryMass, companionMass, options){
+    options = (typeof(options) === typeof({})) ? options : {};
+    var radius = 0;
+    if (typeof(options.radius) === 'number' && options.radius > 0){
+      radius = options.radius;
+    } else {
+      var multi = 0.05;
+      var mod = -6;
+      var desc = "Very Close";
+      var roll = rng.rollDice(6, 3) + ((typeof(options.rollMod) === 'number') ? options.rollMod : 0);
+      if (roll > 6 && roll <= 9){
+	multi = 0.5;
+	mod = -4;
+	desc = "Close";
+      } else if (roll > 9 && roll <= 11){
+	multi = 2;
+	mod = -2;
+	desc = "Moderate";
+      } else if (roll > 11 && roll <= 14){
+	multi = 10;
+	mod = 0;
+	desc = "Wide";
+      } else {
+	multi = 50;
+	mod = 0;
+	desc = "Distant";
+      }
+      var hmulti = 0.5 * multi;
 
-  var AU2Mile = Number("9.296e+7");
-  var AU2KM = Number("1.496e+8");
+      radius = (rng.rollDice(6, 2)*multi) + rng.value(-hmulti, hmulti);
+    }
 
-  var StellarEvolutionTable = [
-    {mass: 0.10, type: "M7", temp: 3100, Lmin: 0.0012, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
-    {mass: 0.15, type: "M6", temp: 3200, Lmin: 0.0036, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
-    {mass: 0.20, type: "M5", temp: 3200, Lmin: 0.0079, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
-    {mass: 0.25, type: "M4", temp: 3300, Lmin: 0.015, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
-    {mass: 0.30, type: "M4", temp: 3300, Lmin: 0.024, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
-    {mass: 0.35, type: "M3", temp: 3400, Lmin: 0.037, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
-    {mass: 0.40, type: "M2", temp: 3500, Lmin: 0.054, Lmax: null, Mspan: null, Sspan: null, Gspan: null},
-    {mass: 0.45, type: "M1", temp: 3700, Lmin: 0.07, Lmax: 0.08, Mspan: 70, Sspan: null, Gspan: null},
-    {mass: 0.50, type: "M0", temp: 3800, Lmin: 0.09, Lmax: 0.11, Mspan: 59, Sspan: null, Gspan: null},
-    {mass: 0.55, type: "K8", temp: 4000, Lmin: 0.11, Lmax: 0.15, Mspan: 50, Sspan: null, Gspan: null},
-    {mass: 0.60, type: "K6", temp: 4200, Lmin: 0.13, Lmax: 0.20, Mspan: 42, Sspan: null, Gspan: null},
-    {mass: 0.65, type: "K5", temp: 4400, Lmin: 0.15, Lmax: 0.25, Mspan: 37, Sspan: null, Gspan: null},
-    {mass: 0.70, type: "K4", temp: 4600, Lmin: 0.19, Lmax: 0.35, Mspan: 30, Sspan: null, Gspan: null},
-    {mass: 0.75, type: "K2", temp: 4900, Lmin: 0.23, Lmax: 0.48, Mspan: 24, Sspan: null, Gspan: null},
-    {mass: 0.80, type: "K0", temp: 5200, Lmin: 0.28, Lmax: 0.65, Mspan: 20, Sspan: null, Gspan: null},
-    {mass: 0.85, type: "G8", temp: 5400, Lmin: 0.36, Lmax: 0.84, Mspan: 17, Sspan: null, Gspan: null},
-    {mass: 0.90, type: "G6", temp: 5500, Lmin: 0.45, Lmax: 1.00, Mspan: 14, Sspan: null, Gspan: null},
-    {mass: 0.95, type: "G4", temp: 5700, Lmin: 0.56, Lmax: 1.30, Mspan: 12, Sspan: 1.8, Gspan: 1.1},
-    {mass: 1.00, type: "G2", temp: 5800, Lmin: 0.68, Lmax: 1.60, Mspan: 10, Sspan: 1.6, Gspan: 1.0},
-    {mass: 1.05, type: "G1", temp: 5900, Lmin: 0.87, Lmax: 1.90, Mspan: 8.8, Sspan: 1.4, Gspan: 0.8},
-    {mass: 1.10, type: "G0", temp: 6000, Lmin: 1.10, Lmax: 2.20, Mspan: 7.7, Sspan: 1.2, Gspan: 0.7},
-    {mass: 1.15, type: "F9", temp: 6100, Lmin: 1.40, Lmax: 2.60, Mspan: 6.7, Sspan: 1.0, Gspan: 0.6},
-    {mass: 1.20, type: "F8", temp: 6300, Lmin: 1.70, Lmax: 3.00, Mspan: 5.9, Sspan: 0.9, Gspan: 0.6},
-    {mass: 1.25, type: "F7", temp: 6400, Lmin: 2.10, Lmax: 3.50, Mspan: 5.2, Sspan: 0.8, Gspan: 0.5},
-    {mass: 1.30, type: "F6", temp: 6500, Lmin: 2.50, Lmax: 3.90, Mspan: 4.6, Sspan: 0.7, Gspan: 0.4},
-    {mass: 1.35, type: "F5", temp: 6600, Lmin: 3.10, Lmax: 4.50, Mspan: 4.1, Sspan: 0.6, Gspan: 0.4},
-    {mass: 1.40, type: "F4", temp: 6700, Lmin: 3.70, Lmax: 5.10, Mspan: 3.7, Sspan: 0.6, Gspan: 0.4},
-    {mass: 1.45, type: "F3", temp: 6900, Lmin: 4.30, Lmax: 5.70, Mspan: 3.3, Sspan: 0.5, Gspan: 0.3},
-    {mass: 1.50, type: "F2", temp: 7000, Lmin: 5.10, Lmax: 6.50, Mspan: 3.0, Sspan: 0.5, Gspan: 0.3},
-    {mass: 1.60, type: "F0", temp: 7300, Lmin: 6.70, Lmax: 8.20, Mspan: 2.5, Sspan: 0.4, Gspan: 0.2},
-    {mass: 1.70, type: "A9", temp: 7500, Lmin: 8.60, Lmax: 10.0, Mspan: 2.1, Sspan: 0.3, Gspan: 0.2},
-    {mass: 1.80, type: "A7", temp: 7800, Lmin: 11.0, Lmax: 13.0, Mspan: 1.8, Sspan: 0.3, Gspan: 0.2},
-    {mass: 1.90, type: "A6", temp: 8000, Lmin: 13.0, Lmax: 16.0, Mspan: 1.5, Sspan: 0.2, Gspan: 0.1},
-    {mass: 2.00, type: "A5", temp: 8200, Lmin: 16.0, Lmax: 20.0, Mspan: 1.3, Sspan: 0.2, Gspan: 0.1}
-  ];
+    var e = 0;
+    if (typeof(options.eccentricity) === 'number' && options.eccentricity < 1.0){
+      e = options.eccentricity;
+    } else {
+      roll = (rng.rollDice(6, 3) + mod) - 3; // 0 basing
+      e = (roll >= 15) ? 0.95 : roll*0.1;
+      if (e < 0){ e = 0;}
+    }
 
-  function GetSETEntry(mass){
-    for (var i=0; i < StellarEvolutionTable.length; i++){
-      if (Math.abs(StellarEvolutionTable[i].mass - mass) < 0.01){
-	return StellarEvolutionTable[i];
+    return {
+      description: desc,
+      avgRadius: radius,
+      rMin: (1 - e) * radius,
+      rMax: (1 + e) * radius,
+      period: Math.sqrt((radius*radius*radius)/(primaryMass + companionMass))
+    };
+  }
+
+
+  function GetStellarEvolutionEntry(mass){
+    for (var i=0; i < StellarBody.Table.StellarEvolutionTable.length; i++){
+      if (Math.abs(StellarBody.Table.StellarEvolutionTable[i].mass - mass) < 0.01){
+	return StellarBody.Table.StellarEvolutionTable[i];
       }
     }
     return null;
   }
 
-  function GetSETEntryByType(type){
-    for (var i=0; i < StellarEvolutionTable.length; i++){
-      if (StellarEvolutionTable[i].type === type){
-	return StellarEvolutionTable[i];
-      }
-    }
-    return null;
-  }
 
   function StarMassCalc(r1, r2){
     var Mass = function(base, adj, breaks){
@@ -270,47 +295,57 @@
   }
 
 
-  function StarAgeCalc(r1, r2, r3){
-    var age = 0;
+  function Generate(data, rng, options){
+    var r1 = 0;
+    var r2 = 0;
+    var r3 = 0;
+    var parent = (options.parent instanceof Star) ? options.parent : null;
 
-    if (r1 >= 4 && r1 <= 6){
-      age += 0.1 + (r2*0.3) + (r3*0.05);
-    } else if (r1 >= 7 && r1 <= 10){
-      age += 2 + (r2*0.6) + (r3*0.1);
-    } else if (r1 >= 11 && r1 <= 14){
-      age += 5.6 + (r2*0.6) + (r3*0.1);
-    } else if (r1 >= 15 && r1 <= 17){
-      age += 8 + (r2*0.6) + (r3*0.1);
+    // -- Calculating Age
+    if (parent !== null){
+      data.age = parent.age;
+    } else if (typeof(options.age) === 'number'){
+      data.age = options.age;
     } else {
-      age += 10 + (r2*0.6) + (r3*0.1);
+      r1 = (options.supportGardenWorlds === true) ? rng.rollDice(6, 2)+2 : rng.rollDice(6, 3);
+      r2 = rng.rollDice(6, 1) - 1;
+      r3 = rng.rollDice(6, 1) - 1;
+      if (r1 >= 4 && r1 <= 6){
+	data.age = 0.1 + (r2*0.3) + (r3*0.05);
+      } else if (r1 >= 7 && r1 <= 10){
+	data.age = 2 + (r2*0.6) + (r3*0.1);
+      } else if (r1 >= 11 && r1 <= 14){
+	data.age = 5.6 + (r2*0.6) + (r3*0.1);
+      } else if (r1 >= 15 && r1 <= 17){
+	data.age = 8 + (r2*0.6) + (r3*0.1);
+      } else {
+	data.age = 10 + (r2*0.6) + (r3*0.1);
+      }
     }
 
-    return age;
-  }
-
-
-  function GenStar(star, rng, options){
-    var r1 = 0;
-    star.primaryStar = (typeof(options.primaryStar) !== 'undefined' && options.primaryStar instanceof Star) ? options.primaryStar : null;
-
     // Generate a companion star mass to the given primary star.
-    if (star.primaryStar !== null){
+    if (parent !== null){
       r1 = rng.rollDice(6, 1) - 1;
-      star.mass = star.primaryStar.mass;
+      data.mass = parent.mass;
       if (r1 >= 1){
-	if (star.mass >= 1.6){
-	  star.mass += (1.5 - star.mass); // NOTE: This is a subtraction. Don't get confused by the "+="
-	  r1 += (1.5 - star.mass)*10;
-	  star.mass -= (0.5 * r1);
+	if (data.mass >= 1.6){
+	  data.mass += (1.5 - data.mass); // NOTE: This is a subtraction. Don't get confused by the "+="
+	  r1 += (1.5 - data.mass)*10;
+	  data.mass -= (0.5 * r1);
 	} else {
-	  if (star.mass - (r1 * 0.5) < 0.1){
-	    star.mass = 0.1;
+	  if (data.mass - (r1 * 0.5) < 0.1){
+	    data.mass = 0.1;
 	  } else {
-	    star.mass -= (r1*0.5);
+	    data.mass -= (r1*0.5);
 	  }
 	}
       }
 
+      var fluctuateMass = true;
+    // Force the use of the provided mass.
+    } else if (typeof(options.mass) === 'number' && options.mass > 0.0 && options.mass <= 2.0){
+      data.mass = options.mass;
+      fluctuateMass = false;
     // Force the generation of a star mass that can more easily support a "Garden" world.
     } else if (options.supportGardenWorlds === true){
       r1 = 5;
@@ -322,523 +357,193 @@
       case 5: case 6:
 	r1 = 8; break;
       }
-      star.mass = StarMassCalc(
+      data.mass = StarMassCalc(
 	r1,
 	rng.rollDice(6, 3)
       );
 
     // Full, random generation of a star mass.
     } else {
-      star.mass = StarMassCalc(
+      data.mass = StarMassCalc(
 	rng.rollDice(6, 3),
 	rng.rollDice(6, 3)
       );
     }
     
 
-    // -- Calculating Age
-    if (star.primaryStar !== null){
-      star.age = star.primaryStar.age;
-    } else {
-      star.age = StarAgeCalc(
-	(options.supportGardenWorlds === true) ? rng.rollDice(6, 2)+2 : rng.rollDice(6, 3),
-	rng.rollDice(6, 1)-1,
-	rng.rollDice(6, 1)-1
-      );
-    }
-
-    var sete = GetSETEntry(star.mass);
     // -- Storing the star's current type and assumed temprature
-    star.type = sete.type;
-    star.temp = sete.temp;
-
-    if (options.supportGardenWorlds === true && sete.Mspan !== null && star.age >= sete.Mspan){
-      star.age = (sete.Mspan*0.75)*rng.uniform();
+    var sete = GetStellarEvolutionEntry(data.mass);
+    // Now fluctuating the mass if needed...
+    if (fluctuateMass === true){
+      data.mass += rng.value(-0.025, 0.025);
+    }
+    data.sequence = sete.type;
+    data.temp = Math.floor(sete.temp + rng.value(-100, 100)); // I don't REALLY need to floor, but the small degree is trivial. 
+    // Adjusting age as needed.
+    if (options.supportGardenWorlds === true && sete.Mspan !== null && data.age >= sete.Mspan){
+      data.age = (sete.Mspan*0.75)*rng.uniform();
     }
 
     // -- Calculating Luminosity Class
-    star.lumClass = "V";
-    if (sete.Mspan !== null && star.age > sete.Mspan){
+    data.lumClass = "V";
+    if (sete.Mspan !== null && data.age > sete.Mspan){
       if (sete.Sspan === null){
-	star.lumClass = "D";
+	data.lumClass = "D";
       } else {
-	if (star.age <= sete.Sspan){
-	  star.lumClass = "IV";
-	} else if (star.age <= sete.Gspan){
-	  star.lumClass = "III";
+	if (data.age <= sete.Sspan){
+	  data.lumClass = "IV";
+	} else if (data.age <= sete.Gspan){
+	  data.lumClass = "III";
 	} else {
-	  star.lumClass = "D";
+	  data.lumClass = "D";
 	}
       }
     }
 
-    if (star.lumClass !== "D"){
+    if (data.lumClass !== "D"){
       // -- Calculating actual Luminosity
-      if (star.mass <= 0.4){
-	star.luminosity = sete.Lmin + (sete.Lmin*rng.value(-0.1, 0.1));
+      if (data.mass <= 0.4){
+	data.luminosity = sete.Lmin + (sete.Lmin*rng.value(-0.1, 0.1));
       } else {
-	if (sete.Sspan === null || star.age <= sete.Mspan){
-          star.luminosity = sete.Lmin + ((star.age/sete.Mspan)*(sete.Lmax - sete.Lmin));
-	} else if (sete.Sspan !== null && star.age > sete.Mspan){
+	if (sete.Sspan === null || data.age <= sete.Mspan){
+          data.luminosity = sete.Lmin + ((data.age/sete.Mspan)*(sete.Lmax - sete.Lmin));
+	} else if (sete.Sspan !== null && data.age > sete.Mspan){
 	  // Adjusting for Sub-Giant stage
-	  star.temp -= ((star.age - sete.Mspan)/sete.Sspan)*(star.temp-4800); // Higher temprature.
-	  star.luminosity = sete.Lmax + (sete.Lmax * rng.value(-0.1, 0.1));
+	  data.temp -= ((data.age - sete.Mspan)/sete.Sspan)*(data.temp-4800); // Higher temprature.
+	  data.luminosity = sete.Lmax + (sete.Lmax * rng.value(-0.1, 0.1));
 
-	  if (star.age > sete.Sspan){
+	  if (data.age > sete.Sspan){
 	    // Adjusting for Giant stage.
-	    star.temp = 3000 + ((rng.rollDice(6, 2)-2) * 200);
-	    star.luminosity *= 25;
+	    data.temp = 3000 + ((rng.rollDice(6, 2)-2) * 200);
+	    data.luminosity *= 25;
 	  }
 	}
       }
+
+      // -- Calculating radius...
+      data.radius = (155000 * Math.sqrt(data.luminosity)) / (data.temp * data.temp);
     } else {
       // -- Recaluclating for a White Dwarf star.
-      star.mass = 0.9 + ((rng.rollDice(6, 2) - 2)*0.05);
-      star.luminosity = 0.001;
+      data.mass = 0.9 + ((rng.rollDice(6, 2) - 2)*0.05);
+      data.luminosity = 0.001;
+      // White dwarfs are roughly Earth sized, so...
+      data.radius = 0; // 0 AUs. The actual number would be so small I doubt it's worth storing. I'll use earth diameter in the Mile/KM properties.
     }
 
-    // -- Calculating radius...
-    star.radius = (155000 * Math.sqrt(star.luminosity)) / (star.temp * star.temp);
-
-    return star;
-  }
-
-
-  function CalcOrbitalInformation(rng, roll, primaryMass, companionMass){
-    var multi = 0.05;
-    var mod = -6;
-    var desc = "Very Close";
-    if (roll > 6 && roll <= 9){
-      multi = 0.5;
-      mod = -4;
-      desc = "Close";
-    } else if (roll > 9 && roll <= 11){
-      multi = 2;
-      mod = -2;
-      desc = "Moderate";
-    } else if (roll > 11 && roll <= 14){
-      multi = 10;
-      mod = 0;
-      desc = "Wide";
-    } else {
-      multi = 50;
-      mod = 0;
-      desc = "Distant";
-    }
-    var hmulti = 0.5 * multi;
-
-    var oradius = rng.rollDice(6, 2)*multi;
-    oradius += rng.value(-hmulti, hmulti);
-
-    var e = 0;
-    roll = (rng.rollDice(6, 3) + mod) - 3; // 0 basing
-    e = (roll >= 15) ? 0.95 : roll*0.1;
-    if (e < 0){ e = 0;}
-
-    return {
-      description: desc,
-      avgRadius: oradius,
-      rMin: (1 - e) * oradius,
-      rMax: (1 + e) * oradius,
-      period: Math.sqrt((oradius*oradius*oradius)/(primaryMass + companionMass))
-    };
-  }
-
-
-  function CalculateLimitRadii(rng, star, options){
-    var mass = star.mass;
-    var luminosity = star.luminosity;
-    var sete = GetSETEntryByType(star.type);
-    
-    if (star.lumClass === "D"){
-      if (sete !== null){
-        mass = sete.mass;
-        luminosity = (sete.Lmax !== null) ? sete.Lmax : sete.Lmin;
-      }
+    // -- Calculating planetary support limits.
+    var lmass = data.mass;
+    var llum = data.luminosity;
+    if (data.lumClass === "D"){
+      lmass = sete.mass;
+      llum = (sete.Lmax !== null) ? sete.Lmax : sete.Lmin;
     }
 
-    star.limit = {
+    data.limit = {
       innerRadius: Math.max(
-        0.1*mass,
-        0.01*Math.sqrt(luminosity)
+        0.1*lmass,
+        0.01*Math.sqrt(llum)
       ),
-      outerRadius: 40 * mass,
-      snowLine: (sete !== null) ? 4.85 * Math.sqrt(sete.Lmin) : 0
+      outerRadius: 40 * lmass,
+      snowLine: 4.85 * Math.sqrt(sete.Lmin)
     };
+
+    // -- Calculating the "Gas Giant Arrangement Type". This will effect how standard stellar bodies are placed around star.
+    var roll = rng.rollDice(6, 3);
+    data.arrangement = 0; // No Gas Giant.
+    if (roll > 10 && roll <= 12){
+      data.arrangement = 1; // Standard.
+    } else if (roll > 12 && roll <= 14){
+      data.arrangement = 2; // Eccentric
+    } else if (roll > 14 && roll <= 18){
+      data.arrangement = 3; // Epistellar
+    }
   }
 
 
 
   
 
+
   /* -------------------------------------------------------------------------------
    * Actual Star class
    * ---------------------------------------------------------------------------- */
   function Star(options){
-    options = (typeof(options) !== typeof({})) ? {} : options;
-
+    StellarBody.call(this);
+    this.schema = StarSchema;
+    this._type = Star.Type;
+    options = (typeof(options) === typeof({})) ? options : {};
     var rng = new PRng({seed:(typeof(options.seed)!=='undefined') ? options.seed : Math.random().toString(), initDepth:5000});
-    var stellarBodiesGenerated = false; // This is just a marker so stellar bodies are only created once.
-    var data = null;
-    var primaryStar = null; // Will be set to a Star object if this star is a companion.
+    var parent = (options.parent instanceof Star) ? options.parent : null;
 
-    function CountStellarBodyOfType(type){
-      var count = 0;
-      if (typeof(data.stellarBody) !== 'undefined'){
-	for (var i=0; i < data.stellarBody.length; i++){
-	  var body = data.stellarBody[i].body;
-	  if (body.typeIndex === type){
-	    count += 1;
-	  }
-	}
-      }
-      return count;
+    var AllowSysGen = true;
+    if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
+      this.from(options.from);
+      AllowSysGen = false;
+    } else {
+      Generate(this.data, rng, options);
+      this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
     }
 
-    Object.defineProperties(this, {
-      "name":{
-        enumerate: true,
-        get:function(){return data.name;},
-        set:function(name){
-          if (typeof(name) !== 'string'){
-            throw new TypeError("Expecting string.");
-          }
-          data.name = name;
-        }
-      },
-
-      "isPrimaryStar":{
-	enumerate: true,
-	get:function(){return (primaryStar === null);}
-      },
-
-      "primaryStar":{
-	enumerate:true,
-	get:function(){return primaryStar;},
-	set:function(star){
-	  if (!(star instanceof Star)){
-	    throw new TypeError("Expected a Star object instance.");
+    function WrapCompanion(cmp){
+      var c = {};
+      Object.defineProperties(c, {
+	"orbit":{
+	  enumerate: true,
+	  get:function(){
+	    return JSON.parse(JSON.stringify(cmp.orbit));
 	  }
-	  if (star !== this){
-	    primaryStar = star;
-	    data.primaryStar = star.name;
+	},
+	"forbiddenZone":{
+	  enumerate: true,
+	  get:function(){
+	    return JSON.parse(JSON.stringify(cmp.forbiddenZone));
 	  }
 	}
-      },
+      });
+      c.body = cmp.body;
+      return c;
+    }
 
-      "type":{
-        enumerate: true,
-        get:function(){
-          return (typeof(data.type) === 'string') ? data.type : "UNIQUE";
-        }
-      },
 
-      "class":{
-        enumerate: true,
-        get:function(){
-          return (typeof(data.lumClass) === 'string') ? data.lumClass : "";
-        }
-      },
-
-      "mass":{
-        enumerate: true,
-        get:function(){return (typeof(data.mass) === 'number') ? data.mass : 0;},
-        set:function(mass){
-          if (typeof(mass) !== 'number'){throw new TypeError("Expected number.");}
-          if (mass <= 0){throw new RangeError("Value must be greater than zero.");}
-          data.mass = mass;
-        }
-      },
-
-      "radius":{
-	enumerate:true,
-	get:function(){return data.radius;}
-      },
-
-      "radiusMiles":{
-	enumerate:true,
-	get:function(){return data.radius*AU2Mile;}
-      },
-
-      "radiusKM":{
-	enumerate:true,
-	get:function(){return data.radius*AU2KM;}
-      },
-
-      "age":{
-        enumerate: true,
-        get:function(){return (typeof(data.age) === 'number') ? data.age : 0;},
-        set:function(age){
-          if (typeof(age) !== 'number'){throw new TypeError("Expected number.");}
-          if (age < 0){throw new RangeError("Value must be positive.");}
-          data.age = age;
-        }
-      },
-
-      "temperature":{
-        enumerate: true,
-        get:function(){return (typeof(data.temp) === 'number') ? data.temp : 0;},
-        set:function(temp){
-          if (typeof(temp) !== 'number'){throw new TypeError("Expected number.");}
-          data.temp = temp;
-        }
-      },
-
-      "luminosity":{
-        enumerate: true,
-        get:function(){return (typeof(data.luminosity) === 'number') ? data.luminosity : 0;},
-        set:function(lum){
-          if (typeof(lum) !== 'number'){throw new TypeError("Expected number.");}
-          if (lum < 0){throw new RangeError("Value must be positive.");}
-          data.luminosity = lum;
-        }
-      },
-
-      /*"orbit":{
-	enumerate: true,
-	get:function(){return (typeof(data.orbit) !== 'undefined') ? JSON.parse(JSON.stringify(data.orbit)) : null;}
-      },
-
-      "forbiddenZone":{
-	enumerate: true,
-	get:function(){return (typeof(data.forbiddenZone) !== 'undefined') ? JSON.parse(JSON.stringify(data.forbiddenZone)) : null;}
-      },*/
-
-      "limit":{
-	enumerate: true,
-	get:function(){return (typeof(data.limit) !== 'undefined') ? JSON.parse(JSON.stringify(data.limit)) : null;}
-      },
-
-      "companionCount":{
-        enumerate: true,
-        get:function(){return (typeof(data.companion) !== 'undefined') ? data.companion.length : 0;}
-      },
-
-      "companions":{
-	enumerate: true,
-	get:function(){
-	  var cmp = [];
-	  if (this.companionCount > 0){
-	    for (var i=0; i < data.companion.length; i++){
-	      cmp.push(WrapCompanion(data.companion[i]));
-	    }
-	  }
-	  return cmp;
+    function WrapBody(sb){
+      var o = {};
+      Object.defineProperties(o, {
+	"avgRadius":{
+	  enumerate:true,
+	  get:function(){return sb.avgRadius;}
+	},
+	"rMin":{
+	  enumerate:true,
+	  get:function(){return sb.rMin;}
+	},
+	"rMax":{
+	  enumerate:true,
+	  get:function(){return sb.rMax;}
+	},
+	"period":{
+	  enumerate:true,
+	  get:function(){return sb.period;}
 	}
-      },
+      });
 
-      "fullSystemRadius":{
-	enumerate:true,
-	get:function(){
-	  var size = data.limit.outerRadius;
-	  for (var c=0; c < this.companionCount; c++){
-	    var p = Math.max(data.companion[c].orbit.rMin, data.companion[c].orbit.rMax);
-	    var plimit = p + data.companion[c].companion.limit.outerRadius;
-	    size = (plimit > size) ? plimit : size;
-	  }
-	  return size;
-	}
-      },
+      o.body = sb.body;
+      return o;
+    }
 
-      "stellarBodyCount":{
-	enumerate: true,
-	get:function(){return (typeof(data.stellarBody) !== 'undefined') ? data.stellarBody.length : 0;}
-      },
-
-      "stellarBodies":{
-	enumerate: true,
-	get:function(){
-	  var sb = [];
-	  if (typeof(data.stellarBody) !== 'undefined'){
-	    for (var i=0; i < data.stellarBody.length; i++){
-	      sb.push(WrapStellarBody(data.stellarBody[i]));
-	    }
-	  }
-	  return sb;
-	}
-      },
-
-      "hasPlanets":{
-	enumerate: true,
-	get:function(){
-	  if (typeof(data.stellarBody) !== 'undefined'){
-	    for (var i=0; i < data.stellarBody.length; i++){
-	      var body = data.stellarBody[i].body;
-	      if (body.typeIndex === 2 || body.typeIndex === 0){
-		return true;
-	      }
-	    }
-	  }
-	  return false;
-	}
-      },
-
-      "planetCount":{
-	enumerate: true,
-	get:function(){
-	  var count = 0;
-	  if (typeof(data.stellarBody) !== 'undefined'){
-	    for (var i=0; i < data.stellarBody.length; i++){
-	      var body = data.stellarBody[i].body;
-	      if (body.typeIndex === 2 || body.typeIndex === 0){
-		count += 1;
-	      }
-	    }
-	  }
-	  return count;
-	}
-      },
-
-      "hasGasGiant":{
-	enumerate: true,
-	get:function(){
-	  return CountStellarBodyOfType(0) > 0;
-	}
-      },
-
-      "gasGiantCount":{
-	enumerate: true,
-	get:function(){
-	  return CountStellarBodyOfType(0);
-	}
-      },
-
-      "gasGiants":{
-	enumerate: true,
-	get:function(){
-	  var sb = [];
-	  if (typeof(data.stellarBody) !== 'undefined'){
-	    for (var i=0; i < data.stellarBody.length; i++){
-	      if (data.stellarBody[i].body.typeIndex === 0){
-		sb.push(WrapStellarBody(data.stellarBody[i]));
-	      }
-	    }
-	  }
-	  return sb;
-	}
-      },
-
-      "hasAsteroid":{
-	enumerate: true,
-	get:function(){
-	  return CountStellarBodyOfType(1) > 0;
-	}
-      },
-
-      "asteroidCount":{
-	enumerate: true,
-	get:function(){
-	  return CountStellarBodyOfType(1);
-	}
-      },
-      
-      "asteroids":{
-	enumerate: true,
-	get:function(){
-	  var sb = [];
-	  if (typeof(data.stellarBody) !== 'undefined'){
-	    for (var i=0; i < data.stellarBody.length; i++){
-	      if (data.stellarBody[i].body.typeIndex === 1){
-		sb.push(WrapStellarBody(data.stellarBody[i]));
-	      }
-	    }
-	  }
-	  return sb;
-	}
-      },
-
-      "hasTerrestrial":{
-	enumerate: true,
-	get:function(){
-	  return CountStellarBodyOfType(2) > 0;
-	}
-      },
-
-      "terrestrialCount":{
-	enumerate: true,
-	get:function(){
-	  return CountStellarBodyOfType(2);
-	}
-      },
-
-      "terrestrials":{
-	enumerate: true,
-	get:function(){
-	  var sb = [];
-	  if (typeof(data.stellarBody) !== 'undefined'){
-	    for (var i=0; i < data.stellarBody.length; i++){
-	      if (data.stellarBody[i].body.typeIndex === 2){
-		sb.push(WrapStellarBody(data.stellarBody[i]));
-	      }
-	    }
-	  }
-	  return sb;
-	}
-      },
-
-      "hasBreathable":{
-	enumerate: true,
-	get:function(){
-	  if (typeof(data.stellarBody) !== 'undefined'){
-	    for (var i=0; i < data.stellarBody.length; i++){
-	      var body = data.stellarBody[i].body;
-	      if (body.typeIndex === 2 && body.atmosphere.breathable === true){
-		return true;
-	      }
-	    }
-	  }
-	  return false;
-	}
-      },
-
-      "breathableCount":{
-	enumerate: true,
-	get:function(){
-	  var count = 0;
-	  if (typeof(data.stellarBody) !== 'undefined'){
-	    for (var i=0; i < data.stellarBody.length; i++){
-	      var body = data.stellarBody[i].body;
-	      if (body.typeIndex === 2 && body.atmosphere.breathable === true){
-		count += 1;
-	      }
-	    }
-	  }
-	  return count;
-	}
-      },
-
-      "data":{
-        enumerate: true,
-        get:function(){return JSON.parse(this.toString());}
-      }
-    });
-
-    function GetRandomOrbitalSpacing(){
-      switch(rng.rollDice(6, 3)){
-      case 3: case 4:
-	return 1.4;
-      case 5: case 6:
-	return 1.5;
-      case 7: case 8:
-	return 1.6;
-      case 9: case 10: case 11: case 12:
-	return 1.7;
-      case 13: case 14:
-	return 1.8;
-      case 15: case 16:
-	return 1.9;
-      }
-      return 2.0;
+    function RadiusFromBlackbody(lum, bb){
+      return Math.pow((Math.pow(lum, 0.25)*278)/bb, 2);
     }
 
     function GetOrbitalEccentricity(gasGiant, inSnowLine, arrangement){
       var roll = rng.rollDice(6, 3);
       if (gasGiant){
-	if (arrangement === 1 && inSnowLine){
+	if (arrangement === 2 && inSnowLine){
 	  roll += 4;
-	} else if (arrangement === 0){
+	} else if (arrangement === 3){
 	  roll -= 6;
 	}
+      } else if (arrangement === 1){
+	roll -= 6;
       }
 
       if (roll <= 3){return 0 + rng.value(-0.025, 0.025);}
@@ -865,447 +570,648 @@
       return 0.8 + rng.value(-0.05, 0.05);
     }
 
-    function ValidateOrbitalRadius(radius, adjustIn){
-      if (radius < data.limit.innerRadius || radius > data.limit.outerRadius){
-	return -1;
-      }
-      adjustIn = (adjustIn === true) ? true : false;
-
-      var ccount = (typeof(data.companion) !== 'undefined') ? data.companion.length : 0;
-      for (var c=0; c < ccount; c++){
-	var fz = data.companion[c].forbiddenZone;
-	if (radius >= fz.innerRadius && radius <= fz.outerRadius){
-	  if (adjustIn === true){
-	    // Adjust it so that it's between .1 and .2 AU away from the innerRadius of forbidden zone
-	    radius = fz.innerRadius - rng.value(0.1, 0.2); 
+    function ConfirmRadius(data, rMin, rMax){
+      var count = 0;
+      // Check for conflicts with already placed stellar bodies...
+      if (typeof(data.body) !== 'undefined'){
+	count = data.body.length;
+	for (var i=0; i < count; i++){
+	  var body = data.body[i];
+	  // First check radial crossing...
+	  if (body.rMin < rMin){
+	    if (body.rMax > rMax){return false;} // Radial crossing
 	  } else {
-	    radius = fz.outerRadius + rng.value(0.1, 0.5);
+	    if (body.rMax < rMax){return false;} // Radial crossing
 	  }
 
-	  // Check to see if adjustment is still generally legal...
-	  if (radius < data.limit.innerRadius || radius > data.limit.outerRadius){
-	    return -1; // Nope... invalid radius
+	  // Check if too close...
+	  if (Math.abs(rMin - body.rMin) < 1.4 || Math.abs(rMax - body.rMax) < 1.4){
+	    return false;
 	  }
 	}
       }
 
-      return radius;
-    }
-
-    function GenerateOrbitAtRadius(radius, arrangementType, geninfo){
-      if (typeof(data.stellarBody) === 'undefined'){
-        data.stellarBody = [];
-      }
-
-      var eccentricity = GetOrbitalEccentricity(geninfo.makeGasGiant, radius < data.limit.snowLine, arrangementType);
-      var Rmin = (1 - eccentricity)*radius;
-      var Rmax = (1 + eccentricity)*radius;
-
-      var dummy = 0;
-      if (geninfo.makeGasGiant){
-	dummy = 5;
-      }
-
-      var firstAfterSnowline = true;
-      for (var i=0; i < data.stellarBody.length; i++){
-	if (geninfo.makeGasGiant === true && data.stellarBody[i].radius >= data.limit.snowLine){
-          firstAfterSnowline = false;
-        }
-
-	var SBRmin = data.stellarBody[i].rMin;
-	var SBRmax = data.stellarBody[i].rMax;
-	
-	if (SBRmin < Rmin){
-	  if (SBRmax > Rmax){return;} // Radial crossing
-	} else {
-	  if (SBRmax < Rmax){return;} // Radial crossing
-	}
-      }
-
-
-      data.stellarBody.push({
-        avgRadius: radius,
-        rMin: Rmin,
-        rMax: Rmax,
-        period: Math.sqrt((radius*radius*radius)/data.mass),
-        body: geninfo
-      });
-      // NOTE: StellarBody instance is not actually generated at this step.
-    }
-
-    function GenerateOrbitList(){
-      var radius = 0;
-      // Generation direction... 0 = In | 1 = Out | 2 = Both
-      var gendir = 2; // Assume both directions to start.
-
-      // Start with first Gas Giant...
-      var arrangementType = 0; // None
-      switch(rng.rollDice(6, 3)){
-      case 11: case 12: // Convensional
-	arrangementType = 1;
-	radius = ValidateOrbitalRadius((1 + ((rng.rollDice(6, 2)-2)*0.05)) * data.limit.snowLine);
-	break;
-      case 13: case 14: // Eccentric
-	arrangementType = 2; 
-	radius = ValidateOrbitalRadius((rng.rollDice(6, 1)*0.125)*data.limit.snowLine);
-	break;
-      case 15: case 16: case 17: case 18: // Epistellar
-	arrangementType = 3;
-	radius = ValidateOrbitalRadius((rng.rollDice(6, 3)*0.1)*data.limit.innerRadius);
-	break;
-      }
-
-      if (radius <= 0){
-        // Is inner limit a valid radius (not in a forbidden zone)?
-        radius = ValidateOrbitalRadius(data.limit.innerRadius);
-        gendir = 1;
-        if (radius <= 0){
-          // Ok... how about the outer limit radius?
-          radius = ValidateOrbitalRadius(data.limit.outerRadius);
-          gendir = 0;
-          if (radius <= 0){return;} // Ok... can't find a valid start point. Must not have any space for planets... hehe... space
-        }
-      } else {
-        GenerateOrbitAtRadius(radius, arrangementType, {
-          makeGasGiant: true,
-          contentModifier: 4
-        });
-      }
-
-      var newRadius = 0;
-      var genRadius = 0;
-      var lastRadius = radius;
-      var geninfo = null;
-
-      var MakeGasGiant = function(){
-        switch(arrangementType){
-	case 1:
-	  return (newRadius < data.limit.snowLine) ? false : (rng.rollDice(6, 3) <= 15);
-	case 2:
-	  return (newRadius < data.limit.snowLine) ? (rng.rollDice(6, 3) <= 8) : (rng.rollDice(6, 3) <= 14);
-	case 3:
-	  return (newRadius < data.limit.snowLine) ? (rng.rollDice(6, 3) <= 6) : (rng.rollDice(6, 3) <= 14);
-	}
-        return false;
-      };
-
-      // Generate Inwards!
-      if (gendir === 0 || gendir === 2){
-        genRadius = radius / GetRandomOrbitalSpacing();
-        newRadius = ValidateOrbitalRadius(genRadius, true);
-        while (newRadius > data.limit.innerRadius){
-          if (lastRadius - newRadius > 0.15){
-            geninfo = {
-	      seed: rng.generateUUID(),
-              makeGasGiant:MakeGasGiant(),
-              contentTypeRoll: rng.rollDice(6, 3)
-            };
-            
-            if (geninfo.makeGasGiant || (geninfo.contentTypeRoll > 3 && newRadius < data.limit.snowLine)){
-              if (geninfo.makeGasGiant === false){
-                if (genRadius !== newRadius){ // Orbit was bumped by forbidden zone!
-                  geninfo.contentTypeRoll -= 6;
-                } else if (newRadius / 2 < data.limit.innerRadius){ // This is the last radius before overtaking the inner limit radius.
-                  geninfo.contentTypeRoll -= 3;
-                }
-                if (geninfo.contentTypeRoll <= 6){
-                  geninfo.makeAsteroidBelt = true;
-                }
-              }
-              GenerateOrbitAtRadius(newRadius, arrangementType, geninfo);
-            }
-          }
-          if (newRadius > data.limit.innerRadius){
-            lastRadius = newRadius;
-            genRadius = newRadius / GetRandomOrbitalSpacing();
-            newRadius = ValidateOrbitalRadius(genRadius, true);
-          }
-        }
-      }
-
-
-      // Generate Outwards!
-      if (gendir === 1 || gendir === 2){
-        lastRadius = radius;
-        genRadius = radius * GetRandomOrbitalSpacing();
-        newRadius = ValidateOrbitalRadius(genRadius);
-        while (newRadius > 0 && newRadius <= data.limit.outerRadius){
-	  //console.log("Outward: " + newRadius + " | Limit: " + data.limit.outerRadius);
-          if (newRadius - lastRadius > 0.15){
-            geninfo = {
-	      seed: rng.generateUUID(),
-              makeGasGiant:MakeGasGiant(),
-              contentTypeRoll: rng.rollDice(6, 3)
-            };
-            
-            if (geninfo.makeGasGiant || (geninfo.contentTypeRoll > 3 && newRadius < data.limit.snowLine)){
-              if (geninfo.makeGasGiant === false){
-                if (genRadius !== newRadius){ // Orbit was bumped by forbidden zone!
-                  geninfo.contentTypeRoll -= 6;
-                } else if (newRadius * 1.4 > data.limit.outerRadius){ // This is the last radius before overtaking the inner limit radius.
-                  geninfo.contentTypeRoll -= 3;
-                }
-                if (geninfo.contentTypeRoll <= 6){
-                  geninfo.makeAsteroidBelt = true;
-                }
-              }
-              GenerateOrbitAtRadius(newRadius, arrangementType, geninfo);
-            }
-          }
-          if (newRadius < data.limit.outerRadius){
-            lastRadius = newRadius;
-            genRadius = newRadius * GetRandomOrbitalSpacing();
-            newRadius = ValidateOrbitalRadius(genRadius);
-          }
-        }
-      }
-    }
-
-    function WrapCompanion(cmp){
-      var c = {};
-      Object.defineProperties(c, {
-	"orbit":{
-	  enumerate: true,
-	  get:function(){
-	    return JSON.parse(JSON.stringify(cmp.orbit));
-	  }
-	},
-	"forbiddenZone":{
-	  enumerate: true,
-	  get:function(){
-	    return JSON.parse(JSON.stringify(cmp.forbiddenZone));
-	  }
-	}
-      });
-      c.companion = cmp.companion;
-      return c;
-    }
-
-    this.getCompanion = function(index){
-      if (typeof(data.companion) === 'undefined' || (index < 0 || index >= data.companion.length)){
-        throw new RangeError();
-      }
-      return WrapCompanion(data.companion[index]);/*{
-	orbit: JSON.parse(JSON.stringify(data.companion[index].orbit)),
-	forbiddenZone: JSON.parse(JSON.stringify(data.companion[index].forbiddenZone)),
-	companion: data.companion[index].companion
-      };*/
-    };
-
-    this.getCompanionByName = function(name){
+      // Check for conflict with any existing companion stars.
       if (typeof(data.companion) !== 'undefined'){
-	for (var i=0; i < data.companion.length; i++){
-	  if (data.companion[i].companion.name === name){
-	    return WrapCompanion(data.companion[i]);/*{
-	      orbit: JSON.parse(JSON.stringify(data.companion[i].orbit)),
-	      forbiddenZone: JSON.parse(JSON.stringify(data.companion[i].forbiddenZone)),
-	      companion: data.companion[i].companion
-	    };*/
+	count = data.companion.length;
+	for (var c=0; c < count; c++){
+	  var fz = data.companion[c].forbiddenZone;
+	  if (rMin >= fz.innerRadius && rMin <= fz.outerRadius){return false;}
+	  if (rMax >= fz.innerRadius && rMax <= fz.outerRadius){return false;}
+	}
+      }
+
+      return true;
+    }
+
+    function GetRandomOrbitalSpacing(){
+      switch(rng.rollDice(6, 3)){
+      case 3: case 4:
+	return 1.4;
+      case 5: case 6:
+	return 1.5;
+      case 7: case 8:
+	return 1.6;
+      case 9: case 10: case 11: case 12:
+	return 1.7;
+      case 13: case 14:
+	return 1.8;
+      case 15: case 16:
+	return 1.9;
+      }
+      return 2.0;
+    }
+
+
+    Object.defineProperties(this, {
+      "parent":{
+	enumerate: true,
+	get:function(){return parent;},
+	set:function(p){
+	  if (parent === null && p instanceof Star){
+	    parent = p;
+	  } else if (parent !== null && p === null){
+	    parent = null;
+	  } else if (p !== null && !(p instanceof Star)){
+	    throw new TypeError("Can only parent to a Star instance object.");
+	  } else if (parent !== null && parent !== p){
+	    throw new Error("Cannot parent to an already parented object. Unparent first.");
+	  }
+	}
+      },
+
+      "sequence":{
+        enumerate: true,
+        get:function(){
+          return (typeof(this.data.sequence) === 'string') ? this.data.sequence : "UNIQUE";
+        }
+      },
+
+      "class":{
+        enumerate: true,
+        get:function(){
+          return (typeof(this.data.lumClass) === 'string') ? this.data.lumClass : "";
+        }
+      },
+
+      "mass":{
+        enumerate: true,
+        get:function(){return (typeof(this.data.mass) === 'number') ? this.data.mass : 0;}
+      },
+
+      "radius":{
+	enumerate:true,
+	get:function(){return this.data.radius;}
+      },
+
+      "radiusMiles":{
+	enumerate:true,
+	get:function(){
+	  var r = this.data.radius;
+	  return (r > 0) ? r*StellarBody.Conv.AU2Mile : StellarBody.Conv.E2Miles;
+	}
+      },
+
+      "radiusKM":{
+	enumerate:true,
+	get:function(){
+	  var r = this.data.radius;
+	  return (r > 0) ? r*StellarBody.Conv.AU2KM : StellarBody.Conv.E2KM;
+	}
+      },
+
+      "age":{
+        enumerate: true,
+        get:function(){return (typeof(this.data.age) === 'number') ? this.data.age : 0;}
+      },
+
+      "temperature":{
+        enumerate: true,
+        get:function(){return (typeof(this.data.temp) === 'number') ? this.data.temp : 0;}
+      },
+
+      "luminosity":{
+        enumerate: true,
+        get:function(){return (typeof(this.data.luminosity) === 'number') ? this.data.luminosity : 0;}
+      },
+
+      "limit":{
+	enumerate: true,
+	get:function(){return (typeof(this.data.limit) !== 'undefined') ? JSON.parse(JSON.stringify(this.data.limit)) : null;}
+      },
+
+      "goldielocks":{
+	enumerate: true,
+	get:function(){
+	  var lum = this.data.luminosity;
+	  // Coldest is further out than hottest, therefore coldest is max.
+	  return {
+	    min:Math.pow((Math.pow(lum, 0.25)*278)/320, 2),
+	    max:Math.pow((Math.pow(lum, 0.25)*278)/241, 2)
+	  };
+	}
+      },
+
+      "companionCount":{
+        enumerate: true,
+        get:function(){return (typeof(this.data.companion) !== 'undefined') ? this.data.companion.length : 0;}
+      },
+
+      "companions":{
+	enumerate: true,
+	get:function(){
+	  var cmp = [];
+	  if (this.companionCount > 0){
+	    for (var i=0; i < this.data.companion.length; i++){
+	      cmp.push(WrapCompanion(this.data.companion[i]));
+	    }
+	  }
+	  return cmp;
+	}
+      },
+
+      "fullSystemRadius":{
+	enumerate:true,
+	get:function(){
+	  var size = this.data.limit.outerRadius;
+	  for (var c=0; c < this.companionCount; c++){
+	    var orbit = this.data.companion[c].orbit;
+	    var p = Math.max(orbit.rMin, orbit.rMax);
+	    var plimit = p + this.data.companion[c].companion.limit.outerRadius;
+	    size = (plimit > size) ? plimit : size;
+	  }
+	  return size;
+	}
+      },
+
+      "bodyCount":{
+	enumerate: true,
+	get:function(){return (typeof(this.data.body) !== 'undefined') ? this.data.body.length : 0;}
+      },
+
+      "bodies":{
+	enumerate: true,
+	get:function(){
+	  var sb = [];
+	  if (typeof(this.data.body) !== 'undefined'){
+	    for (var i=0; i < this.data.body.length; i++){
+	      sb.push(WrapBody(this.data.body[i]));
+	    }
+	  }
+	  return sb;
+	}
+      }
+    });
+
+    var _toString = this.toString;
+    this.toString = function(pretty){
+      var cmp = (typeof(this.data.companion) !== 'undefined') ? this.data.companion : null;
+      var body = (typeof(this.data.body) !== 'undefined') ? this.data.body : null;
+
+      if (cmp !== null){
+	this.data.companion = [];
+	for (var c=0; c < cmp.length; c++){
+	  this.data.companion.push({
+	    orbit: JSON.parse(JSON.stringify(cmp[c].orbit)),
+	    forbiddenZone: JSON.parse(JSON.stringify(cmp[c].forbiddenZone)),
+	    companion: JSON.parse(cmp[c].companion.toString())
+	  });
+	}
+      }
+
+      if (body !== null){
+	this.data.body = [];
+	for (var s=0; s < body.length; s++){
+	  this.data.body.push({
+	    avgRadius: body[s].avgRadius,
+	    rMin: body[s].rMin,
+	    rMax: body[s].rMax,
+	    period: body[s].period,
+	    body: JSON.parse(body[s].body.toString())
+	  });
+	}
+      }
+
+      var res = _toString(pretty);
+
+      if (cmp !== null){
+	this.data.companion = cmp;
+      }
+      if (body !== null){
+	this.data.body = body;
+      }
+
+      return res;
+    };
+
+    var _from = this.from;
+    this.from = function(str_or_obj){
+      _from(str_or_obj);
+      var count = 0;
+      if (typeof(this.data.companion) !== 'undefined'){
+	count = this.data.companion.length;
+	for (var i=0; i < count; i++){
+	  this.data.companion[i].body = StellarBody.BuildType(Star.Type, {from: this.data.companion[i].body});
+	}
+      }
+
+      if (typeof(this.data.body) !== 'undefined'){
+	count = this.data.body.length;
+	for (var i=0; i < count; i++){
+	  this.data.body[i].body = StellarBody.BuildType(this.data.body[i].body._type, {from: this.data.body[i].body});
+	}
+      }
+    };
+
+    this.hasBodiesOfType = function(type){
+      if (typeof(this.data.body) !== 'undefined'){
+	var count = this.data.body.length;
+	for (var i=0; i < count; i++){
+	  var b = this.data.body[i];
+	  if (b.body.type === type){
+	    return true;
 	  }
 	}
       }
-      return null;
+      return false;
+    };
+
+    this.getBodiesOfType = function(type){
+      var list = [];
+      if (typeof(this.data.body) !== 'undefined'){
+	var count = this.data.body.length;
+	for (var i=0; i < count; i++){
+	  var b = this.data.body[i];
+	  if (b.body.type === type){
+	    list.push(WrapBody(b));
+	  }
+	}
+      }
+      return list;
     };
 
 
-    this.generateCompanion = function(){
-      if (typeof(data.stellarBody) === 'undefined'){ // Don't want to create new companions after the stellar bodies.
-	if (data.primaryStar !== null){return;} // Don't generate a companion of a companion.
+    this.generateCompanion = function(opts){
+      opts = (typeof(opts) === typeof({})) ? JSON.parse(JSON.stringify(opts)) : {};
 
-        if (typeof(data.companion) === 'undefined'){
-          data.companion = [];
+      if (typeof(this.data.body) === 'undefined'){ // Don't want to create new companions after other solar bodies have been added.
+	if (parent !== null){return;} // Don't generate a companion of a companion.
+
+        if (typeof(this.data.companion) === 'undefined'){
+          this.data.companion = [];
         }
-        if (data.companion.length < 2){
+
+        if (this.data.companion.length < 2){
           var cmp = new Star({
 	    seed: rng.generateUUID(),
-	    primaryStar: this,
+	    parent: this,
             supportGardenWorlds: (options.supportGardenWorlds === true) ? true : false
           });
           
-          var roll = rng.rollDice(6, 3);
           if (options.supportGardenWorlds === true){
-            if (data.companion.length === 0){
+            if (this.data.companion.length === 0){
               // This is the first companion...
-              roll += 4;
+              opts.rollMod = 4;
             } else { // And this is the second companion...
-              roll += 6;
+              opts.rollMod = 6;
             }
           }
 
           var c = {
-            companion: cmp,
-            orbit: CalcOrbitalInformation(rng, roll, data.mass, cmp.mass)
+            body: cmp,
+            orbit: CalcOrbitalInformation(rng, this.data.mass, cmp.mass, opts)//CalcOrbitalInformation(rng, roll, data.mass, cmp.mass)
           };
           c.forbiddenZone = {
             innerRadius: 0.33 * c.orbit.rMin,
             outerRadius: 3 * c.orbit.rMax
           };
           
-          data.companion.push(c);
+          this.data.companion.push(c);
         }
       }
     };
 
-
-    function WrapStellarBody(sb){
-      var o = {};
-      Object.defineProperties(o, {
-	"avgRadius":{
-	  enumerate:true,
-	  get:function(){return sb.avgRadius;}
-	},
-	"rMin":{
-	  enumerate:true,
-	  get:function(){return sb.rMin;}
-	},
-	"rMax":{
-	  enumerate:true,
-	  get:function(){return sb.rMax;}
-	},
-	"period":{
-	  enumerate:true,
-	  get:function(){return sb.period;}
-	}
-      });
-
-      o.body = sb.body;
-      return o;
-    };
-
-    this.getStellarBody = function(index){
-      if (typeof(data.stellarBody) === 'undefined' || index < 0 || index > data.stellarBody.length){
-	throw new RangeError("Index is out of bounds");
+    function GetGasGiantSize(inSnowline){
+      var roll = rng.rollDice(6, 3) + ((inSnowline) ? 4 : 0);
+      if (roll >= 17){
+	return 2;
+      } else if (roll > 10 && roll < 17){
+	return 1;
       }
-      return WrapStellarBody(data.stellarBody[index]);
-    };
+      return 0;
+    }
 
-    this.getStellarBodyByName = function(name){
-      if (typeof(data.stellarBody) !== 'undefined'){
-	for (var i=0; i < data.stellarBody.length; i++){
-	  if (data.stellarBody[i].body.name === name){
-	    return WrapStellarBody(data.stellarBody[i]);
+    function GenerateRandomGasGiants(star, lastRadius, direction, current, max){
+      if (current >= max){return;}
+      var spacing = GetRandomOrbitalSpacing();
+      var radius = (direction === 0) ? (lastRadius / spacing) : (lastRadius * spacing);
+      var b = {
+	avgRadius: radius,
+	rMin: 0,
+	rMax: 0,
+	period: 0,
+	body: null
+      };
+      var data = star.data;
+
+      var e = 0;
+      var add = false;
+      if (radius >= data.limit.innerRadius && radius <= data.limit.outerRadius){
+	if (radius < data.limit.snowLine){
+	  if (data.arrangement > 1){
+	    if ((data.arrangement === 2 && rng.rollDice(6, 3) <= 8) || (data.arrangement === 3 && rng.rollDice(6, 3) <= 6)){
+	      e = GetOrbitalEccentricity(true, true, data.arrangement);
+	      b.rMin = (1-e) * radius;
+	      b.rMax = (1+e) * radius;
+	      add = ConfirmRadius(data, b.rMin, b.rMax);
+	    }
+	  }
+	} else {
+	  if ((data.arrangement === 1 && rng.rollDice(6, 3) <= 15) || (data.arrangement > 1 && rng.rollDice(6, 3) <= 14)){
+	    e = GetOrbitalEccentricity(true, false, data.arrangement);
+	    b.rMin = (1-e) * radius;
+	    b.rMax = (1+e) * radius;
+	    add = ConfirmRadius(data, b.rMin, b.rMax);
 	  }
 	}
-      }
-      return null;
-    };
 
-    this.generateStellarBodies = function(){
-      if (stellarBodiesGenerated === false){
-        stellarBodiesGenerated = true;
-        GenerateOrbitList();
-
-        if (typeof(data.stellarBody) !== 'undefined'){
-          // Now... sort the list!
-          data.stellarBody.sort(function(a, b){
-            return (a.avgRadius - b.avgRadius);
-          });
-
-          // Finally... build the planets!
-          data.stellarBody.forEach(function(info){
-            info.body = new StellarBody(info.body);
-          });
-        }
-      }
-    };
-
-    this.toString = function(){
-      var cmpStore = (typeof(data.companion) !== 'undefined') ? data.companion : null;
-      var sbStore = (typeof(data.stellarBody) !== 'undefined') ? data.stellarBody : null;
-
-      if (cmpStore !== null){
-	data.companion = [];
-	for (var c=0; c < cmpStore.length; c++){
-	  data.companion.push({
-	    orbit: JSON.parse(JSON.stringify(cmpStore[c].orbit)),
-	    forbiddenZone: JSON.parse(JSON.stringify(cmpStore[c].forbiddenZone)),
-	    companion: cmpStore[c].companion.data
+	if (add){
+	  var size = GetGasGiantSize(true);
+	  b.period = Math.sqrt(Math.pow(radius, 3)/data.mass);
+	  b.body = new GasGiant({
+	    seed: rng.generateUUID(),
+	    parent: star,
+	    sizeIndex: size
 	  });
+	  data.body.push(b);
 	}
-      }
 
-      if (sbStore !== null){
-	data.stellarBody = [];
-	for (var s=0; s < sbStore.length; s++){
-	  data.stellarBody.push({
-	    avgRadius: sbStore[s].avgRadius,
-	    rMin: sbStore[s].rMin,
-	    rMax: sbStore[s].rMax,
-	    period: sbStore[s].period,
-	    body: sbStore[s].body.data
-	  });
+	GenerateRandomGasGiants(star, radius, direction, data.body.length, max);
+      }
+    }
+
+
+    function GenerateRandomBodies(star, lastRadius, direction, current, max){
+      if (current >= max){return;}
+      var spacing = GetRandomOrbitalSpacing();
+      var radius = (direction === 0) ? (lastRadius / spacing) : (lastRadius * spacing);
+      var b = {
+	avgRadius: radius,
+	rMin: 0,
+	rMax: 0,
+	period: 0,
+	body: null
+      };
+      var data = star.data;
+
+      var GasGiantAt = function(prevRad){
+	var bodies = data.body;
+	var count = bodies.length;
+	for (var i=0; i < count; i++){
+	  if (bodies[i].body instanceof GasGiant){
+	    if (Math.abs(bodies[i].avgRadius - prevRad) < (bodies[i].avgRadius * 0.1)){
+	      return true;
+	    }
+	  }
 	}
-      }
+	return false;
+      };
 
-      var jsonStr = JSON.stringify(data);
-      if (cmpStore !== null){
-	data.companion = cmpStore;
-      }
+      var roll = 0;
+      var e = 0;
+      var add = true;
+      if (radius >= data.limit.innerRadius && radius <= data.limit.outerRadius){
+	e = GetOrbitalEccentricity(false, (radius < data.limit.snowLine), data.arrangement);
+	b.rMin = (1-e) * radius;
+	b.rMax = (1+e) * radius;
+	add = ConfirmRadius(data, b.rMin, b.rMax);
 
-      if (sbStore !== null){
-	data.stellarBody = sbStore;
-      }
+	if (add === true){
+	  roll = rng.rollDice(6, 3);
+	  if (GasGiantAt(radius/1.5) === true){ // Gas Giant in "previous" radius.
+	    roll -= 6;
+	  }
+	  if (GasGiantAt(radius*1.5) === true){ // Gas Giant in "next" radius.
+	    roll -= 3;
+	  }
 
-      return jsonStr;
-    };
+	  var body = null;
 
+	  // NOTE: Any roll less than or equal to 3 generates nothing.
+	  if (roll > 3 && roll <= 6){ // Asteroid Belt
+	    body = new AsteroidBelt({
+	      seed: rng.generateUUID(),
+	      parent: star
+	    });
+	  } else if (roll > 6 && roll <= 8){ // Tiny Terrestrial
+	    body = new Terrestrial({
+	      seed: rng.generateUUID(),
+	      parent: star,
+	      size: 0
+	    });
+	  } else if (roll > 8 && roll <= 11){ // Small Terrestrial
+	    body = new Terrestrial({
+	      seed: rng.generateUUID(),
+	      parent: star,
+	      size: 1
+	    });
+	  } else if (roll > 11 && roll <= 15){ // Standard Terrestrial
+	    body = new Terrestrial({
+	      seed: rng.generateUUID(),
+	      parent: star,
+	      size: 2
+	    });
+	  } else if (roll > 15){ // Large Terrestrial
+	    body = new Terrestrial({
+	      seed: rng.generateUUID(),
+	      parent: star,
+	      size: 3
+	    });
+	  }
 
-    // ------------------------------------------------------
-    // Actually generating star HERE!
-
-    if (typeof(options.jsonString) === 'string' || typeof(options.data) === typeof({})){
-      try{
-	if (typeof(options.data) === typeof({})){
-	  data = JSON.parse(JSON.stringify(options.data));
+	  if (body !== null){
+	    b.period = Math.sqrt(Math.pow(radius, 3)/data.mass);
+	    b.body = body;
+	    data.body.push(b);
+	  } else {
+	    console.log("Cannot add body... roll identifies empty.");
+	  }
 	} else {
-	  data = JSON.parse(options.jsonString);
+	  console.log("Cannot add body... eccentricity conflict.");
 	}
-      } catch (e) {
-	throw e;
-      }
 
-      if (tv4.validate(data, StarSchema) === false){
-	throw new Error(tv4.error);
-      }
-      if (typeof(data.stellarBody) !== 'undefined'){
-	try{
-	  data.stellarBody.forEach(function(sb){
-	    sb.body = new StellarBody({data:sb.body});
-	  });
-	} catch (e) {
-	  throw e;
-	}
-      }
-
-      if (typeof(data.companion) !== 'undefined'){
-	try{
-	  data.companion.forEach(function(c){
-	    c.companion = new Star({primaryStar:this, data:c.companion});
-	  });
-	} catch (e) {
-	  throw e;
-	}
+	GenerateRandomBodies(star, radius, direction, data.body.length, max);
       }
     }
 
-    if (data === null){
-      data = GenStar({}, rng, options);
-      data.name = rng.generateUUID();
-      // Calculating Inner and Outer Limit Radii... and Snow line.
-      CalculateLimitRadii(rng, data);
-    }
 
-    if (options.primaryStar instanceof Star){
-      if (typeof(data.primaryStar) === 'string' && data.primaryStar !== options.primaryStar.name){
-	console.error("Name of primary star is mismatched!");
-	//throw new Error("Name of primary star is mismatched!");
+    this.generateSystemBodies = function(maxBodies){
+      maxBodies = (typeof(maxBodies) === 'number' && maxBodies >= 1) ? Math.floor(maxBodies) : Infinity;
+      if (typeof(this.data.body) === 'undefined'){
+	this.data.body = [];
       }
-      data.primaryStar = options.primaryStar.name;
-      primaryStar = options.primaryStar;
+      if(this.data.arrangement > 0){
+	// Generate first gas giant...
+	var radius = 0;
+	switch (this.data.arrangement){
+	case 1:
+	  radius = (1 + ((rng.rollDice(6, 2)-2)*0.05)) * this.data.limit.snowLine;
+	  break;
+	case 2:
+	  radius = (rng.rollDice(6, 1)*0.125)*this.data.limit.snowLine;
+	  break;
+	case 3:
+	  radius = (rng.rollDice(6, 3)*0.1)*this.data.limit.innerRadius;
+	  break;
+	}
+	var e = GetOrbitalEccentricity(
+	  true,
+	  (radius < this.data.limit.snowLine),
+	  this.data.arrangement
+	);
+	var body = new GasGiant({
+	  seed: rng.generateUUID(),
+	  parent: this,
+	  orbitalRadius: radius
+	});
+
+	this.data.body.push({
+	  avgRadius: radius,
+	  rMin: (1-e) * radius,
+	  rMax: (1+e) * radius,
+	  period: Math.sqrt(Math.pow(radius, 3)/this.data.mass),
+	  body: body
+	});
+
+	GenerateRandomGasGiants(this, radius, 1, this.data.body.length, maxBodies);
+	GenerateRandomGasGiants(this, radius, 0, this.data.body.length, maxBodies);
+      }
+      GenerateRandomBodies(this, this.data.limit.innerRadius, 1, this.data.body.length, maxBodies);
+    };
+
+    this.addBody = function(body, options){
+      if (!(body instanceof StellarBody)){
+	throw new TypeError("Unknown/Unsupported object given");
+      }
+      if (body instanceof Star){
+	throw new TypeError("Star instance objects not allowed as basic orbital bodies.");
+      }
+      if (typeof(body.parent) === 'undefined' || body.parent !== null){
+	throw new Error("StellarBody instance object either does not support parenting or is already parented to another StellarBody.");
+      }
+
+      var r =0;
+      var e = 0;
+      var b = {
+	avgRadius: 0,
+	rMin: 0,
+	rMax: 0,
+	period: 0,
+	body: null
+      };
+
+      if (body instanceof Terrestrial || body instanceof AsteroidBelt || body instanceof GasGiant){
+	b.avgRadius = RadiusFromBlackbody(this.data.luminosity, body.blackbody);
+	if (typeof(options.radius) === 'number' && options.ignoreBlackbody === true){
+	  if (options.radius > this.data.limit.innerRadius && options.radius < this.data.limit.outerRadius){
+	    b.avgRadius = options.radius;
+	  }
+	}
+	if (typeof(options.eccentricity) === 'number'){
+	  e = options.eccentricity;
+	  if (e < 0){
+	    e = 0.0;
+	  } else if (e > 0.9){
+	    e = 0.9;
+	  }
+	} else {
+	  e = GetOrbitalEccentricity(
+	    (body instanceof GasGiant),
+	    (r < this.data.limit.snowLine),
+	    this.data.arrangement
+	  );
+	}
+
+	b.rMin = (1-e) * b.avgRadius;
+	b.rMax = (1+e) * b.avgRadius;
+	if (ConfirmRadius(this.data, b.rMin, b.rMax) === true){
+	  b.period = Math.sqrt(Math.pow(b.avgRadius, 3)/this.data.mass);
+	  b.body = body;
+	  if (typeof(this.data.body) === 'undefined'){
+	    this.data.body = [];
+	  }
+	  b.body.parent = this;
+	  this.data.body.push(b);
+	  this.data.body.sort(function(a, b){
+	    return a.avgRadius - b.avgRadius;
+	  });
+	  return true;
+	}
+      } else {
+	if (typeof(options.radius) === 'number'){
+	  // NOTE: This is not a StellarBody with solid rules, so, any radius over the inner limit is fine, even if it's in the
+	  // forbidden or past the outter limit.
+	  if (options.radius > this.data.limit.innerRadius){
+	    b.avgRadius = options.radius;
+	  }
+	}
+	if (b.avgRadius <= 0){
+	  b.avgRadius = rng.value(this.data.limit.innerRadius, this.data.limit.outerRadius);
+	}
+
+	if (typeof(options.eccentricity) === 'number'){
+	  e = options.eccentricity;
+	  if (e < 0){
+	    e = 0.0;
+	  } else if (e > 0.9){
+	    e = 0.9;
+	  }
+	} // If no eccentricity is given, assume none (0, which is default anyway).
+
+	b.rMin = (1-e) * b.avgRadius;
+	b.rMax = (1+e) * b.avgRadius;
+	if (ConfirmRadius(this.data, b.rMin, b.rMax) === true){
+	  if (typeof(options.period) === 'number'){
+	    b.period = options.period;
+	    if (b.period < 0){
+	      b.period = 0;
+	    }
+	  } else {
+	    b.period = Math.sqrt(Math.pow(b.avgRadius, 3)/this.data.mass);
+	  }
+	  b.body = body;
+	  if (typeof(this.data.body) === 'undefined'){
+	    this.data.body = [];
+	  }
+	  b.body.parent = this;
+	  this.data.body.push(b);
+	  this.data.body.sort(function(a, b){
+	    return a.avgRadius - b.avgRadius;
+	  });
+	  return true;
+	}
+
+      }
+
+      return false;
+    };
+
+
+    if (AllowSysGen === true && options.fullSystemGeneration === true){
+      var companions = rng.rollDice(6, 1) - 4;
+      if (companions > 0){
+	this.generateCompanion();
+	if (companions > 1){
+	  this.generateCompanion();
+	}
+      }
+      this.generateSystemBodies();
     }
   }
+  Star.prototype.__proto__ = StellarBody.prototype;
   Star.prototype.constructor = Star;
+  Star.Type = 0;
 
-
+  StellarBody.RegisterType(Star);
   return Star;
 });

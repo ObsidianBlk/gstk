@@ -8,6 +8,9 @@
       'kit/PRng',
       'kit/space/StellarBody', 
       'kit/space/Star',
+      'kit/space/GasGiant',
+      'kit/space/Terrestrial',
+      'kit/space/AsteroidBelt',
       'node_modules/tv4/tv4'
     ], factory);
   } else if (typeof exports === 'object') {
@@ -19,6 +22,9 @@
 	require('../PRng'),
 	require('./StellarBody'),
 	require('./Star'),
+	require('./GasGiant'),
+	require('./Terrestrial'),
+	require('./AsteroidBelt'),
 	require('tv4')
       );
     }
@@ -35,6 +41,9 @@
     if (root.GSTK.$.exists(root, ["GSTK.PRng",
 				  "GSTK.space.StellarBody",
 				  "GSTK.space.Star",
+				  "GSTK.space.GasGiant",
+				  "GSTK.space.Terrestrial",
+				  "GSTK.space.AsteroidBelt",
 				  "tv4"
 				 ]) === false){
       throw new Error("Required component not defined.");
@@ -44,10 +53,13 @@
       root.GSTK.PRng,
       root.GSTK.space.StellarBody,
       root.GSTK.space.Star,
+      root.GSTK.space.GasGiant,
+      root.GSTK.space.Terrestrial,
+      root.GSTK.space.AsteroidBelt,
       root.tv4
     ));
   }
-})(this, function (PRng, StellarBody, Star, tv4) {
+})(this, function (PRng, StellarBody, Star, GasGiant, Terrestrial, AsteroidBelt, tv4) {
 
   var MAX_GEN_RECURSION = 10;
 
@@ -182,7 +194,7 @@
       if (options.systemDensity < 1){
 	options.systemDensity = 6; // We want SOME stars
       }
-      options.breathableDensity = (typeof(options.breathableDensity) === 'number') ?
+      /*options.breathableDensity = (typeof(options.breathableDensity) === 'number') ?
 	Math.abs(options.breathableDensity)%100 :
 	(rng.rollDice(6, 2)-2)*4;
       if (options.breathableDensity < 1){
@@ -193,11 +205,11 @@
 	rng.rollDice(6, 2)*5;
       if (options.companionProbability < 1){
 	options.companionProbability = 10;
-      }
+      }*/
 
-      if (options.autoGenerate === true){
+      /*if (options.autoGenerate === true){
 	this.generate();
-      }
+      }*/
     }
 
     Object.defineProperties(this, {
@@ -431,9 +443,9 @@
         if (typeof(ops.seed) !== 'string'){
           ops.seed = rng.generateUUID();
         }
-        if (typeof(ops.companionProbability) !== 'number'){
+        /*if (typeof(ops.companionProbability) !== 'number'){
           ops.companionProbability = options.companionProbability;
-        }
+        }*/
       }
 
       if (typeof(ops.r) !== 'number'){
@@ -465,13 +477,10 @@
 
       if (store){
 	if (star === null){
-	  star = GenerateStar(
-	    rng,
-            ops.seed,
-	    ops.companionProbability,
-	    false,
-	    false
-	  );
+	  star = new Star({
+	    seed: rng.generateUUID(),
+	    fullSystemGeneration: true
+	  });
 	}
 
         systems.push({
@@ -510,12 +519,6 @@
 	for (var i=0; i < data.systems.length; i++){
 	  try{
 	    this.addStar(data.systems[i]);
-	    /*systems.push({
-	      r: data.systems[i].r,
-	      a: data.systems[i].a,
-	      z: data.systems[i].z,
-	      star: new Star({data: data.systems[i].star})
-	    });*/
 	  } catch (e) {
 	    throw e;
 	  }
@@ -559,6 +562,14 @@
       }
       return null;
     };
+
+
+
+    // ----------
+    // Generating automatically if requested.
+    if (systems.length <= 0 && options.autoGenerate === true){
+      this.generate();
+    }
   }
   Region.prototype.constructor = Region;
 
