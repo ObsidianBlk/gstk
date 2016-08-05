@@ -200,9 +200,33 @@
     if (typeof(options.eccentricity) === 'number' && options.eccentricity < 1.0){
       e = options.eccentricity;
     } else {
-      roll = (rng.rollDice(6, 3) + mod) - 3; // 0 basing
-      e = (roll >= 15) ? 0.95 : roll*0.1;
-      if (e < 0){ e = 0;}
+      roll = (rng.rollDice(6, 3) + mod);
+      if (roll <= 3){
+	e = 0;
+      } else if (roll > 3 && roll <= 17){
+	switch(roll){
+	case 4:
+	  e = 0.1; break;
+	case 5:
+	  e = 0.2; break;
+	case 6:
+	  e = 0.3; break;
+	case 7: case 8:
+	  e = 0.4; break;
+	case 9: case 10: case 11:
+	  e = 0.5; break;
+	case 12: case 13:
+	  e = 0.6;
+	case 14: case 15:
+	  e = 0.7;
+	case 16:
+	  e = 0.8;
+	case 17:
+	  e = 0.9;
+	}
+      } else {
+	e = 0.95;
+      }
     }
 
     return {
@@ -470,19 +494,10 @@
   function Star(options){
     StellarBody.call(this);
     this.schema = StarSchema;
-    this._type = Star.Type;
+    this.data._type = Star.Type;
     options = (typeof(options) === typeof({})) ? options : {};
     var rng = new PRng({seed:(typeof(options.seed)!=='undefined') ? options.seed : Math.random().toString(), initDepth:5000});
     var parent = (options.parent instanceof Star) ? options.parent : null;
-
-    var AllowSysGen = true;
-    if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
-      this.from(options.from);
-      AllowSysGen = false;
-    } else {
-      Generate(this.data, rng, options);
-      this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
-    }
 
     function WrapCompanion(cmp){
       var c = {};
@@ -572,6 +587,11 @@
 
     function ConfirmRadius(data, rMin, rMax){
       var count = 0;
+      // Check to see if it's within the orbital limits of the star...
+      if (rMin > data.limit.outerRadius || rMax > data.limit.outerRadius){
+	return false;
+      }
+
       // Check for conflicts with already placed stellar bodies...
       if (typeof(data.body) !== 'undefined'){
 	count = data.body.length;
@@ -774,7 +794,7 @@
 	  this.data.companion.push({
 	    orbit: JSON.parse(JSON.stringify(cmp[c].orbit)),
 	    forbiddenZone: JSON.parse(JSON.stringify(cmp[c].forbiddenZone)),
-	    companion: JSON.parse(cmp[c].companion.toString())
+	    body: JSON.parse(cmp[c].body.toString())
 	  });
 	}
       }
@@ -848,6 +868,20 @@
 	}
       }
       return list;
+    };
+
+    this.countBodiesOfType = function(type){
+      var count = 0;
+      if (typeof(this.data.body) !== 'undefined'){
+	var len = this.data.body.length;
+	for (var i=0; i < len; i++){
+	  var b = this.data.body[i];
+	  if (b.body.type === type){
+	    count += 1;
+	  }
+	}
+      }
+      return count;
     };
 
     this.hasHabitable = function(){
@@ -1223,6 +1257,16 @@
 
       return false;
     };
+
+
+    var AllowSysGen = true;
+    if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
+      this.from(options.from);
+      AllowSysGen = false;
+    } else {
+      Generate(this.data, rng, options);
+      this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
+    }
 
 
     if (AllowSysGen === true && options.fullSystemGeneration === true){

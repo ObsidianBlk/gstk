@@ -17,8 +17,29 @@ div.panel{
     height:100vh;
     overflow:hidden;
 }
+
+
 div.hidden{
     display: none;
+}
+
+div.hoverPanel {	
+    position: absolute;
+    width: auto;
+    padding: 10px;
+    font: 10px sans-serif;
+    font-weight: 700;
+    color: #09F;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid #09F;
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+.hoverPanel .info{
+    font-weight: normal;
+    font-style: italic;
+    color:#FFF;
 }
 
 a.button {

@@ -134,13 +134,6 @@
 	Math.random().toString(), 
       initDepth:5000});
 
-    if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
-      this.from(options.from);
-    } else {
-      Generate(this.data, rng, options);
-      this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
-    }
-
 
     Object.defineProperties(this, {
       "parent":{
@@ -203,6 +196,14 @@
         get:function(){return this.data.temperature;}
       }
     });
+
+
+    if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
+      this.from(options.from);
+    } else {
+      Generate(this.data, rng, options);
+      this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
+    }
   }
   AsteroidBelt.prototype.__proto__ = StellarBody.prototype;
   AsteroidBelt.prototype.constructor = AsteroidBelt;

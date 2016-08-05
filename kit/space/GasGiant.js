@@ -304,13 +304,6 @@
 	Math.random().toString(), 
       initDepth:5000});
 
-    if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
-      this.from(options.from);
-    } else {
-      Generate(this.data, rng, options);
-      this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
-    }
-
 
     function WrapCompanion(c){
       var o = {};
@@ -489,8 +482,14 @@
       }
     };
 
-
     // TODO: Add functions for adding/removing companions.
+
+    if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
+      this.from(options.from);
+    } else {
+      Generate(this.data, rng, options);
+      this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
+    }
   }
   GasGiant.prototype.__proto__ = StellarBody.prototype;
   GasGiant.prototype.constructor = GasGiant;

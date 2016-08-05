@@ -414,7 +414,7 @@
 	  r: systems[i].r,
 	  a: systems[i].a,
 	  z: systems[i].z,
-	  star: systems[i].star.data
+	  star: JSON.parse(systems[i].star.toString())
 	});
       }
 
@@ -432,11 +432,11 @@
 	  star = ops.star;
 	} else if (typeof(ops.star) === typeof({})){
 	  try{
-	    star = new Star({data: ops.star});
+	    star = new Star({from: ops.star});
 	  } catch (e) {throw e;}
 	} else if (typeof(ops.star) === 'string'){
 	  try{
-	    star = new Star({jsonString: ops.jsonString});
+	    star = new Star({from: ops.jsonString});
 	  } catch (e) {throw e;}
 	} else {
 	  throw new TypeError("Invalid data type given for star.");
