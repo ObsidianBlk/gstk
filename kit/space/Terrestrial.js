@@ -237,6 +237,7 @@
     return {size: size, class: cls, temp: 0}; // Temp is 0 as no temp is calculated here.
   };
 
+  
   function GetSizeClassTemp(rng, options){
     options = (typeof(options) === typeof({})) ? options : {};
     var type = 0;
@@ -289,6 +290,9 @@
       temp = tscale.Kmin + (Math.floor(tempsteppercent*tempsteprange) * tscale.step);
       return {size: ent.Hsize, class: ent.Hclass, temp: temp};
     case 1:
+      if (ent.Bsize < 0){
+        return GetSizeClassTemp(rng, {});
+      }
       tscale = StellarBody.Table.TemperatureScaleTable[ent.Btsi];
       tempsteprange = Math.floor(
 	(tscale.Kmax - tscale.Kmin)/tscale.step
@@ -304,7 +308,7 @@
       return {size: ent.Gsize, class: ent.Gclass, temp: temp};
     }
 
-    return {size: -1, class: -1, temp: 0};
+    return GetSizeClassTemp(rng, {});
   }
 
   function CalculateHydrographics(rng, size, cls){
@@ -676,6 +680,9 @@
     }
 
     data.density = CalculateWorldDensity(rng, sc.size, sc.class);
+    if (data.density <= 0){
+      data.density = 0;
+    }
 
     // Calculating diameter...
     var Dmin = 0;
@@ -878,12 +885,12 @@
 
       "diameterMiles":{
         enumerate: true,
-        get:function(){return this.data.diameter*(StellarBody.Conv.E2Mile*2);}
+        get:function(){return this.data.diameter*(StellarBody.Convert.E2Mile*2);}
       },
 
       "diameterKM":{
         enumerate: true,
-        get:function(){return this.data.diameter*(StellarBody.Conv.E2KM*2);}
+        get:function(){return this.data.diameter*(StellarBody.Convert.E2KM*2);}
       },
 
       "surfaceGravity":{

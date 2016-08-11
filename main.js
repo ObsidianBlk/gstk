@@ -92,7 +92,7 @@ requirejs([
 	  this.set(key, name_or_dict[key]);
 	}).bind(this));
       } else {
-	var item = dom.select("#" + name_or_dict);
+	var item = dom.selectAll("#" + name_or_dict);
 	if (item.empty() === false){
 	  item.html(value);
 	}
@@ -402,35 +402,7 @@ requirejs([
     var map = svg.append("g");
     var starView = new StarView(d3, map);
     starView.mapSize = mapSize;
-
-    var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.planet"));
-    var infoPanelIntervalID = null;
-
-    map.on("mousemove", function(){
-      var pos = d3.mouse(this);
-      starView.scaleGridPosition(pos[0], pos[1]);
-    });
-
-    DOMEventNotifier.on("resize", function(width, height){
-      mapSize = Math.min(width, height);
-      hmapSize = Math.round(mapSize*0.5);
-      starView.mapSize = mapSize;
-      starView.render();
-    });
-
-    DOMEventNotifier.on("keydown", function(event){
-      if (event.ctrlKey){
-	starView.scaleGridShowing = true;
-      }
-    });
-
-    DOMEventNotifier.on("keyup", function(event){
-      if (event.ctrlKey === false && starView.scaleGridShowing === true){
-	starView.scaleGridShowing = false;
-      }
-    });
-
-    function handleMouseOver(d, i){
+    starView.onBodyMouseOver = function(d, i){
       var body = d.body;
 
       var x = d3.event.x;
@@ -456,7 +428,7 @@ requirejs([
 	      mass: body.mass.toFixed(4),
 	      density: body.density.toFixed(4),
 	      diameter: body.diameterKM.toFixed(4),
-	      gravity: body.gravity
+	      gravity: body.surfaceGravity
 	    });
 	    infoPanel.showSection("gasgiant");
 	  } else if (body instanceof AsteroidBelt){
@@ -472,10 +444,11 @@ requirejs([
 	      mass: body.mass.toFixed(4),
 	      density: body.density.toFixed(4),
 	      diameter: body.diameterKM.toFixed(4),
-	      gravity: body.gravity,
+	      gravity: body.surfaceGravity,
 	      cls: body.class,
 	      resources: body.resources,
 	      hydrographics: body.hydrographics.toFixed(2),
+              breathable: (atm.breathable === true) ? "True" : "False",
 	      suffocating: (atm.suffocating === true) ? "True" : "False",
 	      corrosive: (atm.corrosive === true) ? "True" : "False",
 	      toxic: (typeof(atm.toxicity) === 'number' && atm.toxicity === 0) ? "None" : (atm.toxicity === 1) ? "Mild" : (atm.toxicity === 2) ? "Thick" : "Heavy",
@@ -489,15 +462,44 @@ requirejs([
 	  infoPanel.show(true, x, y + 20);
 	}, 1000);
       }
-    }
+    };
 
-    function handleMouseOut(d, i){
+    starView.onBodyMouseOut = function(d, i){
       if (infoPanelIntervalID !== null){
 	window.clearTimeout(infoPanelIntervalID);
 	infoPanelIntervalID = null;
       }
       infoPanel.show(false);
-    }
+    };
+
+    var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.planet"));
+    var infoPanelIntervalID = null;
+
+    map.on("mousemove", function(){
+      var pos = d3.mouse(this);
+      starView.scaleGridPosition(pos[0], pos[1]);
+    });
+
+    DOMEventNotifier.on("resize", function(width, height){
+      infoPanel.show(false);
+      mapSize = Math.min(width, height);
+      hmapSize = Math.round(mapSize*0.5);
+      starView.mapSize = mapSize;
+      starView.render();
+    });
+
+    DOMEventNotifier.on("keydown", function(event){
+      if (event.ctrlKey){
+	starView.scaleGridShowing = true;
+      }
+    });
+
+    DOMEventNotifier.on("keyup", function(event){
+      if (event.ctrlKey === false && starView.scaleGridShowing === true){
+	starView.scaleGridShowing = false;
+      }
+    });
+    
 
     this.hidden = function(){
       return dom.classed("hidden");
@@ -511,17 +513,13 @@ requirejs([
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
         d3m.show(false);
+        infoPanel.show(false);
       }
     };
 
     this.setStar = function(star){
       starView.star = star;
-      starView.render({
-	bodies:{
-	  mouseOver: handleMouseOver,
-	  mouseOut: handleMouseOut
-	}
-      });
+      starView.render();
     };
   }
   StarSystemCtrl.prototype.__proto__ = Emitter.prototype;

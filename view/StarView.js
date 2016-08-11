@@ -82,6 +82,18 @@
 
     var scaleGridPos = [0, 0];
 
+    var starEvents = {
+      mouseOver:null,
+      mouseOut:null,
+      clicked:null
+    };
+
+    var bodyEvents = {
+      mouseOver:null,
+      mouseOut:null,
+      clicked:null
+    };
+
 
     var self = this;
     function zoomed() {
@@ -134,6 +146,36 @@
 	}
       },
 
+      "onBodyMouseOver":{
+        enumerate:true,
+        get:function(){return bodyEvents.mouseOver;},
+        set:function(f){
+          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.mouseOver){
+            bodyEvents.mouseOver = f;
+          }
+        }
+      },
+
+      "onBodyMouseOut":{
+        enumerate:true,
+        get:function(){return bodyEvents.mouseOut;},
+        set:function(f){
+          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.mouseOut){
+            bodyEvents.mouseOut = f;
+          }
+        }
+      },
+
+      "onBodyClicked":{
+        enumerate:true,
+        get:function(){return bodyEvents.clicked;},
+        set:function(f){
+          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.clicked){
+            bodyEvents.clicked = f;
+          }
+        }
+      },
+
       "mapSize":{
 	enumerate:true,
 	get:function(){return mapSize;},
@@ -172,7 +214,7 @@
       }
     }
 
-    function RenderOrbits(g, objs, clsname, noCircle, events){
+    function RenderOrbits(g, objs, clsname, noCircle){
       events = (typeof(events) === typeof({})) ? events : {};
       noCircle = (noCircle === true) ? true : false;
       var group = g.append("g").attr("class", clsname);
@@ -185,14 +227,14 @@
 	.attr("ry", function(d){
 	  return mapScale(d.rMax);
 	});
-      if (events.mouseOver){
-	ellipses.on("mouseover", events.mouseOver);
+      if (bodyEvents.mouseOver){
+	ellipses.on("mouseover", bodyEvents.mouseOver);
       }
-      if (events.mouseOut){
-	ellipses.on("mouseout", events.mouseOut);
+      if (bodyEvents.mouseOut){
+	ellipses.on("mouseout", bodyEvents.mouseOut);
       }
-      if (events.click){
-	ellipses.on("click", events.click);
+      if (bodyEvents.click){
+	ellipses.on("click", bodyEvents.click);
       }
 
       if (noCircle === false){
@@ -206,35 +248,34 @@
 	    return bodyScale(d.body.diameter);
 	  });
 
-	if (events.mouseOver){
-	  circles.on("mouseover", events.mouseOver);
+	if (bodyEvents.mouseOver){
+	  circles.on("mouseover", bodyEvents.mouseOver);
 	}
-	if (events.mouseOut){
-	  circles.on("mouseout", events.mouseOut);
+	if (bodyEvents.mouseOut){
+	  circles.on("mouseout", bodyEvents.mouseOut);
 	}
-	if (events.click){
-	  circles.on("click", events.click);
+	if (bodyEvents.click){
+	  circles.on("click", bodyEvents.click);
 	}
       }
     }
 
-    function RenderStar(s, g, options){
+    function RenderStar(s, g){
       g.append("g")
 	.attr("class", "star " + s.sequence.substring(0, 1))
 	.append("circle")
 	.attr("r", starScale(s.radius));
 
-      var bodiesEvents = (typeof(options.bodies) !== 'undefined') ? options.bodies : {};
       if (s.hasBodiesOfType(Terrestrial.Type)){
-	RenderOrbits(g, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial", false, bodiesEvents);
+	RenderOrbits(g, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
       }
 
       if (s.hasBodiesOfType(GasGiant.Type)){
-	RenderOrbits(g, s.getBodiesOfType(GasGiant.Type), "orbit-gasgiant", false, bodiesEvents);
+	RenderOrbits(g, s.getBodiesOfType(GasGiant.Type), "orbit-gasgiant");
       }
 
       if (s.hasBodiesOfType(AsteroidBelt.Type)){
-	RenderOrbits(g, s.getBodiesOfType(AsteroidBelt.Type), "orbit-asteroids", true, bodiesEvents);
+	RenderOrbits(g, s.getBodiesOfType(AsteroidBelt.Type), "orbit-asteroids", true);
       }
     }
 
@@ -256,7 +297,7 @@
 
       var primary = scroller.append("g")
 	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");
-      RenderStar(star, primary, options);
+      RenderStar(star, primary);
 
       if (star.companionCount > 0){
 	var companions = star.companions;
@@ -272,7 +313,7 @@
 	    .attr("stroke-width", 1);
 	  var surf = scroller.append("g")
 	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(cdata.orbit.rMax) + ")");
-	  RenderStar(cdata.body, surf, options);
+	  RenderStar(cdata.body, surf);
 	}
       }
     };
