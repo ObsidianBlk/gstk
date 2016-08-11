@@ -117,6 +117,16 @@ requirejs([
       }
     };
 
+    this.showSection = function(secname){
+      var sec = dom.select(".section." +secname);
+      if (sec.empty() === false){
+	if (sec.classed("hidden") === true){
+	  dom.selectAll(".section").classed("hidden", true);
+	  sec.classed("hidden", false);
+	}
+      }
+    };
+
     this.showing = function(){
       return (dom.classed("hidden") === false);
     };
@@ -393,6 +403,9 @@ requirejs([
     var starView = new StarView(d3, map);
     starView.mapSize = mapSize;
 
+    var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.planet"));
+    var infoPanelIntervalID = null;
+
     map.on("mousemove", function(){
       var pos = d3.mouse(this);
       starView.scaleGridPosition(pos[0], pos[1]);
@@ -417,6 +430,75 @@ requirejs([
       }
     });
 
+    function handleMouseOver(d, i){
+      var body = d.body;
+
+      var x = d3.event.x;
+      var y = d3.event.y;
+
+      if (infoPanelIntervalID === null){
+	infoPanelIntervalID = window.setTimeout(function(){
+	  window.clearTimeout(infoPanelIntervalID);
+	  infoPanelIntervalID = null;
+
+	  infoPanel.set({
+	    apogee: d.rMax.toFixed(4),
+	    perigee: d.rMin.toFixed(4),
+	    name: body.name,
+	    size: body.size,
+	    temperature: "" + body.temperature
+	  });
+
+	  if (body instanceof GasGiant){
+	    infoPanel.set({
+	      period: body.rotationalPeriod.toFixed(4),
+	      tilt: body.axialTilt.toFixed(1),
+	      mass: body.mass.toFixed(4),
+	      density: body.density.toFixed(4),
+	      diameter: body.diameterKM.toFixed(4),
+	      gravity: body.gravity
+	    });
+	    infoPanel.showSection("gasgiant");
+	  } else if (body instanceof AsteroidBelt){
+	    infoPanel.set({
+	      resources: body.resources
+	    });
+	    infoPanel.showSection("asteroidbelt");
+	  } else if (body instanceof Terrestrial){
+	    var atm = body.atmosphere;
+	    infoPanel.set({
+	      period: body.rotationalPeriod.toFixed(4),
+	      tilt: body.axialTilt.toFixed(1),
+	      mass: body.mass.toFixed(4),
+	      density: body.density.toFixed(4),
+	      diameter: body.diameterKM.toFixed(4),
+	      gravity: body.gravity,
+	      cls: body.class,
+	      resources: body.resources,
+	      hydrographics: body.hydrographics.toFixed(2),
+	      suffocating: (atm.suffocating === true) ? "True" : "False",
+	      corrosive: (atm.corrosive === true) ? "True" : "False",
+	      toxic: (typeof(atm.toxicity) === 'number' && atm.toxicity === 0) ? "None" : (atm.toxicity === 1) ? "Mild" : (atm.toxicity === 2) ? "Thick" : "Heavy",
+	      toxin: (typeof(atm.marginal) === true && typeof(atm.toxin) !== 'undefined') ? atm.toxin.join(", ") : "None",
+	      composition: (typeof(atm.composition) !== 'undefined') ? atm.composition.join(", ") : "None",
+	      affinity: body.affinity
+	    });
+	    infoPanel.showSection("terrestrial");
+	  }
+
+	  infoPanel.show(true, x, y + 20);
+	}, 1000);
+      }
+    }
+
+    function handleMouseOut(d, i){
+      if (infoPanelIntervalID !== null){
+	window.clearTimeout(infoPanelIntervalID);
+	infoPanelIntervalID = null;
+      }
+      infoPanel.show(false);
+    }
+
     this.hidden = function(){
       return dom.classed("hidden");
     };
@@ -434,7 +516,12 @@ requirejs([
 
     this.setStar = function(star){
       starView.star = star;
-      starView.render();
+      starView.render({
+	bodies:{
+	  mouseOver: handleMouseOver,
+	  mouseOut: handleMouseOut
+	}
+      });
     };
   }
   StarSystemCtrl.prototype.__proto__ = Emitter.prototype;

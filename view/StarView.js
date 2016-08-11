@@ -172,10 +172,11 @@
       }
     }
 
-    function RenderOrbits(g, objs, clsname, noCircle){
+    function RenderOrbits(g, objs, clsname, noCircle, events){
+      events = (typeof(events) === typeof({})) ? events : {};
       noCircle = (noCircle === true) ? true : false;
       var group = g.append("g").attr("class", clsname);
-      group.selectAll("ellipse")
+      var ellipses = group.selectAll("ellipse")
 	.data(objs).enter()
 	.append("ellipse")
 	.attr("rx", function(d){
@@ -184,9 +185,18 @@
 	.attr("ry", function(d){
 	  return mapScale(d.rMax);
 	});
+      if (events.mouseOver){
+	ellipses.on("mouseover", events.mouseOver);
+      }
+      if (events.mouseOut){
+	ellipses.on("mouseout", events.mouseOut);
+      }
+      if (events.click){
+	ellipses.on("click", events.click);
+      }
 
       if (noCircle === false){
-	group.selectAll("circle")
+	var circles = group.selectAll("circle")
 	  .data(objs).enter()
 	  .append("circle")
 	  .attr("cy", function(d){
@@ -195,25 +205,36 @@
 	  .attr("r", function(d){
 	    return bodyScale(d.body.diameter);
 	  });
+
+	if (events.mouseOver){
+	  circles.on("mouseover", events.mouseOver);
+	}
+	if (events.mouseOut){
+	  circles.on("mouseout", events.mouseOut);
+	}
+	if (events.click){
+	  circles.on("click", events.click);
+	}
       }
     }
 
-    function RenderStar(s, g){
+    function RenderStar(s, g, options){
       g.append("g")
 	.attr("class", "star " + s.sequence.substring(0, 1))
 	.append("circle")
 	.attr("r", starScale(s.radius));
 
+      var bodiesEvents = (typeof(options.bodies) !== 'undefined') ? options.bodies : {};
       if (s.hasBodiesOfType(Terrestrial.Type)){
-	RenderOrbits(g, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
+	RenderOrbits(g, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial", false, bodiesEvents);
       }
 
       if (s.hasBodiesOfType(GasGiant.Type)){
-	RenderOrbits(g, s.getBodiesOfType(GasGiant.Type), "orbit-gasgiant");
+	RenderOrbits(g, s.getBodiesOfType(GasGiant.Type), "orbit-gasgiant", false, bodiesEvents);
       }
 
       if (s.hasBodiesOfType(AsteroidBelt.Type)){
-	RenderOrbits(g, s.getBodiesOfType(AsteroidBelt.Type), "orbit-asteroids", true);
+	RenderOrbits(g, s.getBodiesOfType(AsteroidBelt.Type), "orbit-asteroids", true, bodiesEvents);
       }
     }
 
@@ -235,7 +256,7 @@
 
       var primary = scroller.append("g")
 	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");
-      RenderStar(star, primary);
+      RenderStar(star, primary, options);
 
       if (star.companionCount > 0){
 	var companions = star.companions;
@@ -251,7 +272,7 @@
 	    .attr("stroke-width", 1);
 	  var surf = scroller.append("g")
 	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(cdata.orbit.rMax) + ")");
-	  RenderStar(cdata.body, surf);
+	  RenderStar(cdata.body, surf, options);
 	}
       }
     };

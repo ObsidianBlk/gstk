@@ -1095,11 +1095,7 @@
 	    b.period = Math.sqrt(Math.pow(radius, 3)/data.mass);
 	    b.body = body;
 	    data.body.push(b);
-	  } else {
-	    console.log("Cannot add body... roll identifies empty.");
 	  }
-	} else {
-	  console.log("Cannot add body... eccentricity conflict.");
 	}
 
 	GenerateRandomBodies(star, radius, direction, data.body.length, max);

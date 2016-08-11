@@ -395,12 +395,12 @@
 
       "diameterMiles":{
         enumerate: true,
-        get:function(){return this.data.diameter*(StellarBody.Conv.E2Mile*2);}
+        get:function(){return this.data.diameter*(StellarBody.Convert.E2Mile*2);}
       },
 
       "diameterKM":{
         enumerate: true,
-        get:function(){return this.data.diameter*(StellarBody.Conv.E2KM*2);}
+        get:function(){return this.data.diameter*(StellarBody.Convert.E2KM*2);}
       },
 
       "surfaceGravity":{
