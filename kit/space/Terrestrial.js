@@ -62,7 +62,7 @@
           "corrosive": {"type": "boolean"},
           "marginal": {"type": "boolean"},
           "mass": {"type": "number"},
-          "pressure": {"type": "integer"},
+          "pressure": {"type": "number"},
           "suffocating": {"type": "boolean"},
           "toxicity": {"type": "integer"}
 	},

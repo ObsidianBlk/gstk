@@ -30,7 +30,7 @@ div.hoverPanel {
     font: 10px sans-serif;
     font-weight: 700;
     color: #09F;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(20, 20, 20, 0.75);
     border: 2px solid #09F;
     border-radius: 8px;
     pointer-events: none;
@@ -40,6 +40,28 @@ div.hoverPanel {
     font-weight: normal;
     font-style: italic;
     color:#FFF;
+}
+
+ul.menu {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    width: 200px;
+}
+
+ul.menu li a{
+    font: 10px sans-serif;
+    font-weight: 700;
+    color: #09F;
+    border-bottom: 2px solid #09F;
+    display: block;
+    padding: 8px 16px;
+    text-decoration: none;
+}
+
+ul.menu li a:hover {
+    background-color: #555;
+    color: white;
 }
 
 a.button {

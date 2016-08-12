@@ -8,12 +8,28 @@
   <body>
     <div id="jsonsrc" class="panel hidden">
       <textarea id="jsonsrc" name="textarea" rows="10" cols="50">Enter JSON here</textarea>
-      <a href="#" class="button" id="btn_jsonload">Load</a>
-      <a href="#" class="button" id="btn_close">Close</a>
+      <ul class="menu">
+	<li><a href="#" id="btn_jsonload">Load</a></li>
+	<li><a href="#" id="btn_close">Close</a></li>
+      </ul>
     </div>
     <div id="MainMenu" class="panel"></div>
     <div id="RegionPanel" class="panel hidden"></div>
     <div id="StarsystemPanel" class="panel hidden"></div>
+
+    <div class="hoverPanel hidden RegionMenu">
+      Options
+      <ul class="menu">
+	<li><a href="#" id="menuback">Back</a></li>
+	<li><a href="#" id="export">Export</a></li>
+	<li><a href="#" id="showall">Show All</a></li>
+	<li><a href="#" id="showempty">Show Empty</a></li>
+	<li><a href="#" id="shownonempty">Show Non-Empty</a></li>
+	<li><a href="#" id="showterrestrial">Show Terrestrial</a></li>
+	<li><a href="#" id="showhabitable">Show Habitable</a></li>
+	<li><a href="#" id="showasteroids">Show Asteroids</a></li>
+      </ul>
+    </div>
 
     <div class="hoverPanel hidden star">
       Position: <span class="info" id="position">(R:0, A:0)</span><BR>
@@ -28,13 +44,15 @@
 
     <div class="hoverPanel hidden planet">
       Name: <span class="info" id="name">None</span><BR>
+      Body Type: <span class="info" id="body">UNKNOWN</span><BR>
       Size: <span class="info" id="size">UNKNOWN</span><BR>
-      Temperature: <span class="info" id="temperature">0</span> kelvin<BR>
       Perigee: <span class="info" id="perigee">0.0</span> AU<BR>
       Apogee: <span class="info" id="apogee">0.0</span> AU<BR>
       <div class="section gasgiant hidden">
+	Orbital Period: <span class="info" id="orbit">0</span> earth years<BR>
 	Rotational Period: <span class="info" id="period">0</span> earth days<BR>
 	Axial Tilt: <span class="info" id="tilt">0</span> degrees<BR>
+	Blackbody Temperature: <span class="info" id="blackbody">0</span> kelvin<BR>
 	Mass: <span class="info" id="mass">0.0</span> earths<BR>
 	Density: <span class="info" id="density">0.0</span> earths<BR>
 	Diameter: <span class="info" id="diameter">0.0</span> km<BR>
@@ -42,12 +60,15 @@
       </div>
 
       <div class="section asteroidbelt hidden">
+	Temperature: <span class="info" id="temperature">0</span> kelvin<BR>
 	Resources: <span class="info" id="resources">0</span><BR>
       </div>
 
       <div class="section terrestrial hidden">
+	Orbital Period: <span class="info" id="orbit">0</span> earth years<BR>
 	Rotational Period: <span class="info" id="period">0</span> earth days<BR>
 	Axial Tilt: <span class="info" id="tilt">0</span> degrees<BR>
+	Temperature: <span class="info" id="temperature">0</span> kelvin<BR>
 	Mass: <span class="info" id="mass">0.0</span> earths<BR>
 	Class: <span class="info" id="cls">UNKNOWN</span><BR>
 	Density: <span class="info" id="density">0.0</span> earths<BR>

@@ -62,7 +62,7 @@
       "resourceIndex",
       "size",
       "temperature",
-      "type"
+      "_type"
     ]
   };
 

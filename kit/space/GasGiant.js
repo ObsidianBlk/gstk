@@ -249,17 +249,17 @@
     switch(body.size){
     case 0:
       diff = (ggmd.Mmass - ggmd.Smass)*0.45; // Small uses a slightly different variance.
-      body.mass = ggmd.Smass + rng.value(-diff, diff);
+      body.mass = ggmd.Smass + rng.value(0, diff);
       subd = ggmd.Sdensity*0.1;
       body.density = ggmd.Sdensity + rng.value(-subd, subd);
       break;
     case 1:
-      body.mass = ggmd.Mmass + rng.value(-diff, diff);
+      body.mass = ggmd.Mmass + rng.value(0, diff);
       subd = ggmd.Mdensity*0.1;
       body.density = ggmd.Mdensity + rng.value(-subd, subd);
       break;
     case 2:
-      body.mass = ggmd.Lmass + rng.value(-diff, diff);
+      body.mass = ggmd.Lmass + rng.value(0, diff);
       subd = ggmd.Ldensity*0.1;
       body.density = ggmd.Ldensity + rng.value(-subd, subd);
       break;

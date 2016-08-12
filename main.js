@@ -82,9 +82,29 @@ requirejs([
   // -------------------------------------------------------------------------------------------------------------------------------------
 
   function HoverPanelCtrl(dom){
+    Emitter.call(this);
     if (dom.classed("hoverPanel") === false){
       throw new Error("Element does not contain required class");
     }
+
+    var self = this;
+    (function(){
+      var events = {};
+      var menus = dom.selectAll("ul.menu").each(function(){
+	d3.select(this).selectAll("a").each(function(){
+	  var a = d3.select(this);
+	  var event = a.attr("id");
+	  if (event !== null && !(event in events)){
+	    events[event] = true;
+	    a.on("click", (function(ename){
+	      return function(d){
+		self.emit(ename, d);
+	      };
+	    })(event));
+	  }
+	});
+      });
+    })();
 
     this.set = function(name_or_dict, value){
       if (typeof(name_or_dict) === typeof({})){
@@ -100,6 +120,15 @@ requirejs([
     };
 
     this.position = function(x, y){
+      var rect = dom.node().getBoundingClientRect();
+      if (y + rect.height > DOMEventNotifier.getHeight()){
+	y = DOMEventNotifier.getHeight() - rect.height;
+      }
+      var _x = x;
+      x = DOMEventNotifier.getWidth() - rect.width; // Put it to the right by default.
+      if (x < _x){ // If it'd overlap the currently given position
+	x = 0; // Move it to the left.
+      }
       dom.style("left", x + "px");
       dom.style("top", y + "px");
     };
@@ -107,11 +136,11 @@ requirejs([
     this.show = function(enable, x, y){
       enable = (enable === false) ? false : true;
       if (enable && dom.classed("hidden")){
+	dom.classed("hidden", false);
 	this.position(
 	  (typeof(x) === 'number') ? x : 0,
 	  (typeof(y) === 'number') ? y : 0
 	);
-	dom.classed("hidden", false);
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
       }
@@ -123,6 +152,10 @@ requirejs([
 	if (sec.classed("hidden") === true){
 	  dom.selectAll(".section").classed("hidden", true);
 	  sec.classed("hidden", false);
+	  if (dom.classed("hidden") === false){
+	    var rect = dom.node().getBoundingClientRect();
+	    this.position(rect.x, rect.y);
+	  }
 	}
       }
     };
@@ -131,6 +164,7 @@ requirejs([
       return (dom.classed("hidden") === false);
     };
   }
+  HoverPanelCtrl.prototype.__proto__ = Emitter.prototype;
   HoverPanelCtrl.prototype.constructor = HoverPanelCtrl;
 
   // -------------------------------------------------------------------------------------------------------------------------------------
@@ -155,7 +189,63 @@ requirejs([
     var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.star"));
     var infoPanelIntervalID = null;
 
-    var d3m = new D3Menu(svg, {
+    var menuPanel = new HoverPanelCtrl(d3.select(".hoverPanel.RegionMenu"));
+    menuPanel.on("menuback", function(d){
+      self.emit("mainmenu");
+    });
+    menuPanel.on("export", function(d){
+      self.emit("exportJSON", regionView.region.toString(true));
+    });
+    menuPanel.on("showall", function(d){
+      regionView.displayMode = 0;
+      regionView.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    });
+    menuPanel.on("showempty", function(d){
+      regionView.displayMode = 1;
+      regionView.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    });
+    menuPanel.on("shownonempty", function(d){
+      regionView.displayMode = 2;
+      regionView.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    });
+    menuPanel.on("showterrestrial", function(d){
+      regionView.displayMode = 3;
+      regionView.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    });
+    menuPanel.on("showhabitable", function(d){
+      regionView.displayMode = 4;
+      regionView.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    });
+    menuPanel.on("showasteroids", function(d){
+      regionView.displayMode = 5;
+      regionView.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    });
+
+    /*var d3m = new D3Menu(svg, {
       menuclass:"menu",
       textoffset: 2,
       x: 10,
@@ -251,7 +341,7 @@ requirejs([
           }
         }
       ]
-    });
+    });*/
     
 
     function handleMouseOver(d, i){
@@ -336,10 +426,10 @@ requirejs([
       enable = (enable === false) ? false : true;
       if (enable && dom.classed("hidden")){
 	dom.classed("hidden", false);
-	d3m.show(true);
+	menuPanel.show(true, 0, 0);
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
-	d3m.show(false);
+	menuPanel.show(false);
       }
     };
 
@@ -417,34 +507,41 @@ requirejs([
 	    apogee: d.rMax.toFixed(4),
 	    perigee: d.rMin.toFixed(4),
 	    name: body.name,
-	    size: body.size,
-	    temperature: "" + body.temperature
+	    size: body.size
 	  });
 
 	  if (body instanceof GasGiant){
 	    infoPanel.set({
+	      body: "Gas Giant",
+	      orbit: d.period.toFixed(2),
+	      blackbody: body.blackbody.toFixed(2),
 	      period: body.rotationalPeriod.toFixed(4),
 	      tilt: body.axialTilt.toFixed(1),
 	      mass: body.mass.toFixed(4),
 	      density: body.density.toFixed(4),
 	      diameter: body.diameterKM.toFixed(4),
-	      gravity: body.surfaceGravity
+	      gravity: body.surfaceGravity.toFixed(2)
 	    });
 	    infoPanel.showSection("gasgiant");
 	  } else if (body instanceof AsteroidBelt){
 	    infoPanel.set({
+	      body: "Asteroid Belt",
+	      temperature: body.temperature.toFixed(2),
 	      resources: body.resources
 	    });
 	    infoPanel.showSection("asteroidbelt");
 	  } else if (body instanceof Terrestrial){
 	    var atm = body.atmosphere;
 	    infoPanel.set({
+	      body: "Terrestrial",
+	      orbit: d.period.toFixed(2),
+	      temperature: body.temperature.toFixed(2),
 	      period: body.rotationalPeriod.toFixed(4),
 	      tilt: body.axialTilt.toFixed(1),
 	      mass: body.mass.toFixed(4),
 	      density: body.density.toFixed(4),
 	      diameter: body.diameterKM.toFixed(4),
-	      gravity: body.surfaceGravity,
+	      gravity: body.surfaceGravity.toFixed(2),
 	      cls: body.class,
 	      resources: body.resources,
 	      hydrographics: body.hydrographics.toFixed(2),
