@@ -4,6 +4,7 @@ body{
     margin:0;
     padding:0;
     background:#000000;
+    font: 10px Coda;
 }
 
 div.panel{
@@ -27,12 +28,18 @@ div.hoverPanel {
     position: absolute;
     width: auto;
     padding: 10px;
-    font: 10px sans-serif;
     font-weight: 700;
     color: #09F;
     background: rgba(20, 20, 20, 0.75);
     border: 2px solid #09F;
     border-radius: 8px;
+}
+
+.hoverPanel.noPadding{
+    padding: 0;
+}
+
+.hoverPanel.noPointerEvents{
     pointer-events: none;
 }
 
@@ -42,18 +49,40 @@ div.hoverPanel {
     color:#FFF;
 }
 
+.hoverPanel .heading {
+    color: #96B1D2;
+    font-size: 16px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.hoverPanel a.button{
+    color: #96B1D2;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.hoverPanel a.button:hover{
+    font-size: 18px;
+}
+
 ul.menu {
     list-style-type: none;
-    margin: 0;
     padding: 0;
     width: 200px;
 }
 
+ul.menu li{
+    border-bottom: 1px solid #09F;
+}
+
+ul.menu li:first-child{
+    border-top: 1px solid #09F;
+}
+
 ul.menu li a{
-    font: 10px sans-serif;
     font-weight: 700;
     color: #09F;
-    border-bottom: 2px solid #09F;
     display: block;
     padding: 8px 16px;
     text-decoration: none;
@@ -64,23 +93,6 @@ ul.menu li a:hover {
     color: white;
 }
 
-a.button {
-    padding-left: 0.1em;
-    padding-right: 0.1em;
-    margin: 0.1em;
-    background-color: #5E3293;
-    color: #D3E1D3;
-    -webkit-transition: all 0.5s ease;
-    -moz-transition: all 0.5s ease;
-    -o-transition: all 0.5s ease;
-    -ms-transition: all 0.5s ease;
-    transition: all 0.5s ease; }
-a.button:hover {
-    background-color: #9671C2;
-    color: #ADCDAD; }
-a.button.pill {
-    border-radius: 5px; }
-
 
 .menu {
     fill: #09F;
@@ -88,7 +100,6 @@ a.button.pill {
 }
 
 .menu text{
-    font: 10px sans-serif;
     fill: #018
 }
 
@@ -105,7 +116,6 @@ a.button.pill {
 
 
 .range-axis text {
-  font: 10px sans-serif;
   fill: #09F;
 }
 
@@ -125,7 +135,6 @@ a.button.pill {
 }
 
 .compass-overlay text{
-    font: 10px sans-serif;
     fill: #09F;
 }
 
@@ -136,7 +145,6 @@ a.button.pill {
 }
 
 .grid text{
-    font: 10px sans-serif;
     fill: #09F;
 }
 
@@ -194,6 +202,5 @@ a.button.pill {
 }
 
 .star text{
-    font: 10px sans-serif;
     fill: #0DF;
 }

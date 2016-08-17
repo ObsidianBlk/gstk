@@ -1,0 +1,14 @@
+@font-face {
+  font-family: 'Coda';
+  font-weight: 400;
+  font-style: normal;
+  src: url('fonts/Coda-regular/Coda-regular.eot');
+  src: url('fonts/Coda-regular/Coda-regular.eot?#iefix') format('embedded-opentype'),
+       local('Coda'),
+       local('Coda-regular'),
+       url('fonts/Coda-regular/Coda-regular.woff2') format('woff2'),
+       url('fonts/Coda-regular/Coda-regular.woff') format('woff'),
+       url('fonts/Coda-regular/Coda-regular.ttf') format('truetype'),
+       url('fonts/Coda-regular/Coda-regular.svg#Coda') format('svg');
+}
+

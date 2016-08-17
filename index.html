@@ -3,6 +3,8 @@
 <html>
   <head>
     <title>GURPS-Space Toolkit</title>
+    <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="css/fonts.css">
     <link rel="stylesheet" type="text/css" href="css/gstk.css">
   </head>
   <body>
@@ -17,21 +19,36 @@
     <div id="RegionPanel" class="panel hidden"></div>
     <div id="StarsystemPanel" class="panel hidden"></div>
 
-    <div class="hoverPanel hidden RegionMenu">
-      Options
-      <ul class="menu">
-	<li><a href="#" id="menuback">Back</a></li>
-	<li><a href="#" id="export">Export</a></li>
-	<li><a href="#" id="showall">Show All</a></li>
-	<li><a href="#" id="showempty">Show Empty</a></li>
-	<li><a href="#" id="shownonempty">Show Non-Empty</a></li>
-	<li><a href="#" id="showterrestrial">Show Terrestrial</a></li>
-	<li><a href="#" id="showhabitable">Show Habitable</a></li>
-	<li><a href="#" id="showasteroids">Show Asteroids</a></li>
-      </ul>
+    <div class="hoverPanel noPadding hidden RegionMenu">
+      <span class="heading">selection</span>
+      <div class="section regionmain">
+	<ul class="menu">
+	  <li><a href="#" id="modify">Modify</a></li>
+	  <li><a href="#" id="filters">Filters</a></li>
+	  <li><a href="#" id="exitregionview">Exit</a></li>
+	</ul>
+      </div>
+      <div class="section regionfilters hidden">
+	<ul class="menu">
+	  <li><a href="#" id="back">Back</a></li>
+	  <li><a href="#" id="showall">Show All</a></li>
+	  <li><a href="#" id="showempty">Show Empty</a></li>
+	  <li><a href="#" id="shownonempty">Show Non-Empty</a></li>
+	  <li><a href="#" id="showterrestrial">Show Terrestrial</a></li>
+	  <li><a href="#" id="showhabitable">Show Habitable</a></li>
+	  <li><a href="#" id="showasteroids">Show Asteroids</a></li>
+	</ul>
+      </div>
+      <div class="section regionmodify hidden">
+	<ul class="menu">
+	  <li><a href="#" id="back">Back</a></li>
+	  <li><a href="#" id="newstar">New</a></li>
+	  <li><a href="#" id="export">Export</a></li>
+	</ul>
+      </div>
     </div>
 
-    <div class="hoverPanel hidden star">
+    <div class="hoverPanel noPointerEvents hidden star">
       Position: <span class="info" id="position">(R:0, A:0)</span><BR>
       Name: <span class="info" id="name">None</span><BR>
       Sequence/Class: <span class="info" id="sequence">K9/V</span><BR>
@@ -42,7 +59,7 @@
       Orbitals: <span class="info" id="orbitals">(0/0/0/0)</span>
     </div>
 
-    <div class="hoverPanel hidden planet">
+    <div class="hoverPanel noPointerEvents hidden planet">
       Name: <span class="info" id="name">None</span><BR>
       Body Type: <span class="info" id="body">UNKNOWN</span><BR>
       Size: <span class="info" id="size">UNKNOWN</span><BR>

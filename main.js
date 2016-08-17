@@ -106,6 +106,59 @@ requirejs([
       });
     })();
 
+    var posOffsetX = 0;
+    var posOffsetY = 0;
+    var stickyEdge = 0x0000;
+    var stickyFlipEnabled = true; // If true, the sticky edge will flip if entity overlaps mouse position.
+
+    Object.defineProperties(this, {
+      "offsetX":{
+	enumerate: true,
+	get:function(){return posOffsetX;},
+	set:function(ox){
+	  if (typeof(ox) !== 'number'){
+	    throw new TypeError("Value expected to be a number.");
+	  }
+	  posOffsetX = Math.floor(ox);
+	}
+      },
+
+      "offsetY":{
+	enumerate: true,
+	get:function(){return posOffsetY;},
+	set:function(oy){
+	  if (typeof(oy) !== 'number'){
+	    throw new TypeError("Value expected to be a number.");
+	  }
+	  posOffsetY = Math.floor(oy);
+	}
+      },
+
+      "edge":{
+	enumerate: true,
+	get:function(){return stickyEdge;},
+	set:function(se){
+	  if (typeof(se) !== 'number'){
+	    throw new TypeError("Value expected to be a number.");
+	  } else if (se < 0 || se > 0x1111){
+	    throw new RangeError("Value out of bounds.");
+	  }
+	  stickyEdge = se;
+	}
+      },
+
+      "flipEdge":{
+	enumerate: true,
+	get:function(){return stickyFlipEnabled;},
+	set:function(e){
+	  if (typeof(e) !== 'boolean'){
+	    throw new TypeError("Value expected to be boolean.");
+	  }
+	  stickyFlipEnabled = e;
+	}
+      }
+    });
+
     this.set = function(name_or_dict, value){
       if (typeof(name_or_dict) === typeof({})){
 	Object.keys(name_or_dict).forEach((function(key){
@@ -119,16 +172,40 @@ requirejs([
       }
     };
 
-    this.position = function(x, y){
+    this.position = function(x, y, ignoreEdges){
       var rect = dom.node().getBoundingClientRect();
-      if (y + rect.height > DOMEventNotifier.getHeight()){
-	y = DOMEventNotifier.getHeight() - rect.height;
+      var dwidth = DOMEventNotifier.getWidth();
+      var dheight = DOMEventNotifier.getHeight();
+      var _x = dwidth - rect.width;
+      var _y = dheight - rect.height;
+
+      if (ignoreEdges !== true){
+	if (stickyEdge > 0){
+	  if ((stickyEdge & HoverPanelCtrl.Edge.HCenter) === HoverPanelCtrl.Edge.HCenter){
+	    x =  Math.floor((dwidth*0.5) - (rect.width*0.5));
+	  } else {
+	    if ((stickyEdge & HoverPanelCtrl.Edge.Left) !== 0){
+	      x = (stickyFlipEnabled === true && x < rect.width && x < _x) ? _x : 0;
+	    } else if ((stickyEdge & HoverPanelCtrl.Edge.Right) !== 0){
+	      x = (stickyFlipEnabled === true && x > _x && x < rect.width) ? 0 : _x;
+	    }
+	  }
+
+	  if ((stickyEdge & HoverPanelCtrl.Edge.VCenter) === HoverPanelCtrl.Edge.VCenter){
+	    y = Math.floor((dheight*0.5) - (rect.height*0.5));
+	  } else {
+	    if ((stickyEdge & HoverPanelCtrl.Edge.Top) !== 0){
+	      y = (stickyFlipEnabled === true && y < rect.height && y < _y) ? _y : 0;
+	    } else if ((stickyEdge & HoverPanelCtrl.Edge.Bottom) !== 0){
+	      y = (stickyFlipEnabled === true && y > _y && y < rect.height) ? 0 : _y;
+	    }
+	  }
+	}
       }
-      var _x = x;
-      x = DOMEventNotifier.getWidth() - rect.width; // Put it to the right by default.
-      if (x < _x){ // If it'd overlap the currently given position
-	x = 0; // Move it to the left.
-      }
+
+      x += posOffsetX;
+      y += posOffsetY;
+
       dom.style("left", x + "px");
       dom.style("top", y + "px");
     };
@@ -166,6 +243,16 @@ requirejs([
   }
   HoverPanelCtrl.prototype.__proto__ = Emitter.prototype;
   HoverPanelCtrl.prototype.constructor = HoverPanelCtrl;
+  HoverPanelCtrl.Edge = {
+    Left: 0x1000,
+    Right: 0x0100,
+    Top: 0x0010,
+    Bottom: 0x0001,
+    // Shorthands...
+    HCenter: 0x1100,
+    VCenter: 0x0011,
+    Center: 0x1111
+  };
 
   // -------------------------------------------------------------------------------------------------------------------------------------
 
@@ -187,163 +274,57 @@ requirejs([
     regionView.mapSize = mapSize;
 
     var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.star"));
+    infoPanel.edge = HoverPanelCtrl.Edge.Right;
+    infoPanel.flipEdge = true;
+    infoPanel.offsetY = 20;
     var infoPanelIntervalID = null;
 
+    function SetDisplayMode(mode){
+      regionView.displayMode = mode;
+      regionView.render({
+	mouseOver:handleMouseOver,
+	mouseOut:handleMouseOut,
+	click:handleClick
+      });
+    }
+
     var menuPanel = new HoverPanelCtrl(d3.select(".hoverPanel.RegionMenu"));
-    menuPanel.on("menuback", function(d){
-      self.emit("mainmenu");
+    menuPanel.edge = HoverPanelCtrl.Edge.Right;
+    menuPanel.flipEdge = true;
+    menuPanel.on("filters", function(){
+      menuPanel.showSection("regionfilters");
     });
-    menuPanel.on("export", function(d){
+    menuPanel.on("modify", function(){
+      menuPanel.showSection("regionmodify");
+    });
+    menuPanel.on("export", function(){
       self.emit("exportJSON", regionView.region.toString(true));
     });
-    menuPanel.on("showall", function(d){
-      regionView.displayMode = 0;
-      regionView.render({
-	mouseOver:handleMouseOver,
-	mouseOut:handleMouseOut,
-	click:handleClick
-      });
+    menuPanel.on("exitregionview", function(){
+      self.emit("mainmenu");
     });
-    menuPanel.on("showempty", function(d){
-      regionView.displayMode = 1;
-      regionView.render({
-	mouseOver:handleMouseOver,
-	mouseOut:handleMouseOut,
-	click:handleClick
-      });
+    menuPanel.on("back", function(){
+      menuPanel.showSection("regionmain");
     });
-    menuPanel.on("shownonempty", function(d){
-      regionView.displayMode = 2;
-      regionView.render({
-	mouseOver:handleMouseOver,
-	mouseOut:handleMouseOut,
-	click:handleClick
-      });
+    menuPanel.on("showall", function(){
+      SetDisplayMode(0);
     });
-    menuPanel.on("showterrestrial", function(d){
-      regionView.displayMode = 3;
-      regionView.render({
-	mouseOver:handleMouseOver,
-	mouseOut:handleMouseOut,
-	click:handleClick
-      });
+    menuPanel.on("showempty", function(){
+      SetDisplayMode(1);
     });
-    menuPanel.on("showhabitable", function(d){
-      regionView.displayMode = 4;
-      regionView.render({
-	mouseOver:handleMouseOver,
-	mouseOut:handleMouseOut,
-	click:handleClick
-      });
+    menuPanel.on("shownonempty", function(){
+      SetDisplayMode(2);
     });
-    menuPanel.on("showasteroids", function(d){
-      regionView.displayMode = 5;
-      regionView.render({
-	mouseOver:handleMouseOver,
-	mouseOut:handleMouseOut,
-	click:handleClick
-      });
+    menuPanel.on("showterrestrial", function(){
+      SetDisplayMode(3);
     });
-
-    /*var d3m = new D3Menu(svg, {
-      menuclass:"menu",
-      textoffset: 2,
-      x: 10,
-      y: 20,
-      padding: 4,
-      width:128,
-      height:16,
-      events:[
-	{
-	  name: "Back",
-	  event:"mainmenu",
-	  callback:function(event){
-	    self.emit(event);
-	  }
-	},
-	{
-	  name: "Export",
-	  event: "exportJSON",
-	  callback:function(event){
-	    self.emit(event, regionView.region.toString(true));
-	  }
-	},
-        {
-          name: "All",
-          event: "allStars",
-          callback:function(event){
-            regionView.displayMode = 0;
-            regionView.render({
-	      mouseOver:handleMouseOver,
-	      mouseOut:handleMouseOut,
-	      click:handleClick
-            });
-          }
-        },
-        {
-          name: "Empty",
-          event: "emptyStars",
-          callback:function(event){
-            regionView.displayMode = 1;
-            regionView.render({
-	      mouseOver:handleMouseOver,
-	      mouseOut:handleMouseOut,
-	      click:handleClick
-            });
-          }
-        },
-        {
-          name: "Non-Empty",
-          event: "nonemptyStars",
-          callback:function(event){
-            regionView.displayMode = 2;
-            regionView.render({
-	      mouseOver:handleMouseOver,
-	      mouseOut:handleMouseOut,
-	      click:handleClick
-            });
-          }
-        },
-        {
-          name: "Terrestrial",
-          event: "terrestrialStars",
-          callback:function(event){
-            regionView.displayMode = 3;
-            regionView.render({
-	      mouseOver:handleMouseOver,
-	      mouseOut:handleMouseOut,
-	      click:handleClick
-            });
-          }
-        },
-        {
-          name: "Habitable",
-          event: "habitableWorlds",
-          callback:function(event){
-            regionView.displayMode = 4;
-            regionView.render({
-	      mouseOver:handleMouseOver,
-	      mouseOut:handleMouseOut,
-	      click:handleClick
-            });
-          }
-        },
-	{
-          name: "Asteroid",
-          event: "asteroidWorlds",
-          callback:function(event){
-            regionView.displayMode = 5;
-            regionView.render({
-	      mouseOver:handleMouseOver,
-	      mouseOut:handleMouseOut,
-	      click:handleClick
-            });
-          }
-        }
-      ]
-    });*/
+    menuPanel.on("showhabitable", function(){
+      SetDisplayMode(4);
+    });
+    menuPanel.on("showasteroids", function(){
+      SetDisplayMode(5);
+    });
     
-
     function handleMouseOver(d, i){
       var star = d.star;
       var id = "STARTEXT_"+i;
@@ -371,7 +352,7 @@ requirejs([
 	      d.star.countBodiesOfType(Terrestrial.Type) + " / " + 
 	      d.star.countBodiesOfType(AsteroidBelt.Type) + ")"
 	  });
-	  infoPanel.show(true, x, y + 20);
+	  infoPanel.show(true, x, y);
 	}, 1000);
       }
 
