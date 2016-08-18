@@ -14,9 +14,8 @@ requirejs([
   'kit/space/Terrestrial',
   'kit/space/AsteroidBelt',
   'view/RegionView',
-  'view/StarView',
-  'd3ui/D3Menu'
-], function(Emitter, DOMEventNotifier, PRng, Region, Star, StellarBody, GasGiant, Terrestrial, AsteroidBelt, RegionView, StarView, D3Menu){
+  'view/StarView'
+], function(Emitter, DOMEventNotifier, PRng, Region, Star, StellarBody, GasGiant, Terrestrial, AsteroidBelt, RegionView, StarView){
 
   // --------------------------------
   // Defining a "Document Ready" function. This is only garanteed to work on Chrome at the moment.
@@ -48,37 +47,6 @@ requirejs([
 
   // -------------------------------------------------------------------------------------------------------------------------------------
   // STATES
-
-  function MainMenu(domID, options){
-    Emitter.call(this);
-    var self = this;
-    var mm = d3.select("#" + domID);
-    var svg = mm.append("svg")
-      .attr("width", "100%")
-      .attr("height", "100%");
-    var d3m = new D3Menu(svg, options);
-    d3m.show(true);
-    
-
-    this.hidden = function(){
-      return mm.classed("hidden");
-    };
-
-    this.show = function(enable){
-      enable = (enable === false) ? false : true;
-      if (enable && mm.classed("hidden")){
-	mm.classed("hidden", false);
-	d3m.show(true);
-      } else if (enable === false && mm.classed("hidden") === false){
-	mm.classed("hidden", true);
-	d3m.show(false);
-      }
-    };
-  }
-  MainMenu.prototype.__proto__ = Emitter.prototype;
-  MainMenu.prototype.constructor = MainMenu;
-
-
   // -------------------------------------------------------------------------------------------------------------------------------------
 
   function HoverPanelCtrl(dom){
@@ -87,25 +55,29 @@ requirejs([
       throw new Error("Element does not contain required class");
     }
 
+    function onMenuLink(){
+      d3.select(this).selectAll("a").each(function(){
+	var a = d3.select(this);
+	var event = a.attr("id");
+	a.on("click", (function(ename){
+	  return function(d){
+	    self.emit(ename, d);
+	  };
+	})(event));
+      });
+    }
+
     var self = this;
     (function(){
-      var events = {};
-      var menus = dom.selectAll("ul.menu").each(function(){
-	d3.select(this).selectAll("a").each(function(){
-	  var a = d3.select(this);
-	  var event = a.attr("id");
-	  if (event !== null && !(event in events)){
-	    events[event] = true;
-	    a.on("click", (function(ename){
-	      return function(d){
-		self.emit(ename, d);
-	      };
-	    })(event));
-	  }
-	});
-      });
+      dom.selectAll("ul.menu").each(onMenuLink);
+      dom.selectAll("ul.hmenu").each(onMenuLink);
     })();
 
+    DOMEventNotifier.on("resize", function(width, height){
+      self.position(lastPosition[0], lastPosition[1], lastPosition[2]);
+    });
+
+    var lastPosition = [0, 0, false];
     var posOffsetX = 0;
     var posOffsetY = 0;
     var stickyEdge = 0x0000;
@@ -178,6 +150,14 @@ requirejs([
       var dheight = DOMEventNotifier.getHeight();
       var _x = dwidth - rect.width;
       var _y = dheight - rect.height;
+      ignoreEdges = (ignoreEdges === true) ? true : false;
+
+      lastPosition[0] = x;
+      lastPosition[1] = y;
+      lastPosition[2] = ignoreEdges;
+
+      x += posOffsetX;
+      y += posOffsetY;
 
       if (ignoreEdges !== true){
 	if (stickyEdge > 0){
@@ -203,8 +183,17 @@ requirejs([
 	}
       }
 
-      x += posOffsetX;
-      y += posOffsetY;
+      if (x < 0){
+	x = 0;
+      } else if (x > _x){
+	x = _x;
+      }
+
+      if (y < 0){
+	y = 0;
+      } else if (y > _y){
+	y = _y;
+      }
 
       dom.style("left", x + "px");
       dom.style("top", y + "px");
@@ -280,7 +269,9 @@ requirejs([
     var infoPanelIntervalID = null;
 
     function SetDisplayMode(mode){
-      regionView.displayMode = mode;
+      if (typeof(mode) === 'number'){
+	regionView.displayMode = mode;
+      }
       regionView.render({
 	mouseOver:handleMouseOver,
 	mouseOut:handleMouseOut,
@@ -296,6 +287,22 @@ requirejs([
     });
     menuPanel.on("modify", function(){
       menuPanel.showSection("regionmodify");
+    });
+    menuPanel.on("newrandom", function(){
+      menuPanel.show(false);
+
+      placerDOM.select("#angle")
+	.attr("value", 0);
+      placerDOM.select("#radius")
+	.attr("max", regionView.region.radius)
+	.attr("value", 0);
+
+      regionView.showPlacerCursor = true;
+      regionView.placerCursor = {radius:0, angle:0, z:0};
+      SetDisplayMode();
+      starPlacerPanel.show(true);
+      //regionView.region.addStar(20);
+      //SetDisplayMode();
     });
     menuPanel.on("export", function(){
       self.emit("exportJSON", regionView.region.toString(true));
@@ -323,6 +330,37 @@ requirejs([
     });
     menuPanel.on("showasteroids", function(){
       SetDisplayMode(5);
+    });
+
+    var placerDOM = d3.select(".hoverPanel.starPlacer");
+    var starPlacerPanel = new HoverPanelCtrl(placerDOM);
+    starPlacerPanel.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
+    starPlacerPanel.flipEdge = false;
+    starPlacerPanel.on("place", function(){
+      regionView.region.addStar({
+	r: regionView.placerCursorRadius,
+	a: regionView.placerCursorAngle*(Math.PI/180)
+      });
+      regionView.showPlacerCursor = false;
+      SetDisplayMode();
+      starPlacerPanel.show(false);
+      menuPanel.show(true);
+    });
+    starPlacerPanel.on("cancel", function(){
+      regionView.showPlacerCursor = false;
+      SetDisplayMode();
+      starPlacerPanel.show(false);
+      menuPanel.show(true);
+    });
+    placerDOM.select("#angle").on("change", function(){
+      regionView.placerCursorAngle = Number(d3.select(this).node().value);
+      SetDisplayMode();
+      //console.log(d3.select(this).node().value);
+    });
+    placerDOM.select("#radius").on("change", function(){
+      regionView.placerCursorRadius = Number(d3.select(this).node().value);
+      SetDisplayMode();
+      //console.log(d3.select(this).node().value);
     });
     
     function handleMouseOver(d, i){
@@ -449,24 +487,7 @@ requirejs([
         .append("svg")
         .attr("width", "100%")
         .attr("height", "100%");
-    var d3m = new D3Menu(svg, {
-      menuclass:"menu",
-      textoffset: 2,
-      x: 10,
-      y: 20,
-      padding: 4,
-      width:128,
-      height:16,
-      events:[
-	{
-	  name: "Back",
-	  event:"region",
-	  callback:function(event){
-	    self.emit(event);
-	  }
-	},
-      ]
-    });
+
     var mapSize = Math.min(DOMEventNotifier.getWidth(), DOMEventNotifier.getHeight());
     var hmapSize = Math.round(mapSize*0.5);
 
@@ -508,6 +529,8 @@ requirejs([
 	    infoPanel.set({
 	      body: "Asteroid Belt",
 	      temperature: body.temperature.toFixed(2),
+	      temperatureC: StellarBody.Kelvin2C(body.temperature).toFixed(2),
+	      temperatureF: StellarBody.Kelvin2F(body.temperature).toFixed(2),
 	      resources: body.resources
 	    });
 	    infoPanel.showSection("asteroidbelt");
@@ -517,6 +540,8 @@ requirejs([
 	      body: "Terrestrial",
 	      orbit: d.period.toFixed(2),
 	      temperature: body.temperature.toFixed(2),
+	      temperatureC: StellarBody.Kelvin2C(body.temperature).toFixed(2),
+	      temperatureF: StellarBody.Kelvin2F(body.temperature).toFixed(2),
 	      period: body.rotationalPeriod.toFixed(4),
 	      tilt: body.axialTilt.toFixed(1),
 	      mass: body.mass.toFixed(4),
@@ -551,7 +576,26 @@ requirejs([
     };
 
     var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.planet"));
+    infoPanel.edge = HoverPanelCtrl.Edge.Right;
+    infoPanel.flipEdge = true;
     var infoPanelIntervalID = null;
+
+    var starViewMenu = new HoverPanelCtrl(d3.select(".hoverPanel.StarViewMenu"));
+    starViewMenu.edge = HoverPanelCtrl.Edge.Right;
+    starViewMenu.flipEdge = true;
+    starViewMenu.on("toggle", function(){
+      starViewMenu.showSection("infotoggle");
+    });
+    starViewMenu.on("exitStarView", function(){
+      self.emit("region");
+    });
+    starViewMenu.on("back", function(){
+      starViewMenu.showSection("starviewmain");
+    });
+    starViewMenu.on("togglesnowline", function(){
+      starView.showSnowline = !starView.showSnowline;
+      starView.render();
+    });
 
     map.on("mousemove", function(){
       var pos = d3.mouse(this);
@@ -587,10 +631,12 @@ requirejs([
       enable = (enable === false) ? false : true;
       if (enable && dom.classed("hidden")){
 	dom.classed("hidden", false);
-        d3m.show(true);
+        //d3m.show(true);
+	starViewMenu.show(true);
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
-        d3m.show(false);
+        //d3m.show(false);
+	starViewMenu.show(false);
         infoPanel.show(false);
       }
     };
@@ -672,22 +718,10 @@ requirejs([
       loader.show(true, jstr);
     });
 
-    var mainmenu = new MainMenu("MainMenu", {
-      menuclass:"menu",
-      textoffset: 2,
-      x: 10,
-      y: 20,
-      padding: 4,
-      width:128,
-      height:16,
-      events:[
-	{name: "Generate Region", event:"genRegion", callback:function(event){mainmenu.emit(event);}},
-	{name: "Load Region", event:"loadRegion", callback:function(event){mainmenu.emit(event);}},
-	{name: "Quit", event:"quit", callback:function(event){mainmenu.emit(event);}}
-      ]
-    });
-
-    mainmenu.on("genRegion", function(){
+    var mainmenu = new HoverPanelCtrl(d3.select(".hoverPanel.MainMenu"));
+    mainmenu.edge = HoverPanelCtrl.Edge.Center;
+    mainmenu.flipEdge = false;
+    mainmenu.on("generate", function(){
       mainmenu.show(false);
       regionctrl.show(true);
       regionctrl.generate({
@@ -698,12 +732,14 @@ requirejs([
 	systemAtOrigin: true
       });
     });
-
-    mainmenu.on("loadRegion", function(){
+    mainmenu.on("import", function(){
       mainmenu.show(false);
       loader.show(true);
     });
-    mainmenu.on("quit", function(){console.log("Quit! ... Ummm, not yet");});
+    mainmenu.on("quitapp", function(){
+      console.log("Quit! ... Ummm, not yet");
+    });
+    mainmenu.show(true);
 
 
     var loader = new JSONControl("jsonsrc");

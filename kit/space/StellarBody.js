@@ -129,6 +129,14 @@
     return null;
   };
 
+  StellarBody.Kelvin2C = function(k){
+    return k - 273.15;
+  };
+
+  StellarBody.Kelvin2F = function(k){
+    return (((k - 273.15) * 9) / 5) + 32;
+  };
+
   StellarBody.Convert = {
     AU2Mile: Number("9.296e+7"), // AUs to Miles
     AU2KM: Number("1.496e+8"), // AUs to Kilometers.

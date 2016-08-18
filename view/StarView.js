@@ -75,6 +75,7 @@
 
     var renderScale = 1.0;
     var renderRadius = 0;
+    var showSnowline = false;
 
     var axis = null;
     var xAxis = d3.svg.axis().scale(mapScale);
@@ -204,6 +205,17 @@
 	    axis.append("g").attr("id", "yaxis").call(yAxis);
 	  }
 	}
+      },
+
+      "showSnowline":{
+	enumerate: true,
+	get:function(){return showSnowline;},
+	set:function(e){
+	  if (typeof(e) !== 'boolean'){
+	    throw new TypeError("Expected boolean value.");
+	  }
+	  showSnowline = e;
+	}
       }
     });
 
@@ -294,6 +306,18 @@
 	.attr("stroke", "#9F0")
 	.attr("stroke-wdith", "2")
 	.attr("fill", "none");
+
+      if (showSnowline === true){
+	var arc = d3.svg.arc()
+	  .innerRadius(mapScale(star.limit.snowLine))
+	  .outerRadius(mapScale(star.fullSystemRadius))
+	  .startAngle(0)
+	  .endAngle(360*(Math.PI/180));
+	scroller.append("path")
+	  .attr("d", arc)
+	  .attr("fill", "#007")
+	  .attr("stroke", "none");
+      }
 
       var primary = scroller.append("g")
 	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");

@@ -62,6 +62,9 @@
     var displayMode = 0; // All stars in region.
     var r = null;
 
+    var showStarPlacerCursor = false;
+    var placerCursorPos = [0, 0, 0];
+
     function zoomed() {
       var x = d3.event.translate[0];
       var y = d3.event.translate[1];
@@ -129,6 +132,89 @@
 	  }
 	  r = reg;
 	}
+      },
+
+      "showPlacerCursor":{
+	enumerate: true,
+	get:function(){return showStarPlacerCursor;},
+	set:function(e){
+	  if (typeof(e) !== 'boolean'){
+	    throw new TypeError("Value expected to be boolean.");
+	  }
+	  showStarPlacerCursor = e;
+	}
+      },
+
+      "placerCursorRadius":{
+	enumerate:true,
+	get:function(){return placerCursorPos[0];},
+	set:function(rad){
+	  if (typeof(rad) !== 'number'){
+	    throw new TypeError("Value expected to be a number.");
+	  }
+	  if (rad < 0 || rad > r.radius){
+	    throw new RangeError("Value out of bounds");
+	  }
+	  placerCursorPos[0] = rad;
+	}
+      },
+
+      "placerCursorAngle":{
+	enumerate:true,
+	get:function(){return placerCursorPos[1];},
+	set:function(ang){
+	  if (typeof(ang) !== 'number'){
+	    throw new TypeError("Value expected to be a number.");
+	  }
+	  if (ang < 0){
+	    while (ang < 0){
+	      ang += 360.0;
+	    }
+	  } else if (ang > 360.0){
+	    while (ang > 360.0){
+	      ang -= 360.0;
+	    }
+	  }
+	  placerCursorPos[1] = ang;
+	}
+      },
+
+      "placerCursor":{
+	enumerate:true,
+	get:function(){
+	  return {
+	    radius: placerCursorPos[0],
+	    angle: placerCursorPos[1],
+	    z: placerCursorPos[2]
+	  };
+	},
+	set:function(pc){
+	  if (typeof(pc) === typeof({})){
+	    if (typeof(pc.radius) === 'number'){
+	      if (pc.radius < 0 || pc.radius > r.radius){
+		throw new RangeError("Value out of bounds");
+	      }
+	      placerCursorPos[0] = pc.radius;
+	    }
+
+	    if (typeof(pc.angle) === 'number'){
+	      if (pc.angle < 0){
+		while (pc.angle < 0){
+		  pc.angle += 360.0;
+		}
+	      } else if (pc.angle > 360.0){
+		while (pc.angle > 360.0){
+		  pc.angle -= 360.0;
+		}
+	      }
+	      placerCursorPos[1] = pc.angle;
+	    }
+
+	    if (typeof(pc.z) === 'number'){
+	      placerCursorPos[2] = pc.z;
+	    }
+	  }
+	}
       }
     });
 
@@ -193,6 +279,36 @@
 	.attr("r", function(d){
 	  return starScale(d.star.radius*AU);
 	});
+
+
+      if (showStarPlacerCursor === true){
+	var cursor = scroller.append("g");
+	var cr = placerCursorPos[0];
+	var ca = placerCursorPos[1]*(Math.PI/180);
+	var color = (r.canPlaceStar(cr, ca, placerCursorPos[2]) === true) ? "#0F0" : "#F00";
+
+	cursor.append("circle")
+	  .attr("r", mapScale(cr))
+	  .attr("fill", "none")
+	  .attr("stroke", color)
+	  .attr("stroke-width", 1);
+
+	var cx = mapScale(cr*Math.cos(ca));
+	var cy = mapScale(cr*Math.sin(ca));
+
+	cursor.append("circle")
+	  .attr("cx", cx).attr("cy", cy)
+	  .attr("r", mapScale(0.25))
+	  .attr("fill", color)
+	  .attr("stroke", "none");
+
+	cursor.append("circle")
+	  .attr("cx", cx).attr("cy", cy)
+	  .attr("r", mapScale(3))
+	  .attr("fill", "none")
+	  .attr("stroke", "#FA0")
+	  .attr("stroke-width", 2);
+      }
 
       var rangeOverlay = scroller.append("g").attr("class", "range-axis");
       rangeOverlay.selectAll("circle")

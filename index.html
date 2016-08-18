@@ -15,16 +15,25 @@
 	<li><a href="#" id="btn_close">Close</a></li>
       </ul>
     </div>
-    <div id="MainMenu" class="panel"></div>
+    <div id="MainMenu" class="panel hidden"></div>
     <div id="RegionPanel" class="panel hidden"></div>
     <div id="StarsystemPanel" class="panel hidden"></div>
+
+    <div class="hoverPanel noPadding hidden MainMenu">
+      <span class="heading">Main Menu</span>
+      <ul class="menu">
+	<li><a href="#" id="generate">Generate Region</a></li>
+	<li><a href="#" id="import">Import Region</a></li>
+	<li><a href="#" id="quitapp">Quit</a></li>
+      </ul>
+    </div>
 
     <div class="hoverPanel noPadding hidden RegionMenu">
       <span class="heading">selection</span>
       <div class="section regionmain">
 	<ul class="menu">
-	  <li><a href="#" id="modify">Modify</a></li>
-	  <li><a href="#" id="filters">Filters</a></li>
+	  <li><a href="#" id="modify">Modify...</a></li>
+	  <li><a href="#" id="filters">Filter...</a></li>
 	  <li><a href="#" id="exitregionview">Exit</a></li>
 	</ul>
       </div>
@@ -39,13 +48,44 @@
 	  <li><a href="#" id="showasteroids">Show Asteroids</a></li>
 	</ul>
       </div>
+
       <div class="section regionmodify hidden">
 	<ul class="menu">
 	  <li><a href="#" id="back">Back</a></li>
-	  <li><a href="#" id="newstar">New</a></li>
+	  <li><a href="#" id="newrandom">Generate Random Star</a></li>
+	  <li><a href="#" id="newimported">Define New Star</a></li>
 	  <li><a href="#" id="export">Export</a></li>
 	</ul>
       </div>
+    </div>
+
+    <div class="hoverPanel noPadding hidden StarViewMenu">
+      <span class="heading">selection</span>
+      <div class="section starviewmain">
+	<ul class="menu">
+	  <li><a href="#" id="toggle">Show...</a></li>
+	  <li><a href="#" id="exitStarView">Exit</a></li>
+	</ul>
+      </div>
+      <div class="section hidden infotoggle">
+	<ul class="menu">
+	  <li><a href="#" id="back">Back</a></li>
+	  <li><a href="#" id="togglesnowline">Toggle Snowline</a></li>
+	</ul>
+      </div>
+    </div>
+
+    <div class="hoverPanel hidden starPlacer">
+      <label for="angle">Angle</label>
+      <input type="range" min="0" max="360" value="0" step="0.01" id="angle">
+      <BR>
+      <label for="radius">Radius</label>
+      <input type="range" min="0" max="10" value="0" step="0.01" id="radius">
+      <BR>
+      <ul class="hmenu">
+	<li><a href="#" id="place">Place</a></li>
+	<li><a href="#" id="cancel">Cancel</a></li>
+      </ul>
     </div>
 
     <div class="hoverPanel noPointerEvents hidden star">
@@ -55,7 +95,9 @@
       Age: <span class="info" id="age">0</span> billion years<BR>
       Mass: <span class="info" id="mass">0.0</span> Solar Units <BR>
       Radius: <span class="info" id="radius">0</span> AU <BR>
-      Temperature: <span class="info" id="temperature">0</span> kelvin<BR>
+      Temperature: <span class="info" id="temperature">0</span> k,
+      <span class="info" id="temperatureC">0</span> c,
+      <span class="info" id="temperatureF">0</span> f,<BR>
       Orbitals: <span class="info" id="orbitals">(0/0/0/0)</span>
     </div>
 
@@ -85,7 +127,9 @@
 	Orbital Period: <span class="info" id="orbit">0</span> earth years<BR>
 	Rotational Period: <span class="info" id="period">0</span> earth days<BR>
 	Axial Tilt: <span class="info" id="tilt">0</span> degrees<BR>
-	Temperature: <span class="info" id="temperature">0</span> kelvin<BR>
+	Temperature: <span class="info" id="temperature">0</span> k,
+	<span class="info" id="temperatureC">0</span> c,
+	<span class="info" id="temperatureF">0</span> f<BR>
 	Mass: <span class="info" id="mass">0.0</span> earths<BR>
 	Class: <span class="info" id="cls">UNKNOWN</span><BR>
 	Density: <span class="info" id="density">0.0</span> earths<BR>

@@ -93,6 +93,36 @@ ul.menu li a:hover {
     color: white;
 }
 
+ul.hmenu {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+ul.hmenu li {
+    float: left;
+    border-right: 1px solid #09F;
+}
+
+ul.hmenu li:first-child {
+    border-left: 1px solid #09F;
+}
+
+ul.hmenu li a {
+    display: inline-block;
+    font-weight: 700;
+    color: #09F;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+ul.hmenu li a:hover {
+    background-color: #555;
+    color: white;
+}
+
 
 .menu {
     fill: #09F;

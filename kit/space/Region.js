@@ -127,13 +127,8 @@
   }
 
   function DistanceBetween(r1, a1, r2, a2){
-    var x1 = r1*Math.cos(a1);
-    var y1 = r1*Math.sin(a1);
-
-    var x2 = r2*Math.cos(a2);
-    var y2 = r2*Math.sin(a2);
-
-    return Math.sqrt((x1-x2) + (y1-y2));
+    var res = ((r1*r1)+(r2*r2)) - (2*r1*r2*Math.cos(a1 - a2));
+    return Math.sqrt(res);
   }
 
 
@@ -424,6 +419,15 @@
       return JSON.stringify(reg);
     };
 
+    this.canPlaceStar = function(r, a, z){
+      for (var i=0; i < systems.length; i++){
+	if (DistanceBetween(r, a, systems[i].r, systems[i].a) < 1.0){
+	  return false;
+	}
+      }
+      return true;
+    };
+
     this.addStar = function(ops){
       var star = null;
       ops = (typeof(ops) === typeof({})) ? ops : {};
@@ -470,12 +474,12 @@
         }*/
       }
 
-      var store = true;
-      for (var _i=0; _i < systems.length; _i++){
+      var store = this.canPlaceStar(ops.r, ops.a, ops.z);
+      /*for (var _i=0; _i < systems.length; _i++){
 	if (DistanceBetween(ops.r, ops.a, systems[_i].r, systems[_i].a) < 1.0){
 	  store = false;
 	}
-      }
+      }*/
 
       if (store){
 	if (star === null){
@@ -491,6 +495,9 @@
 	  z: ops.z,
 	  star: star
         });
+      } else if (typeof(ops.attempts) === 'number' && ops.attemps > 0){
+	ops.attemps -= 1;
+	this.addStar(ops);
       }
     };
 
