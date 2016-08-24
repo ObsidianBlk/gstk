@@ -124,6 +124,31 @@ ul.hmenu li a:hover {
 }
 
 
+div.inputslider{
+    overflow:hidden;
+    width:100%;
+}
+.inputslider label{
+    width:48px;
+    float:left;
+}
+.inputslider input[type="range"]{
+    width: auto;
+    -moz-box-flex: 1;
+    -webkit-box-flex: 1;
+    box-flex: 1;
+}
+.inputslider span{
+    text-align:center;
+    width:32px;
+    float:right;
+}
+
+
+
+
+
+
 .menu {
     fill: #09F;
     stroke: none;
@@ -140,9 +165,6 @@ ul.hmenu li a:hover {
 .menu:hover text{
     fill: #009;
 }
-
-
-
 
 
 .range-axis text {

@@ -575,10 +575,57 @@ requirejs([
       infoPanel.show(false);
     };
 
+    starView.onStarMouseOver = function(s){
+      var x = d3.event.x;
+      var y = d3.event.y;
+
+      if (starPanelIntervalID === null){
+	starPanelIntervalID = window.setTimeout(function(){
+	  window.clearTimeout(starPanelIntervalID);
+	  starPanelIntervalID = null;
+
+	  var posDesc = s.localPosition;
+	  if (s.parent !== null){
+	    var orb = s.localOrbit;
+	    posDesc = "\"" + posDesc + "\" - Perigee: " + orb.rMin.toFixed(2) + " AU  |  Apogee: " + orb.rMax.toFixed(2) + " AU"; 
+	  }
+
+	  starPanel.set({
+	    position: posDesc,
+	    name: s.name,
+	    sequence: s.sequence + " / " + s.class,
+	    mass: "" + s.mass,
+	    radius: "" + s.radius.toFixed(4),
+	    age: "" + s.age.toFixed(2),
+	    temperature: "" + s.temperature,
+	    orbitals: "(" + 
+	      s.companionCount + " / " + 
+	      s.countBodiesOfType(GasGiant.Type) + " / " + 
+	      s.countBodiesOfType(Terrestrial.Type) + " / " + 
+	      s.countBodiesOfType(AsteroidBelt.Type) + ")"
+	  });
+	  starPanel.show(true, x, y);
+	}, 1000);
+      }
+    };
+
+    starView.onStarMouseOut = function(){
+      if (starPanelIntervalID !== null){
+	window.clearTimeout(starPanelIntervalID);
+	starPanelIntervalID = null;
+      }
+      starPanel.show(false);
+    };
+
     var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.planet"));
     infoPanel.edge = HoverPanelCtrl.Edge.Right;
     infoPanel.flipEdge = true;
     var infoPanelIntervalID = null;
+
+    var starPanel = new HoverPanelCtrl(d3.select(".hoverPanel.star"));
+    starPanel.edge = HoverPanelCtrl.Edge.Right;
+    starPanel.flipEdge = true;
+    var starPanelIntervalID = null;
 
     var starViewMenu = new HoverPanelCtrl(d3.select(".hoverPanel.StarViewMenu"));
     starViewMenu.edge = HoverPanelCtrl.Edge.Right;
@@ -594,6 +641,10 @@ requirejs([
     });
     starViewMenu.on("togglesnowline", function(){
       starView.showSnowline = !starView.showSnowline;
+      starView.render();
+    });
+    starViewMenu.on("toggleforbiddenzone", function(){
+      starView.showForbiddenZone = !starView.showForbiddenZone;
       starView.render();
     });
 
@@ -638,6 +689,7 @@ requirejs([
         //d3m.show(false);
 	starViewMenu.show(false);
         infoPanel.show(false);
+	starView.resetZoom();
       }
     };
 

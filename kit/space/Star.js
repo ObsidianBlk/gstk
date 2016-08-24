@@ -615,6 +615,7 @@
       if (typeof(data.companion) !== 'undefined'){
 	count = data.companion.length;
 	for (var c=0; c < count; c++){
+	  var orbit = data.companion[c].orbit;
 	  var fz = data.companion[c].forbiddenZone;
 	  if (rMin >= fz.innerRadius && rMin <= fz.outerRadius){return false;}
 	  if (rMax >= fz.innerRadius && rMax <= fz.outerRadius){return false;}
@@ -657,6 +658,54 @@
 	  } else if (parent !== null && parent !== p){
 	    throw new Error("Cannot parent to an already parented object. Unparent first.");
 	  }
+	}
+      },
+
+      "localPosition":{
+	enumerate:true,
+	get:function(){
+	  if (parent !== null){
+	    var cmp = parent.companions;
+	    var count = cmp.length;
+	    for (var i=0; i < count; i++){
+	      if (cmp[i].body.name === this.name){
+		return cmp[i].orbit.description;
+	      }
+	    }
+	  }
+	  return "Primary";
+	}
+      },
+
+      "localOrbit":{
+	enumerate: true,
+	get:function(){
+	  if (parent !== null){
+	    var cmp = parent.companions;
+	    var count = cmp.length;
+	    for (var i=0; i < count; i++){
+	      if (cmp[i].body.name === this.name){
+		return JSON.parse(JSON.stringify(cmp[i].orbit));
+	      }
+	    }
+	  }
+	  return null;
+	}
+      },
+
+      "forbiddenZone":{
+	enumerate:true,
+	get:function(){
+	  if (parent !== null){
+	    var cmp = parent.companions;
+	    var count = cmp.length;
+	    for (var i=0; i < count; i++){
+	      if (cmp[i].body.name === this.name){
+		return JSON.parse(JSON.stringify(cmp[i].forbiddenZone));
+	      }
+	    }
+	  }
+	  return null;
 	}
       },
 

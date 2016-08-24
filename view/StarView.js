@@ -76,6 +76,7 @@
     var renderScale = 1.0;
     var renderRadius = 0;
     var showSnowline = false;
+    var showForbiddenZone = false;
 
     var axis = null;
     var xAxis = d3.svg.axis().scale(mapScale);
@@ -177,6 +178,36 @@
         }
       },
 
+      "onStarMouseOver":{
+        enumerate:true,
+        get:function(){return bodyEvents.mouseOver;},
+        set:function(f){
+          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.mouseOver){
+            starEvents.mouseOver = f;
+          }
+        }
+      },
+
+      "onStarMouseOut":{
+        enumerate:true,
+        get:function(){return bodyEvents.mouseOut;},
+        set:function(f){
+          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.mouseOut){
+            starEvents.mouseOut = f;
+          }
+        }
+      },
+
+      "onStarClicked":{
+        enumerate:true,
+        get:function(){return bodyEvents.clicked;},
+        set:function(f){
+          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.clicked){
+            starEvents.clicked = f;
+          }
+        }
+      },
+
       "mapSize":{
 	enumerate:true,
 	get:function(){return mapSize;},
@@ -216,6 +247,17 @@
 	  }
 	  showSnowline = e;
 	}
+      },
+
+      "showForbiddenZone":{
+	enumerate:true,
+	get:function(){return showForbiddenZone;},
+	set:function(e){
+	  if (typeof(e) !== 'boolean'){
+	    throw new TypeError("Expected boolean value.");
+	  }
+	  showForbiddenZone = e;
+	}
       }
     });
 
@@ -227,7 +269,6 @@
     }
 
     function RenderOrbits(g, objs, clsname, noCircle){
-      events = (typeof(events) === typeof({})) ? events : {};
       noCircle = (noCircle === true) ? true : false;
       var group = g.append("g").attr("class", clsname);
       var ellipses = group.selectAll("ellipse")
@@ -273,10 +314,19 @@
     }
 
     function RenderStar(s, g){
-      g.append("g")
+      var _star = g.append("g")
 	.attr("class", "star " + s.sequence.substring(0, 1))
 	.append("circle")
 	.attr("r", starScale(s.radius));
+      if (starEvents.mouseOver){
+	_star.on("mouseover", function(){starEvents.mouseOver(s);});
+      }
+      if (starEvents.mouseOut){
+	_star.on("mouseout", starEvents.mouseOut);
+      }
+      if (starEvents.click){
+	_star.on("click", function(){starEvents.click(s);});
+      }
 
       if (s.hasBodiesOfType(Terrestrial.Type)){
 	RenderOrbits(g, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
@@ -325,8 +375,25 @@
 
       if (star.companionCount > 0){
 	var companions = star.companions;
-	for (var i=0; i < star.companionCount; i++){
-	  var cdata = companions[i];
+	if (showForbiddenZone === true){
+	  for (var i=0; i < star.companionCount; i++){
+	    var cdata = companions[i];
+	    var fz = cdata.forbiddenZone;
+	    arc = d3.svg.arc()
+	      .innerRadius(mapScale(fz.innerRadius))
+	      .outerRadius(mapScale(fz.outerRadius))
+	      .startAngle(0)
+	      .endAngle(360*(Math.PI/180));
+	    var path = scroller.append("path")
+	      .attr("d", arc)
+	      .attr("fill", "#700")
+	      .attr("stroke", "none")
+	      .attr("opacity", 0.5);
+	  }
+	}
+
+	for (i=0; i < star.companionCount; i++){
+	  cdata = companions[i];
 	  scroller.append("ellipse")
 	    .attr("cx", mapScale(0))
 	    .attr("cy", mapScale(0))
@@ -348,6 +415,13 @@
       if (axis !== null){
 	axis.attr("transform", "translate(" + scaleGridPos[0] + ", " + scaleGridPos[1] + ")");
       }
+    };
+
+    this.resetZoom = function(){
+      zoom.scale(1);
+      zoom.translate([DOMEventNotifier.getWidth()*0.5, DOMEventNotifier.getHeight()*0.5]);
+      renderScale = 1.0;
+      renderRadius = star.fullSystemRadius;
     };
   }
   StarView.prototype.constructor = StarView;
