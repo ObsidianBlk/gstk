@@ -97,7 +97,7 @@
     ]
   };
 
-  function GenerateStar(rng, seed, companionProbability, supportGardenWorlds, forceBreathable, depth){
+  /*function GenerateStar(rng, seed, companionProbability, supportGardenWorlds, forceBreathable, depth){
     if (typeof(depth) !== 'number'){
       depth = 0;
     }
@@ -124,7 +124,7 @@
       return GenerateStar(rng, companionProbability, forceBreathable, depth + 1);
     }
     return s;
-  }
+  }*/
 
   function DistanceBetween(r1, a1, r2, a2){
     var res = ((r1*r1)+(r2*r2)) - (2*r1*r2*Math.cos(a1 - a2));
@@ -133,7 +133,7 @@
 
 
   function Region(options){
-    options = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
+    options = (typeof(options) === typeof({})) ? options : {};
     if (typeof(options.seed) === 'undefined'){
       options.seed = Math.random().toString();
     }
@@ -144,51 +144,15 @@
 
     var rng = new PRng({seed:options.seed, initDepth:5000});
     var systems = [];
-    var height = 0;
-    var horizon = 0;
 
     if (radius <= 0){
       throw new RangeError("Radius too small");
     }
 
-    if (typeof(options.jsonString) === 'string'){
-      var data = null;
-      try{
-	data = JSON.parse(options.jsonString);
-      } catch (e) {
-	throw e;
-      }
-
-      if (tv4.validate(data, RegionSchema) === false){
-	throw new Error(tv4.error);
-      }
-
-      radius = data.radius;
-      zmin = Math.floor(data.zmin);
-      zmax = Math.floor(data.zmax);
-      
-      for (var i=0; i < data.systems.length; i++){
-	try{
-	  systems.push(new Star({jsonString: data.systems[i].star}));
-	} catch (e) {
-	  throw e;
-	}
-      }
-    }
     
-    if (systems.length <= 0){
-      height = (zmax - zmin >= 1) ? zmax - zmin : 1;
-      horizon = (height > 1) ? Math.floor(height*0.5) : zmin;
-
+    if (typeof(options.data) !== 'string' && typeof(options.data) !== typeof({})){
       options.autoGenerate = (options.autoGenerate === true) ? true : false;
       options.systemAtOrigin = (options.systemAtOrigin === true) ? true : false;
-      options.breathableAtOrigin = (options.breathableAtOrigin === true) ? true : false;
-      options.systemDensity = (typeof(options.systemDensity) === 'number') ?
-	Math.abs(options.systemDensity)%100 :
-	(rng.rollDice(6, 2)-2)*4;
-      if (options.systemDensity < 1){
-	options.systemDensity = 6; // We want SOME stars
-      }
     }
 
     Object.defineProperties(this, {
@@ -205,7 +169,64 @@
 
       "radius":{
 	enumerate:true,
-	get:function(){return radius;}
+	get:function(){return radius;},
+        set:function(r){
+          if (typeof(r) !== 'number'){
+            throw new TypeError("Expected number value.");
+          }
+          if (r <= 0){
+            throw new RangeError("Value must be greater than zero.");
+          }
+          if (systems.length > 0){
+            systems = systems.filter(function(i){
+              return (i.r <= r);
+            });
+          }
+          radius = r;
+        }
+      },
+
+      "depth":{
+        enumerate:true,
+        get:function(){return 1 + (zmax - zmin);} // There's always a depth of at least 1
+      },
+
+      "zmax":{
+        enumerate:true,
+        get:function(){return zmax;},
+        set:function(z){
+          if (typeof(z) !== 'number'){
+            throw new TypeError("Expected number value.");
+          }
+          if (z < zmin){
+            throw new RangeError("Attempting to set a Z Max value less than the current Z Min value.");
+          }
+          if (z < zmax){ // If we're shrinking, then remove any stars or objects that are now out of range.
+            systems = systems.filter(function(i){
+              return (i.z <= z);
+            });
+          }
+          zmax = z;
+        }
+      },
+
+      "zmin":{
+        enumerate:true,
+        get:function(){return zmin;},
+        set:function(z){
+          if (typeof(z) !== 'number'){
+            throw new TypeError("Expected number value.");
+          }
+          if (z > zmax){
+            throw new RangeError("Attempting to set a Z Min value greater than the current Z Max value.");
+          }
+          if (z > zmin){ // If we're shrinking, then remove any stars or objects that are now out of range.
+            systems = systems.filter(function(i){
+              return (i.z >= z);
+            });
+          }
+          zmin = z;
+        }
       },
 
       "systemCount":{
@@ -379,6 +400,18 @@
       return wrap;
     };
 
+    this.setZBounds = function(minz, maxz){
+      if (minz < maxz){
+        zmin = minz;
+        zmax = maxz;
+        if (systems.length > 0){
+          systems = systems.filter(function(i){
+            return (i.z >= zmin && i.z <= zmax);
+          });
+        }
+      }
+    };
+
     this.getSystemsContaining = function(type_or_list){
       if (typeof(type_or_list) === 'number'){
         return this.getSystemsContaining([type_or_list]);
@@ -449,9 +482,6 @@
         if (typeof(ops.seed) !== 'string'){
           ops.seed = rng.generateUUID();
         }
-        /*if (typeof(ops.companionProbability) !== 'number'){
-          ops.companionProbability = options.companionProbability;
-        }*/
       }
 
       if (typeof(ops.r) !== 'number'){
@@ -467,25 +497,20 @@
       }
 
       if (typeof(ops.z) !== 'number'){
-        ops.z = Math.floor(horizon+rng.value(-(height*0.5), (height*0.5)));
+        ops.z = (zmin === zmax) ? zmin : Math.round(rng.value(zmin, zmax));
       } else {
-        /*if (ops.z < (horizon-(height*0.5)) || ops.z > (horizon+(height*0.5))){
+        ops.z = Math.floor(ops.z);
+        if (ops.z < zmin || ops.z > zmax){
           throw new RangeError("Given Z depth is out of bounds.");
-        }*/
+        }
       }
 
       var store = this.canPlaceStar(ops.r, ops.a, ops.z);
-      /*for (var _i=0; _i < systems.length; _i++){
-	if (DistanceBetween(ops.r, ops.a, systems[_i].r, systems[_i].a) < 1.0){
-	  store = false;
-	}
-      }*/
-
       if (store){
 	if (star === null){
 	  star = new Star({
 	    seed: rng.generateUUID(),
-	    fullSystemGeneration: true
+	    fullSystemGeneration: (ops.fullSystemGeneration === true) ? true : false
 	  });
 	}
 
@@ -501,59 +526,13 @@
       }
     };
 
-    this.generate = function(str_or_obj){
-      if (systems.length > 0){return;} // Only generate the region once.
-
-      str_or_obj = (typeof(str_or_obj) !== 'string' && typeof(str_or_obj) !== typeof({})) ? null : str_or_obj;
-      if (str_or_obj !== null){
-	var data = null;
-	try{
-	  if (typeof(str_or_obj) === typeof({})){
-	    data = JSON.parse(JSON.stringify(str_or_obj));
-	  } else {
-	    data = JSON.parse(str_or_obj);
-	  }
-	} catch (e) {
-	  throw e;
-	}
-
-	if (tv4.validate(data, RegionSchema) === false){
-	  throw new Error(tv4.error);
-	}
-
-	radius = data.radius;
-	zmin = Math.floor(data.zmin);
-	zmax = Math.floor(data.zmax);
-	
-	for (var i=0; i < data.systems.length; i++){
-	  try{
-	    this.addStar(data.systems[i]);
-	  } catch (e) {
-	    throw e;
-	  }
-	}
-      } else {
-
-	systems = [];
-
-	var volume = Math.PI*(radius*radius);
-	var sysCount = volume*(options.systemDensity*0.01);
-
-	var D2R = Math.PI/180;
-	var satisfiedOrigin = (options.systemAtOrigin === false);
-	for (var i=0; i < sysCount; i++){
-	  if (satisfiedOrigin === false){
-	    satisfiedOrigin = true;
-            this.addStar({
-              r: 0,
-              a: 0
-            });
-	    //continue;
-	  } else {
-            this.addStar();
-          }
-	}
-      } 
+    this.removeStar = function(star){
+      for (var i=0; i < systems.length; i++){
+        if (systems[i].star === star){
+          systems.splice(i, 1);
+          break;
+        }
+      }
     };
 
     this.getStar = function(index){
@@ -572,13 +551,88 @@
       return null;
     };
 
+    this.load = function(str_or_obj){
+      var data = null;
+      try{
+	if (typeof(str_or_obj) === typeof({})){
+	  data = JSON.parse(JSON.stringify(str_or_obj));
+	} else {
+	  data = JSON.parse(str_or_obj);
+	}
+      } catch (e) {
+	throw e;
+      }
+      if (tv4.validate(data, RegionSchema) === false){
+	throw new Error(tv4.error);
+      }
+
+      if (data.radius <= 0){
+        throw new RangeError("Property 'radius' must be greater than zero."); 
+      }
+      if (data.zmin > data.zmax){
+        throw new RangeError("Property 'zmin' is greater than property 'zmax'.");
+      }
+
+      // If we already have systems, remove them all!
+      if (systems.length > 0){
+        systems.splice(0, systems.length);
+      }
+
+      radius = data.radius;
+      zmin = Math.floor(data.zmin);
+      zmax = Math.floor(data.zmax);
+      
+      for (var i=0; i < data.systems.length; i++){
+	try{
+	  this.addStar(data.systems[i]);
+	} catch (e) {
+	  throw e;
+	}
+      }
+    };
+
+    this.empty = function(force){
+      if (force === true && systems.length > 0){
+        systems.splice(0, systems.length);
+      }
+      return systems.length <= 0;
+    };
 
 
-    // ----------
-    // Generating automatically if requested.
-    if (systems.length <= 0 && options.autoGenerate === true){
-      this.generate();
+
+    // ------
+    // Final setup calls!
+    // ------
+    if (typeof(options.data) === 'string' || typeof(options.data) === typeof({})){
+      try{
+        this.load(options.data);
+      } catch (e) { throw e; }
+    } else {
+      // ----------
+      // Generating automatically if requested.
+      if (systems.length <= 0 && options.autoGenerate === true){
+        ((function(){
+          var volume = Math.PI*(radius*radius);
+          var sysCount = volume*(options.systemDensity*0.01);
+
+          var D2R = Math.PI/180;
+          var satisfiedOrigin = (options.systemAtOrigin === false);
+          for (var i=0; i < sysCount; i++){
+	    if (satisfiedOrigin === false){
+	      satisfiedOrigin = true;
+              this.addStar({
+                r: 0,
+                a: 0,
+                fullSystemGeneration: true
+              });
+	    } else {
+              this.addStar({fullSystemGeneration:true});
+            }
+          }
+        }).bind(this))();
+      }
     }
+    
   }
   Region.prototype.constructor = Region;
 

@@ -41,6 +41,13 @@ div.hoverPanel {
     text-transform: uppercase;
 }
 
+.hoverPanel .subheading{
+    color: #96B1D2;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
 .hoverPanel a.button{
     color: #96B1D2;
     font-size: 16px;
@@ -141,6 +148,7 @@ div.gstkinput{
     overflow:hidden;
     width:100%;
     padding: 4px 2px;
+    display:table;
 }
 .gstkinput label{
     width:48px;
@@ -155,7 +163,6 @@ div.gstkinput{
     display: table-cell;
     border-top: 1px solid #222;
     border-bottom: 1px solid #444;
-    overflow:hidden;
 }
 .gstkinput span{
     text-align:center;

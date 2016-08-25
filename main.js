@@ -44,6 +44,34 @@ requirejs([
     return name;
   }
 
+  function RangeSliderInput(dom){
+    Emitter.call(this);
+    var self = this;
+
+    
+    function HandleChange(){
+      self.emit("change", this, d3.select(this).node().value);
+    }
+
+    dom.on("change", HandleChange)
+      .on("input", HandleChange);
+
+    Object.defineProperties(this, {
+      "value":{
+        enumerate:true,
+        get:function(){return dom.node().value;},
+        set:function(v){
+          if (typeof(v) !== 'number'){
+	    throw new TypeError("Expected a number value.");
+	  }
+	  dom.attr("value", v);
+        }
+      }
+    });
+  }
+  RangeSliderInput.prototype.__proto__ = Emitter.prototype;
+  RangeSliderInput.prototype.constructor = RangeSliderInput;
+
 
   // -------------------------------------------------------------------------------------------------------------------------------------
   // STATES
@@ -286,22 +314,16 @@ requirejs([
   function StarEditorPanelCtrl(dom){
     HoverPanelCtrl.call(this, dom);
     var self = this;
-    function HandleAngleChange(){
-      var value = d3.select(this).node().value;
-      self.emit("regionanglechange", this, value);
-    }
 
-    function HandleRadiusChange(){
-      var value = d3.select(this).node().value;
-      self.emit("regionradiuschange", this, value);
-    }
+    var AngleRange = new RangeSliderInput(d3.select("#region-cursor-angle"));
+    AngleRange.on("change", function(node, value){
+      self.emit("regionanglechange", node, value);
+    });
 
-    dom.select("#region-angle")
-      .on("change", HandleAngleChange)
-      .on("input", HandleAngleChange);
-    dom.select("#region-radius")
-      .on("change", HandleRadiusChange)
-      .on("input", HandleRadiusChange);
+    var RadiusRange = new RangeSliderInput(d3.select("#region-cursor-radius"));
+    RadiusRange.on("change", function(node, value){
+      self.emit("regionradiuschange", node, value);
+    });
 
     this.on("tab-genrandom", function(){
       self.showSection("fulleditor", false);
@@ -448,7 +470,7 @@ requirejs([
     menuPanel.on("modify", function(){
       menuPanel.showSection("regionmodify", true, true);
     });
-    menuPanel.on("newrandom", function(){
+    menuPanel.on("newstar", function(){
       menuPanel.show(false);
 
       regionView.showPlacerCursor = true;
@@ -578,23 +600,43 @@ requirejs([
     };
 
     this.generate = function(options){
-      if (typeof(options.jsonString) === 'string'){
+      if (regionView.region === null){
+        regionView.region = new Region();
+      }
+      options = (typeof(options) === typeof({})) ? options : {};
+      
+      if (typeof(options.data) === 'string' || typeof(options.data) === typeof({})){
 	try{
-	  regionView.region = new Region();
-	  regionView.region.generate(options.jsonString);
+	  regionView.region.load(options.data);
 	} catch (e) {
 	  throw e;
 	}
-      } else {
-	options = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
-	regionView.region = new Region(options);
-	regionView.region.generate();
+      } else if (options.emptyRegion !== true){
+	var r = regionView.region;
+        r.empty(true);
+        r.setZBounds(
+          (typeof(options.zmin) === 'number') ? options.zmin : 0,
+          (typeof(options.zmax) === 'number') ? options.zmax : 0
+        );
+        r.radius = (typeof(options.radius) === 'number' && options.radius > 0) ? options.radius : 10;
+
+        var rng = new PRng({seed:(typeof(options.seed) !== 'undefined') ? options.seed : Math.random().toString(), initDepth:5000});
+        var volume = Math.PI*(r.radius*r.radius)*r.depth;
+        var count = Math.round(rng.value(volume*0.1, volume*0.95))+1; // Adding one to make sure we always generate at least one!
+
+        if (options.systemAtOrigin === true){
+          r.addStar({
+            fullSystemGeneration:true,
+            r:0,
+            a:0
+          });
+          count -= 1;
+        }
+        for (var i=0; i < count; i++){
+          r.addStar({fullSystemGeneration:true});
+        }
       }
-      regionView.render({
-	mouseOver:handleMouseOver,
-	mouseOut:handleMouseOut,
-	click:handleClick
-      });
+      SetDisplayMode();
     };
   }
   RegionCtrl.prototype.__proto__ = Emitter.prototype;
@@ -903,8 +945,8 @@ requirejs([
       regionctrl.generate({
 	seed: seed,
 	radius: regionRadius,
-	zmin: -2,
-	zmax: 2,
+	zmin: 0,
+	zmax: 0,
 	systemAtOrigin: true
       });
     });
