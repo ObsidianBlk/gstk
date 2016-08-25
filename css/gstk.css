@@ -3,6 +3,7 @@ html
 body{
     margin:0;
     padding:0;
+    height: 100%;
     background:#000000;
     font: 10px Coda;
 }
@@ -18,135 +19,6 @@ div.panel{
     height:100vh;
     overflow:hidden;
 }
-
-
-div.hidden{
-    display: none;
-}
-
-div.hoverPanel {	
-    position: absolute;
-    width: auto;
-    padding: 10px;
-    font-weight: 700;
-    color: #09F;
-    background: rgba(20, 20, 20, 0.75);
-    border: 2px solid #09F;
-    border-radius: 8px;
-}
-
-.hoverPanel.noPadding{
-    padding: 0;
-}
-
-.hoverPanel.noPointerEvents{
-    pointer-events: none;
-}
-
-.hoverPanel .info{
-    font-weight: normal;
-    font-style: italic;
-    color:#FFF;
-}
-
-.hoverPanel .heading {
-    color: #96B1D2;
-    font-size: 16px;
-    font-weight: 900;
-    text-transform: uppercase;
-}
-
-.hoverPanel a.button{
-    color: #96B1D2;
-    font-size: 16px;
-    font-weight: 900;
-}
-
-.hoverPanel a.button:hover{
-    font-size: 18px;
-}
-
-ul.menu {
-    list-style-type: none;
-    padding: 0;
-    width: 200px;
-}
-
-ul.menu li{
-    border-bottom: 1px solid #09F;
-}
-
-ul.menu li:first-child{
-    border-top: 1px solid #09F;
-}
-
-ul.menu li a{
-    font-weight: 700;
-    color: #09F;
-    display: block;
-    padding: 8px 16px;
-    text-decoration: none;
-}
-
-ul.menu li a:hover {
-    background-color: #555;
-    color: white;
-}
-
-ul.hmenu {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-}
-
-ul.hmenu li {
-    float: left;
-    border-right: 1px solid #09F;
-}
-
-ul.hmenu li:first-child {
-    border-left: 1px solid #09F;
-}
-
-ul.hmenu li a {
-    display: inline-block;
-    font-weight: 700;
-    color: #09F;
-    text-align: center;
-    padding: 14px 16px;
-    text-decoration: none;
-}
-
-ul.hmenu li a:hover {
-    background-color: #555;
-    color: white;
-}
-
-
-div.inputslider{
-    overflow:hidden;
-    width:100%;
-}
-.inputslider label{
-    width:48px;
-    float:left;
-}
-.inputslider input[type="range"]{
-    width: auto;
-    -moz-box-flex: 1;
-    -webkit-box-flex: 1;
-    box-flex: 1;
-}
-.inputslider span{
-    text-align:center;
-    width:32px;
-    float:right;
-}
-
-
-
-
 
 
 .menu {

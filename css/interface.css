@@ -1,0 +1,169 @@
+/* ------------------------------------------------ */
+/* Universal element hider :) */
+/* ------------------------------------------------ */
+div.hidden{
+    display: none;
+}
+
+
+/* ------------------------------------------------ */
+/* Hovering/Placeable Panels */
+/* ------------------------------------------------ */
+div.hoverPanel {	
+    position: absolute;
+    width: auto;
+    padding: 10px;
+    font-weight: 700;
+    color: #09F;
+    background: rgba(20, 20, 20, 0.75);
+    border: 2px solid #09F;
+    border-radius: 8px;
+}
+
+.hoverPanel.noPadding{ /* Optional Helper */
+    padding: 0;
+}
+
+.hoverPanel.noPointerEvents{ /* Optional Helper */
+    pointer-events: none;
+}
+
+.hoverPanel .info{
+    font-weight: normal;
+    font-style: italic;
+    color:#FFF;
+}
+
+.hoverPanel .heading {
+    color: #96B1D2;
+    font-size: 16px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.hoverPanel a.button{
+    color: #96B1D2;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.hoverPanel a.button:hover{
+    font-size: 18px;
+}
+
+/* ------------------------------------------------ */
+/* List element-based menu (vertical) */
+/* ------------------------------------------------ */
+ul.menu {
+    list-style-type: none;
+    padding: 0;
+    width: 200px;
+}
+
+ul.menu li{
+    border-bottom: 1px solid #09F;
+}
+
+ul.menu li:first-child{
+    border-top: 1px solid #09F;
+}
+
+ul.menu li a{
+    font-weight: 700;
+    color: #09F;
+    display: block;
+    padding: 8px 16px;
+    text-decoration: none;
+}
+
+ul.menu li a:hover {
+    background-color: #555;
+    color: white;
+}
+
+/* ------------------------------------------------ */
+/* List element-based menu (horizontal) */
+/* ------------------------------------------------ */
+ul.hmenu {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+ul.hmenu li {
+    float: left;
+    border-right: 1px solid #09F;
+}
+
+ul.hmenu li:first-child {
+    border-left: 1px solid #09F;
+}
+
+ul.hmenu li a {
+    display: inline-block;
+    font-weight: 700;
+    color: #09F;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+ul.hmenu li a:hover {
+    background-color: #444;
+    color: white;
+}
+
+ul.hmenu.thin li a{
+    padding: 6px 16px;
+}
+
+ul.hmenu.tabs li{
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom: 1px solid #09F;
+}
+
+ul.hmenu.tabs li a{
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+ul.hmenu.tabs li a.selected{
+    background-color: #058;
+    color: #3AF;
+}
+
+/* ------------------------------------------------ */
+/* Default input layout */
+/* ------------------------------------------------ */
+div.gstkinput{
+    overflow:hidden;
+    width:100%;
+    padding: 4px 2px;
+}
+.gstkinput label{
+    width:48px;
+    height: 100%;
+    display: table-cell;
+    padding-left: 4px;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    background-color: #444;
+}
+.gstkinput .field{
+    display: table-cell;
+    border-top: 1px solid #222;
+    border-bottom: 1px solid #444;
+    overflow:hidden;
+}
+.gstkinput span{
+    text-align:center;
+    width:48px;
+    height: 100%;
+    height:inherit;
+    display: table-cell;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    background-color: #222;
+}

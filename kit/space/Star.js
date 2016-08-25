@@ -239,16 +239,6 @@
   }
 
 
-  function GetStellarEvolutionEntry(mass){
-    for (var i=0; i < StellarBody.Table.StellarEvolutionTable.length; i++){
-      if (Math.abs(StellarBody.Table.StellarEvolutionTable[i].mass - mass) < 0.01){
-	return StellarBody.Table.StellarEvolutionTable[i];
-      }
-    }
-    return null;
-  }
-
-
   function StarMassCalc(r1, r2){
     var Mass = function(base, adj, breaks){
       switch (breaks){
@@ -396,7 +386,7 @@
     
 
     // -- Storing the star's current type and assumed temprature
-    var sete = GetStellarEvolutionEntry(data.mass);
+    var sete = Star.GetStellarEvolutionEntry(data.mass);
     // Now fluctuating the mass if needed...
     if (fluctuateMass === true){
       data.mass += rng.value(-0.025, 0.025);
@@ -1328,6 +1318,15 @@
   Star.prototype.__proto__ = StellarBody.prototype;
   Star.prototype.constructor = Star;
   Star.Type = 0;
+
+  Star.GetStellarEvolutionEntry = function(mass){
+    for (var i=0; i < StellarBody.Table.StellarEvolutionTable.length; i++){
+      if (Math.abs(StellarBody.Table.StellarEvolutionTable[i].mass - mass) < 0.01){
+	return StellarBody.Table.StellarEvolutionTable[i];
+      }
+    }
+    return null;
+  };
 
   StellarBody.RegisterType(Star);
   return Star;

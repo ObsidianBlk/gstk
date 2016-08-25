@@ -5,7 +5,8 @@
     <title>GURPS-Space Toolkit</title>
     <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="css/fonts.css">
-    <link rel="stylesheet" type="text/css" href="css/inputthemes.css">
+    <link rel="stylesheet" type="text/css" href="css/rangeslidertheme.css">
+    <link rel="stylesheet" type="text/css" href="css/interface.css">
     <link rel="stylesheet" type="text/css" href="css/gstk.css">
   </head>
   <body>
@@ -77,26 +78,37 @@
       </div>
     </div>
 
-    <div class="hoverPanel hidden starPlacer">
-      <div class="inputslider">
-	<label for="angle">Angle:</label>
-	<input type="range" min="0" max="360" value="0" step="0.01" id="angle">
-	<span>0</span>
+    <div class="hoverPanel hidden starEditor">
+      <ul class="hmenu thin tabs">
+	<li><a class="selected" href="#" id="genrandom">Random</a></li>
+	<li><a href="#" id="gencustom">Custom</a></li>
+      </ul>
+      <div class="section basiceditor">
+	<div class="gstkinput">
+	  <label for="star-name">Name:</label>
+	  <div class="field"><input type="text" id="star-name"></div>
+	  <span></span>
+	</div>
       </div>
-      <div class="inputslider">
-      <label for="radius">Radius:</label>
-      <input type="range" min="0" max="10" value="0" step="0.01" id="radius">
-      <span>0</span>
+      <div class="section hidden fulleditor">
+	
+      </div>
+      <div class="section regionplacer">
+	<div class="gstkinput">
+	  <label for="region-angle">Angle:</label>
+	  <div class="field"><input type="range" min="0" max="360" value="0" step="0.01" id="region-angle"></div>
+	  <span class="value">0</span>
+	</div>
+	<div class="gstkinput">
+	  <label for="region-radius">Radius:</label>
+	  <div class="field"><input type="range" min="0" max="10" value="0" step="0.01" id="region-radius"></div>
+	  <span class="value">0</span>
+	</div>
       </div>
       <BR>
       <ul class="hmenu">
 	<li><a href="#" id="place">Place</a></li>
 	<li><a href="#" id="cancel">Cancel</a></li>
-	<li><a href="#" id="">Cancel</a></li>
-	<li><a href="#" id="">Cancel</a></li>
-	<li><a href="#" id="">Cancel</a></li>
-	<li><a href="#" id="">Cancel</a></li>
-	<li><a href="#" id="">Cancel</a></li>
       </ul>
     </div>
 

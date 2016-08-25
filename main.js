@@ -57,11 +57,17 @@ requirejs([
 
     function onMenuLink(){
       d3.select(this).selectAll("a").each(function(){
+	var parent = d3.select(this.parentNode.parentNode);
+	var isTab = parent.classed("tabs");
 	var a = d3.select(this);
 	var event = a.attr("id");
 	a.on("click", (function(ename){
-	  return function(d){
-	    self.emit(ename, d);
+	  return function(){
+	    if (isTab === false || a.classed("selected") === false){
+	      parent.selectAll(".selected").classed("selected", false);
+	      a.classed("selected", true);
+	      self.emit((isTab === true) ? "tab-" + ename : ename);
+	    }
 	  };
 	})(event));
       });
@@ -212,15 +218,38 @@ requirejs([
       }
     };
 
-    this.showSection = function(secname){
-      var sec = dom.select(".section." +secname);
-      if (sec.empty() === false){
-	if (sec.classed("hidden") === true){
+    this.showSection = function(secname, enable, hideOthers){
+      enable = (enable === false) ? false : true;
+      hideOthers = (hideOthers === true) ? true : false; // NOTE: hideOthers is used only when enabling other sections.
+
+      // If secname is an array, it's assumed to be an array of section names, and all of those sections will be shown or hidden as requested.
+      if (secname instanceof Array){
+	if (enable === true && hideOthers === true){
 	  dom.selectAll(".section").classed("hidden", true);
-	  sec.classed("hidden", false);
-	  if (dom.classed("hidden") === false){
-	    var rect = dom.node().getBoundingClientRect();
-	    this.position(rect.x, rect.y);
+	}
+	for (var i=0; i < secname.length; i++){
+	  this.showSection(secname[i], enable, false);
+	}
+      } else if (typeof(secname) === 'string'){ // The secname is a string
+	if (secname === "*"){ // If secname is "*" (wildcard for everything), enable or hide all!
+	  dom.selectAll(".section").classed("hidden", !enable);
+	} else { // secname is a named section and will enable/disable the section as desired.
+	  var sec = dom.select(".section." +secname);
+	  if (sec.empty() === false){ // Check to see if we have a section of the given name.
+	    if (enable === true){
+	      if (sec.classed("hidden") === true){
+		if (hideOthers === true){
+		  dom.selectAll(".section").classed("hidden", true);
+		}
+		sec.classed("hidden", false);
+		if (dom.classed("hidden") === false){
+		  var rect = dom.node().getBoundingClientRect();
+		  this.position(rect.x, rect.y);
+		}
+	      }
+	    } else if (sec.classed("hidden") === false){
+	      sec.classed("hidden", true);
+	    }
 	  }
 	}
       }
@@ -228,6 +257,14 @@ requirejs([
 
     this.showing = function(){
       return (dom.classed("hidden") === false);
+    };
+
+    this.sectionShowing = function(secname){
+      var sec = dom.select(".section." +secname);
+      if (sec.empty() === false){
+	return !sec.classed("hidden");
+      }
+      return false;
     };
   }
   HoverPanelCtrl.prototype.__proto__ = Emitter.prototype;
@@ -242,6 +279,97 @@ requirejs([
     VCenter: 0x0011,
     Center: 0x1111
   };
+
+
+  // -------------------------------------------------------------------------------------------------------------------------------------
+
+  function StarEditorPanelCtrl(dom){
+    HoverPanelCtrl.call(this, dom);
+    var self = this;
+    function HandleAngleChange(){
+      var value = d3.select(this).node().value;
+      self.emit("regionanglechange", this, value);
+    }
+
+    function HandleRadiusChange(){
+      var value = d3.select(this).node().value;
+      self.emit("regionradiuschange", this, value);
+    }
+
+    dom.select("#region-angle")
+      .on("change", HandleAngleChange)
+      .on("input", HandleAngleChange);
+    dom.select("#region-radius")
+      .on("change", HandleRadiusChange)
+      .on("input", HandleRadiusChange);
+
+    this.on("tab-genrandom", function(){
+      self.showSection("fulleditor", false);
+    });
+
+    this.on("tab-gencustom", function(){
+      self.showSection("fulleditor", true);
+    });
+
+    var maxRegionRadius = 10;
+
+    Object.defineProperties(this, {
+      "maxRegionRadius":{
+	enumerate: true,
+	get:function(){return maxRegionRadius;},
+	set:function(r){
+	  if (typeof(r) !== 'number'){
+	    throw new TypeError("Expected a number value.");
+	  }
+	  if (r <= 0){
+	    throw new RangeError();
+	  }
+	  maxRegionRadius = r;
+	  dom.select("#region-radius")
+	    .attr("max", maxRegionRadius)
+	    .attr("value", 0);
+	}
+      },
+
+      "regionRadius":{
+	enumerate:true,
+	get:function(){return dom.select("#region-radius").node().value;},
+	set:function(r){
+	  if (typeof(r) !== 'number'){
+	    throw new TypeError("Expected a number value.");
+	  }
+	  if (r <= 0 || r > maxRegionRadius){
+	    throw new RangeError();
+	  }
+	  dom.select("#region-radius")
+	    .attr("value", r);
+	}
+      },
+
+      "regionAngle":{
+	enumerate:true,
+	get:function(){return dom.select("#region-angle").node().value;},
+	set:function(ang){
+	  if (typeof(ang) !== 'number'){
+	    throw new TypeError("Expected a number value.");
+	  }
+	  ang = (ang >= 0) ? ang%360.0 : 360 - (ang%360);
+	  dom.select("#region-angle")
+	    .attr("value", ang);
+	}
+      }
+    });
+
+
+    this.reset = function(){
+      dom.select("#region-radius")
+	.attr("value", 0);
+      dom.select("#region-angle")
+	.attr("value", 0);
+    };
+  }
+  StarEditorPanelCtrl.prototype.__proto__ = HoverPanelCtrl.prototype;
+  StarEditorPanelCtrl.prototype.constructor = StarEditorPanelCtrl;
 
   // -------------------------------------------------------------------------------------------------------------------------------------
 
@@ -279,30 +407,56 @@ requirejs([
       });
     }
 
+    var starEditorPanel = new StarEditorPanelCtrl(d3.select(".hoverPanel.starEditor"));
+    starEditorPanel.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
+    starEditorPanel.flipEdge = false;
+    starEditorPanel.on("place", function(){
+      regionView.region.addStar({
+	r: regionView.placerCursorRadius,
+	a: regionView.placerCursorAngle*(Math.PI/180)
+      });
+      regionView.showPlacerCursor = false;
+      SetDisplayMode();
+      starEditorPanel.show(false);
+      menuPanel.show(true);
+    });
+    starEditorPanel.on("cancel", function(){
+      regionView.showPlacerCursor = false;
+      SetDisplayMode();
+      starEditorPanel.show(false);
+      menuPanel.show(true);
+    });
+    starEditorPanel.on("regionanglechange", function(node, value){
+      regionView.placerCursorAngle = Number(value);
+      d3.select(node.parentNode.parentNode).select(".value").html(value);
+      SetDisplayMode();
+    });
+    starEditorPanel.on("regionradiuschange", function(node, value){
+      regionView.placerCursorRadius = Number(value);
+      d3.select(node.parentNode.parentNode).select(".value").html(value);
+      SetDisplayMode();
+    });
+
+
+
     var menuPanel = new HoverPanelCtrl(d3.select(".hoverPanel.RegionMenu"));
     menuPanel.edge = HoverPanelCtrl.Edge.Right;
     menuPanel.flipEdge = true;
     menuPanel.on("filters", function(){
-      menuPanel.showSection("regionfilters");
+      menuPanel.showSection("regionfilters", true, true);
     });
     menuPanel.on("modify", function(){
-      menuPanel.showSection("regionmodify");
+      menuPanel.showSection("regionmodify", true, true);
     });
     menuPanel.on("newrandom", function(){
       menuPanel.show(false);
 
-      placerDOM.select("#angle")
-	.attr("value", 0);
-      placerDOM.select("#radius")
-	.attr("max", regionView.region.radius)
-	.attr("value", 0);
-
       regionView.showPlacerCursor = true;
       regionView.placerCursor = {radius:0, angle:0, z:0};
       SetDisplayMode();
-      starPlacerPanel.show(true);
-      //regionView.region.addStar(20);
-      //SetDisplayMode();
+      starEditorPanel.maxRegionRadius = regionView.region.radius;
+      starEditorPanel.reset();
+      starEditorPanel.show(true);
     });
     menuPanel.on("export", function(){
       self.emit("exportJSON", regionView.region.toString(true));
@@ -311,7 +465,7 @@ requirejs([
       self.emit("mainmenu");
     });
     menuPanel.on("back", function(){
-      menuPanel.showSection("regionmain");
+      menuPanel.showSection("regionmain", true, true);
     });
     menuPanel.on("showall", function(){
       SetDisplayMode(0);
@@ -332,36 +486,6 @@ requirejs([
       SetDisplayMode(5);
     });
 
-    var placerDOM = d3.select(".hoverPanel.starPlacer");
-    var starPlacerPanel = new HoverPanelCtrl(placerDOM);
-    starPlacerPanel.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
-    starPlacerPanel.flipEdge = false;
-    starPlacerPanel.on("place", function(){
-      regionView.region.addStar({
-	r: regionView.placerCursorRadius,
-	a: regionView.placerCursorAngle*(Math.PI/180)
-      });
-      regionView.showPlacerCursor = false;
-      SetDisplayMode();
-      starPlacerPanel.show(false);
-      menuPanel.show(true);
-    });
-    starPlacerPanel.on("cancel", function(){
-      regionView.showPlacerCursor = false;
-      SetDisplayMode();
-      starPlacerPanel.show(false);
-      menuPanel.show(true);
-    });
-    placerDOM.select("#angle").on("change", function(){
-      regionView.placerCursorAngle = Number(d3.select(this).node().value);
-      SetDisplayMode();
-      //console.log(d3.select(this).node().value);
-    });
-    placerDOM.select("#radius").on("change", function(){
-      regionView.placerCursorRadius = Number(d3.select(this).node().value);
-      SetDisplayMode();
-      //console.log(d3.select(this).node().value);
-    });
     
     function handleMouseOver(d, i){
       var star = d.star;
@@ -445,6 +569,7 @@ requirejs([
       enable = (enable === false) ? false : true;
       if (enable && dom.classed("hidden")){
 	dom.classed("hidden", false);
+	menuPanel.showSection("regionmain", true, true);
 	menuPanel.show(true, 0, 0);
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
@@ -631,13 +756,13 @@ requirejs([
     starViewMenu.edge = HoverPanelCtrl.Edge.Right;
     starViewMenu.flipEdge = true;
     starViewMenu.on("toggle", function(){
-      starViewMenu.showSection("infotoggle");
+      starViewMenu.showSection("infotoggle", true, true);
     });
     starViewMenu.on("exitStarView", function(){
       self.emit("region");
     });
     starViewMenu.on("back", function(){
-      starViewMenu.showSection("starviewmain");
+      starViewMenu.showSection("starviewmain", true, true);
     });
     starViewMenu.on("togglesnowline", function(){
       starView.showSnowline = !starView.showSnowline;
@@ -682,11 +807,10 @@ requirejs([
       enable = (enable === false) ? false : true;
       if (enable && dom.classed("hidden")){
 	dom.classed("hidden", false);
-        //d3m.show(true);
+	starViewMenu.showSection("starviewmain", true, true);
 	starViewMenu.show(true);
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
-        //d3m.show(false);
 	starViewMenu.show(false);
         infoPanel.show(false);
 	starView.resetZoom();
