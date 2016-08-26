@@ -50,7 +50,12 @@ requirejs([
 
     
     function HandleChange(){
-      self.emit("change", this, d3.select(this).node().value);
+      var value = d3.select(this).node().value;
+      var vdisp = d3.select(this.parentNode.parentNode).select(".value");
+      if (vdisp.empty() === false){
+	vdisp.html(value);
+      }
+      self.emit("change", this, value);
     }
 
     dom.on("change", HandleChange)
@@ -59,13 +64,43 @@ requirejs([
     Object.defineProperties(this, {
       "value":{
         enumerate:true,
-        get:function(){return dom.node().value;},
+        get:function(){return Number(dom.node().value);},
         set:function(v){
           if (typeof(v) !== 'number'){
 	    throw new TypeError("Expected a number value.");
 	  }
 	  dom.attr("value", v);
         }
+      },
+
+      "max":{
+	enumerate:true,
+	get:function(){return Number(dom.attr("max"));},
+	set:function(m){
+	  if (typeof(m) !== 'number'){
+	    throw new TypeError("Expected number value.");
+	  }
+	  var val = Number(dom.attr("value"));
+	  if (m < val){
+	    dom.attr("value", m);
+	  }
+	  dom.attr("max", m);
+	}
+      },
+
+      "min":{
+	enumerate:true,
+	get:function(){return Number(dom.attr("min"));},
+	set:function(m){
+	  if (typeof(m) !== 'number'){
+	    throw new TypeError("Expected number value.");
+	  }
+	  var val = Number(dom.attr("value"));
+	  if (m > val){
+	    dom.attr("value", m);
+	  }
+	  dom.attr("min", m);
+	}
       }
     });
   }
@@ -315,6 +350,9 @@ requirejs([
     HoverPanelCtrl.call(this, dom);
     var self = this;
 
+    var usingConfig = false;
+    var config = {};
+
     var AngleRange = new RangeSliderInput(d3.select("#region-cursor-angle"));
     AngleRange.on("change", function(node, value){
       self.emit("regionanglechange", node, value);
@@ -325,20 +363,50 @@ requirejs([
       self.emit("regionradiuschange", node, value);
     });
 
+    var AgeRange = new RangeSliderInput(d3.select("#star-age"));
+    AgeRange.on("change", function(node, value){
+      config.age = Number(value);
+      self.emit("staragechange", node, value);
+    });
+
+    var MassRange = new RangeSliderInput(d3.select("#star-mass"));
+    MassRange.on("change", function(node, value){
+      config.mass = Number(value);
+      self.emit("starmasschange", node, value);
+    });
+
+    var CompanionRange = new RangeSliderInput(d3.select("#star-companions"));
+    CompanionRange.on("change", function(node, value){
+      config.companions = Number(value);
+      self.emit("starcompanionschange", node, value);
+    });
+
+    var BodiesRange = new RangeSliderInput(d3.select("#star-bodies"));
+    CompanionRange.on("change", function(node, value){
+      config.maxBodies = Number(value);
+      self.emit("starbodieschange", node, value);
+    });
+
+    var ArrangementRange = new RangeSliderInput(d3.select("#star-arrangement"));
+    CompanionRange.on("change", function(node, value){
+      config.arrangement = Number(value);
+      self.emit("stararrangementchange", node, value);
+    });
+
     this.on("tab-genrandom", function(){
+      usingConfig = false;
       self.showSection("fulleditor", false);
     });
 
     this.on("tab-gencustom", function(){
+      usingConfig = true;
       self.showSection("fulleditor", true);
     });
-
-    var maxRegionRadius = 10;
 
     Object.defineProperties(this, {
       "maxRegionRadius":{
 	enumerate: true,
-	get:function(){return maxRegionRadius;},
+	get:function(){return RadiusRange.max;},
 	set:function(r){
 	  if (typeof(r) !== 'number'){
 	    throw new TypeError("Expected a number value.");
@@ -346,52 +414,105 @@ requirejs([
 	  if (r <= 0){
 	    throw new RangeError();
 	  }
-	  maxRegionRadius = r;
-	  dom.select("#region-radius")
-	    .attr("max", maxRegionRadius)
-	    .attr("value", 0);
+	  RadiusRange.value = 0;
+	  RadiusRange.max = r;
 	}
       },
 
       "regionRadius":{
 	enumerate:true,
-	get:function(){return dom.select("#region-radius").node().value;},
+	get:function(){return RadiusRange.value;},
 	set:function(r){
 	  if (typeof(r) !== 'number'){
 	    throw new TypeError("Expected a number value.");
 	  }
-	  if (r <= 0 || r > maxRegionRadius){
+	  if (r <= 0 || r > RadiusRange.max){
 	    throw new RangeError();
 	  }
-	  dom.select("#region-radius")
-	    .attr("value", r);
+	  RadiusRange.value = r;
 	}
       },
 
       "regionAngle":{
 	enumerate:true,
-	get:function(){return dom.select("#region-angle").node().value;},
+	get:function(){return AngleRange.value;},
 	set:function(ang){
 	  if (typeof(ang) !== 'number'){
 	    throw new TypeError("Expected a number value.");
 	  }
 	  ang = (ang >= 0) ? ang%360.0 : 360 - (ang%360);
-	  dom.select("#region-angle")
-	    .attr("value", ang);
+	  AngleRange.value = ang;
+	}
+      },
+
+      "starName":{
+	enumerate:true,
+	get:function(){
+	  var value = d3.select("#star-name").node().value;
+	  if (value.length <= 0){
+	    value = null;
+	  }
+	  return value;
+	}
+      },
+
+      "starConfig":{
+	enumerate:true,
+	get:function(){
+	  if (usingConfig === true){
+	    var sname = d3.select("#star-name").node().value;
+	    if (sname.length <= 0){
+	      delete config.name;
+	    } else {
+	      config.name = sname;
+	    }
+	    return config;
+	  }
+	  return null;
 	}
       }
     });
 
 
     this.reset = function(){
-      dom.select("#region-radius")
-	.attr("value", 0);
-      dom.select("#region-angle")
-	.attr("value", 0);
+      RadiusRange.value = 0;
+      AngleRange.value = 0;
     };
   }
   StarEditorPanelCtrl.prototype.__proto__ = HoverPanelCtrl.prototype;
   StarEditorPanelCtrl.prototype.constructor = StarEditorPanelCtrl;
+
+
+  // -------------------------------------------------------------------------------------------------------------------------------------
+
+  function NewRegionPanel(dom){
+    HoverPanelCtrl.call(this, dom);
+    var self = this;
+
+    var RegRadiusRange = new RangeSliderInput(d3.select("#region-radius"));
+    RegRadiusRange.on("change", function(node, value){
+      self.emit("regionradiuschange", node, value);
+    });
+
+    var RegDensityRange = new RangeSliderInput(d3.select("#region-density"));
+    RegRadiusRange.on("change", function(node, value){
+      self.emit("regiondensitychange", node, value);
+    });
+
+    Object.defineProperties(this, {
+      "radius":{
+	enumerate:true,
+	get:function(){return RegRadiusRange.value;}
+      },
+
+      "density":{
+	enumerate:true,
+	get:function(){return RegDensityRange.value;}
+      }
+    });
+  }
+  NewRegionPanel.prototype.__proto__ = HoverPanelCtrl.prototype;
+  NewRegionPanel.prototype.constructor = NewRegionPanel;
 
   // -------------------------------------------------------------------------------------------------------------------------------------
 
@@ -433,10 +554,16 @@ requirejs([
     starEditorPanel.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
     starEditorPanel.flipEdge = false;
     starEditorPanel.on("place", function(){
-      regionView.region.addStar({
-	r: regionView.placerCursorRadius,
-	a: regionView.placerCursorAngle*(Math.PI/180)
-      });
+      var ops = {};
+      if (starEditorPanel.starConfig !== null){
+	ops = JSON.parse(JSON.stringify(starEditorPanel.starConfig));
+      } else if (starEditorPanel.starName !== null){
+	ops.name = starEditorPanel.starName;
+      }
+      ops.r = regionView.placerCursorRadius;
+      ops.a = regionView.placerCursorAngle*(Math.PI/180);
+
+      regionView.region.addStar(ops);
       regionView.showPlacerCursor = false;
       SetDisplayMode();
       starEditorPanel.show(false);
@@ -460,6 +587,33 @@ requirejs([
     });
 
 
+    var createRegionPanel = new NewRegionPanel(d3.select(".hoverPanel.createRegion"));
+    createRegionPanel.edge = HoverPanelCtrl.Edge.Center;
+    createRegionPanel.on("createregion", function(){
+      if (createRegionPanel.density === 0){
+	self.generate({
+	  radius: createRegionPanel.radius,
+	  emptyRegion:true
+	});
+      } else {
+	self.generate({
+	  seed: "Bryan Miller",
+	  radius: createRegionPanel.radius,
+	  density: createRegionPanel.density,
+	  systemAtOrigin: true
+	});
+      }
+      createRegionPanel.show(false);
+      menuPanel.show(true);
+    });
+    createRegionPanel.on("cancel", function(){
+      createRegionPanel.show(false);
+      if (regionView.region === null){
+	self.emit("mainmenu");
+      } else {
+	menuPanel.show(true);
+      }
+    });
 
     var menuPanel = new HoverPanelCtrl(d3.select(".hoverPanel.RegionMenu"));
     menuPanel.edge = HoverPanelCtrl.Edge.Right;
@@ -469,6 +623,14 @@ requirejs([
     });
     menuPanel.on("modify", function(){
       menuPanel.showSection("regionmodify", true, true);
+    });
+    menuPanel.on("regen", function(){
+      menuPanel.show(false);
+      createRegionPanel.show(true);
+    });
+    menuPanel.on("clear", function(){
+      regionView.region.empty(true);
+      SetDisplayMode();
     });
     menuPanel.on("newstar", function(){
       menuPanel.show(false);
@@ -591,8 +753,12 @@ requirejs([
       enable = (enable === false) ? false : true;
       if (enable && dom.classed("hidden")){
 	dom.classed("hidden", false);
-	menuPanel.showSection("regionmain", true, true);
-	menuPanel.show(true, 0, 0);
+	if (regionView.region !== null){
+	  menuPanel.showSection("regionmain", true, true);
+	  menuPanel.show(true, 0, 0);
+	} else {
+	  createRegionPanel.show(true);
+	}
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
 	menuPanel.show(false);
@@ -611,7 +777,7 @@ requirejs([
 	} catch (e) {
 	  throw e;
 	}
-      } else if (options.emptyRegion !== true){
+      } else {
 	var r = regionView.region;
         r.empty(true);
         r.setZBounds(
@@ -620,21 +786,28 @@ requirejs([
         );
         r.radius = (typeof(options.radius) === 'number' && options.radius > 0) ? options.radius : 10;
 
-        var rng = new PRng({seed:(typeof(options.seed) !== 'undefined') ? options.seed : Math.random().toString(), initDepth:5000});
-        var volume = Math.PI*(r.radius*r.radius)*r.depth;
-        var count = Math.round(rng.value(volume*0.1, volume*0.95))+1; // Adding one to make sure we always generate at least one!
+	if (options.emptyRegion !== true){
+          var rng = new PRng({seed:(typeof(options.seed) !== 'undefined') ? options.seed : Math.random().toString(), initDepth:5000});
+          var volume = Math.PI*(r.radius*r.radius)*r.depth;
+          var count = 1; // Adding one to make sure we always generate at least one!
+	  if (typeof(options.density) === 'number' && options.density > 0){
+	    count += (options.density*0.01)*volume;
+	  } else {
+	    count += Math.round(rng.value(volume*0.1, volume*0.95));
+	  }
 
-        if (options.systemAtOrigin === true){
-          r.addStar({
-            fullSystemGeneration:true,
-            r:0,
-            a:0
-          });
-          count -= 1;
-        }
-        for (var i=0; i < count; i++){
-          r.addStar({fullSystemGeneration:true});
-        }
+          if (options.systemAtOrigin === true){
+            r.addStar({
+              fullSystemGeneration:true,
+              r:0,
+              a:0
+            });
+            count -= 1;
+          }
+          for (var i=0; i < count; i++){
+            r.addStar({fullSystemGeneration:true});
+          }
+	}
       }
       SetDisplayMode();
     };
@@ -939,16 +1112,9 @@ requirejs([
     var mainmenu = new HoverPanelCtrl(d3.select(".hoverPanel.MainMenu"));
     mainmenu.edge = HoverPanelCtrl.Edge.Center;
     mainmenu.flipEdge = false;
-    mainmenu.on("generate", function(){
+    mainmenu.on("region", function(){
       mainmenu.show(false);
       regionctrl.show(true);
-      regionctrl.generate({
-	seed: seed,
-	radius: regionRadius,
-	zmin: 0,
-	zmax: 0,
-	systemAtOrigin: true
-      });
     });
     mainmenu.on("import", function(){
       mainmenu.show(false);

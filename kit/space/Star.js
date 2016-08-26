@@ -359,7 +359,7 @@
     // Force the use of the provided mass.
     } else if (typeof(options.mass) === 'number' && options.mass > 0.0 && options.mass <= 2.0){
       data.mass = options.mass;
-      fluctuateMass = false;
+      fluctuateMass = (options.fluctuateMass === false) ? false : true;
     // Force the generation of a star mass that can more easily support a "Garden" world.
     } else if (options.supportGardenWorlds === true){
       r1 = 5;
@@ -462,14 +462,18 @@
     };
 
     // -- Calculating the "Gas Giant Arrangement Type". This will effect how standard stellar bodies are placed around star.
-    var roll = rng.rollDice(6, 3);
-    data.arrangement = 0; // No Gas Giant.
-    if (roll > 10 && roll <= 12){
-      data.arrangement = 1; // Standard.
-    } else if (roll > 12 && roll <= 14){
-      data.arrangement = 2; // Eccentric
-    } else if (roll > 14 && roll <= 18){
-      data.arrangement = 3; // Epistellar
+    if (typeof(options.arrangement) === 'number' && options.arrangement >= 0 && options.arrangement <= 3){
+      data.arrangement = Math.floor(options.arrangement);
+    } else {
+      var roll = rng.rollDice(6, 3);
+      data.arrangement = 0; // No Gas Giant.
+      if (roll > 10 && roll <= 12){
+	data.arrangement = 1; // Standard.
+      } else if (roll > 12 && roll <= 14){
+	data.arrangement = 2; // Eccentric
+      } else if (roll > 14 && roll <= 18){
+	data.arrangement = 3; // Epistellar
+      }
     }
   }
 
@@ -966,6 +970,7 @@
           var cmp = new Star({
 	    seed: rng.generateUUID(),
 	    parent: this,
+	    maxBodies:0,
             supportGardenWorlds: (options.supportGardenWorlds === true) ? true : false
           });
           
@@ -1102,29 +1107,34 @@
 	  if (roll > 3 && roll <= 6){ // Asteroid Belt
 	    body = new AsteroidBelt({
 	      seed: rng.generateUUID(),
+	      orbitalRadius: radius,
 	      parent: star
 	    });
 	  } else if (roll > 6 && roll <= 8){ // Tiny Terrestrial
 	    body = new Terrestrial({
 	      seed: rng.generateUUID(),
+	      orbitalRadius: radius,
 	      parent: star,
 	      size: 0
 	    });
 	  } else if (roll > 8 && roll <= 11){ // Small Terrestrial
 	    body = new Terrestrial({
 	      seed: rng.generateUUID(),
+	      orbitalRadius: radius,
 	      parent: star,
 	      size: 1
 	    });
 	  } else if (roll > 11 && roll <= 15){ // Standard Terrestrial
 	    body = new Terrestrial({
 	      seed: rng.generateUUID(),
+	      orbitalRadius: radius,
 	      parent: star,
 	      size: 2
 	    });
 	  } else if (roll > 15){ // Large Terrestrial
 	    body = new Terrestrial({
 	      seed: rng.generateUUID(),
+	      orbitalRadius: radius,
 	      parent: star,
 	      size: 3
 	    });
@@ -1294,26 +1304,37 @@
     };
 
 
-    var AllowSysGen = true;
-    if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
-      this.from(options.from);
-      AllowSysGen = false;
-    } else {
-      Generate(this.data, rng, options);
-      this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
-    }
+    ((function(){
+      var AllowSysGen = true;
+      if (typeof(options.from) === 'string' || typeof(options.from) === typeof({})){
+	this.from(options.from);
+	AllowSysGen = false;
+      } else {
+	Generate(this.data, rng, options);
+	this.name = (typeof(options.name) === 'string') ? options.name : rng.generateUUID();
+      }
 
 
-    if (AllowSysGen === true && options.fullSystemGeneration === true){
-      var companions = rng.rollDice(6, 1) - 4;
-      if (companions > 0){
-	this.generateCompanion();
-	if (companions > 1){
-	  this.generateCompanion();
+      if (AllowSysGen === true){
+	if (parent === null){
+	  var companions = (typeof(options.companions) === 'number' && options.companions >= 0 && options.companions < 3) ?
+	    Math.floor(options.companions) :
+	    rng.rollDice(6, 1) - 4;
+
+	  if (companions > 0){
+	    this.generateCompanion();
+	    if (companions > 1){
+	      this.generateCompanion();
+	    }
+	  }
+	}
+
+	var maxbodies = (typeof(options.maxBodies) !== 'number' || options.maxBodies >= 0) ? Math.floor(options.maxBodies) : Infinity;
+	if (maxbodies > 0){
+	  this.generateSystemBodies(maxbodies);
 	}
       }
-      this.generateSystemBodies();
-    }
+    }).bind(this))();
   }
   Star.prototype.__proto__ = StellarBody.prototype;
   Star.prototype.constructor = Star;
@@ -1321,7 +1342,8 @@
 
   Star.GetStellarEvolutionEntry = function(mass){
     for (var i=0; i < StellarBody.Table.StellarEvolutionTable.length; i++){
-      if (Math.abs(StellarBody.Table.StellarEvolutionTable[i].mass - mass) < 0.01){
+      if (Math.abs(StellarBody.Table.StellarEvolutionTable[i].mass - mass) < 0.051){
+	// NOTE: I check for a difference of 0.051 due to a rounding error. It really should be 0.05.
 	return StellarBody.Table.StellarEvolutionTable[i];
       }
     }

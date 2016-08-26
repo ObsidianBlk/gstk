@@ -508,10 +508,28 @@
       var store = this.canPlaceStar(ops.r, ops.a, ops.z);
       if (store){
 	if (star === null){
-	  star = new Star({
-	    seed: rng.generateUUID(),
-	    fullSystemGeneration: (ops.fullSystemGeneration === true) ? true : false
-	  });
+	  var sops = {
+	    seed: rng.generateUUID()
+	  };
+	  if (typeof(ops.name) === 'string' && ops.name.length > 0){
+	    sops.name = ops.name;
+	  }
+	  if (typeof(ops.companions) === 'number' && ops.companions >= 0){
+	    sops.companions = Math.floor(ops.companions);
+	  }
+	  if (typeof(ops.maxBodies) === 'number' && ops.maxBodies >= 0){
+	    sops.maxBodies = ops.maxBodies;
+	  }
+	  if (typeof(ops.arrangement) === 'number' && ops.arrangement >= 0){
+	    sops.arrangement = ops.arrangement;
+	  }
+	  if (typeof(ops.mass) === 'number' && ops.mass > 0){
+	    sops.mass = ops.mass;
+	  }
+	  if (typeof(ops.age) === 'number' && ops.age >= 0){
+	    sops.age = ops.age;
+	  }
+	  star = new Star(sops);
 	}
 
         systems.push({
