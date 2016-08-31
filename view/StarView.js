@@ -74,9 +74,12 @@
     var bodyScale = d3.scale.linear().domain([0.1, 20]).range([2, 4]);
 
     var renderScale = 1.0;
+    var renderCenter = {x:DOMEventNotifier.getWidth()*0.5, y:DOMEventNotifier.getHeight()*0.5};
+    var renderOffset = {x:DOMEventNotifier.getWidth()*0.5, y:DOMEventNotifier.getHeight()*0.5};
     var renderRadius = 0;
     var showSnowline = false;
     var showForbiddenZone = false;
+    var showGoldielocks = false;
 
     var axis = null;
     var xAxis = d3.svg.axis().scale(mapScale);
@@ -99,15 +102,29 @@
 
     var self = this;
     function zoomed() {
-      var x = d3.event.translate[0];
-      var y = d3.event.translate[1];
+      var nscale = d3.event.scale;
+      var diffX = 0;
+      var diffY = 0;
+      if (renderScale !== nscale){
+	var dscale = nscale - renderScale;
+	var oldRenderRadius = star.fullSystemRadius*renderScale;
+	renderScale = nscale;
+	renderRadius = star.fullSystemRadius*renderScale;
+	//var buff = Math.max(1, Math.round(renderRadius*0.1));
+	UpdateMapScale();
 
-      renderScale = d3.event.scale;
-      renderRadius = star.fullSystemRadius*renderScale;
-      var buff = Math.max(1, Math.round(renderRadius*0.1));
-      UpdateMapScale();
+	var ratio = (renderOffset.x - d3.event.sourceEvent.pageX)/oldRenderRadius;
+	renderOffset.x = d3.event.sourceEvent.pageX + renderRadius*ratio;
+	ratio = (renderOffset.y - d3.event.sourceEvent.pageY)/oldRenderRadius;
+	renderOffset.y = d3.event.sourceEvent.pageY + renderRadius*ratio;
+      }
 
-      scroller.attr("transform", "translate(" + x + ", " + y + ")");
+      renderOffset.x += d3.event.sourceEvent.movementX;
+      renderOffset.y += d3.event.sourceEvent.movementY;
+
+      //console.log(d3.event.sourceEvent);
+      //console.log("(" + renderOffset.x + ", " + renderOffset.y + ")");
+      scroller.attr("transform", "translate(" + renderOffset.x + ", " + renderOffset.y + ")");
       self.render();
     }
     var zoom = d3.behavior.zoom()
@@ -258,6 +275,17 @@
 	  }
 	  showForbiddenZone = e;
 	}
+      },
+
+      "showGoldielocks":{
+	enumerate:true,
+	get:function(){return showGoldielocks;},
+	set:function(e){
+	  if (typeof(e) !== 'boolean'){
+	    throw new TypeError("Expected boolean value.");
+	  }
+	  showGoldielocks = e;
+	}
       }
     });
 
@@ -369,6 +397,20 @@
 	  .attr("stroke", "none");
       }
 
+      var gl = null;
+      if (showGoldielocks === true){
+	gl = star.goldielocks;
+	arc = d3.svg.arc()
+	  .innerRadius(mapScale(gl.min))
+	  .outerRadius(mapScale(gl.max))
+	  .startAngle(0)
+	  .endAngle(360*(Math.PI/180));
+	scroller.append("path")
+	  .attr("d", arc)
+	  .attr("fill", "#070")
+	  .attr("stroke", "none");
+      }
+
       var primary = scroller.append("g")
 	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");
       RenderStar(star, primary);
@@ -394,6 +436,22 @@
 
 	for (i=0; i < star.companionCount; i++){
 	  cdata = companions[i];
+
+	  if (showGoldielocks === true){
+	    gl = cdata.body.goldielocks;
+	    arc = d3.svg.arc()
+	      .innerRadius(mapScale(gl.min))
+	      .outerRadius(mapScale(gl.max))
+	      .startAngle(0)
+	      .endAngle(360*(Math.PI/180));
+	    scroller.append("g")
+	      .attr("transform", "translate(0, " + mapScale(cdata.orbit.rMax) + ")")
+	      .append("path")
+	      .attr("d", arc)
+	      .attr("fill", "#070")
+	      .attr("stroke", "none");
+	  }
+
 	  scroller.append("ellipse")
 	    .attr("cx", mapScale(0))
 	    .attr("cy", mapScale(0))

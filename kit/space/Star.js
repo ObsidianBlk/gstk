@@ -387,9 +387,13 @@
 
     // -- Storing the star's current type and assumed temprature
     var sete = Star.GetStellarEvolutionEntry(data.mass);
+    if (sete === null){
+      throw new Error("Failed to obtain Stellar Evolution Entry with a mass of '" + data.mass + "'.");
+    }
     // Now fluctuating the mass if needed...
     if (fluctuateMass === true){
-      data.mass += rng.value(-0.025, 0.025);
+      var flux = rng.value(-0.025, 0.025);
+      data.mass += flux;//rng.value(-0.025, 0.025);
     }
     data.sequence = sete.type;
     data.temp = Math.floor(sete.temp + rng.value(-100, 100)); // I don't REALLY need to floor, but the small degree is trivial. 
@@ -436,6 +440,9 @@
 
       // -- Calculating radius...
       data.radius = (155000 * Math.sqrt(data.luminosity)) / (data.temp * data.temp);
+      if (isNaN(data.radius)){
+	console.error("Star with error radius!");
+      }
     } else {
       // -- Recaluclating for a White Dwarf star.
       data.mass = 0.9 + ((rng.rollDice(6, 2) - 2)*0.05);
@@ -1329,7 +1336,7 @@
 	  }
 	}
 
-	var maxbodies = (typeof(options.maxBodies) !== 'number' || options.maxBodies >= 0) ? Math.floor(options.maxBodies) : Infinity;
+	var maxbodies = (typeof(options.maxBodies) === 'number' || options.maxBodies >= 0) ? Math.floor(options.maxBodies) : Infinity;
 	if (maxbodies > 0){
 	  this.generateSystemBodies(maxbodies);
 	}
@@ -1341,8 +1348,10 @@
   Star.Type = 0;
 
   Star.GetStellarEvolutionEntry = function(mass){
+    mass = Number(mass.toFixed(4));
     for (var i=0; i < StellarBody.Table.StellarEvolutionTable.length; i++){
-      if (Math.abs(StellarBody.Table.StellarEvolutionTable[i].mass - mass) < 0.051){
+      var diff = Number(Math.abs(StellarBody.Table.StellarEvolutionTable[i].mass - mass).toFixed(2));
+      if (diff < 0.05){
 	// NOTE: I check for a difference of 0.051 due to a rounding error. It really should be 0.05.
 	return StellarBody.Table.StellarEvolutionTable[i];
       }

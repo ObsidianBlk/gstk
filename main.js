@@ -351,7 +351,11 @@ requirejs([
     var self = this;
 
     var usingConfig = false;
-    var config = {};
+    var config = {
+      arrangement: 0,
+      companions: 0,
+      maxBodies: 0
+    };
 
     var AngleRange = new RangeSliderInput(d3.select("#region-cursor-angle"));
     AngleRange.on("change", function(node, value){
@@ -382,13 +386,13 @@ requirejs([
     });
 
     var BodiesRange = new RangeSliderInput(d3.select("#star-bodies"));
-    CompanionRange.on("change", function(node, value){
+    BodiesRange.on("change", function(node, value){
       config.maxBodies = Number(value);
       self.emit("starbodieschange", node, value);
     });
 
     var ArrangementRange = new RangeSliderInput(d3.select("#star-arrangement"));
-    CompanionRange.on("change", function(node, value){
+    ArrangementRange.on("change", function(node, value){
       config.arrangement = Number(value);
       self.emit("stararrangementchange", node, value);
     });
@@ -978,6 +982,10 @@ requirejs([
     });
     starViewMenu.on("back", function(){
       starViewMenu.showSection("starviewmain", true, true);
+    });
+    starViewMenu.on("togglegoldie", function(){
+      starView.showGoldielocks = !starView.showGoldielocks;
+      starView.render();
     });
     starViewMenu.on("togglesnowline", function(){
       starView.showSnowline = !starView.showSnowline;
