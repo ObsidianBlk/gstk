@@ -167,11 +167,11 @@
   function CalcOrbitalInformation(rng, primaryMass, companionMass, options){
     options = (typeof(options) === typeof({})) ? options : {};
     var radius = 0;
+    var mod = -6;
     if (typeof(options.radius) === 'number' && options.radius > 0){
       radius = options.radius;
     } else {
       var multi = 0.05;
-      var mod = -6;
       var desc = "Very Close";
       var roll = rng.rollDice(6, 3) + ((typeof(options.rollMod) === 'number') ? options.rollMod : 0);
       if (roll > 6 && roll <= 9){
@@ -201,6 +201,7 @@
       e = options.eccentricity;
     } else {
       roll = (rng.rollDice(6, 3) + mod);
+      console.log("Eccentricity Roll: " + roll + " | Mod: " + mod);
       if (roll <= 3){
 	e = 0;
       } else if (roll > 3 && roll <= 17){
@@ -420,7 +421,7 @@
 
     if (data.lumClass !== "D"){
       // -- Calculating actual Luminosity
-      if (data.mass <= 0.4){
+      if (sete.mass <= 0.4){
 	data.luminosity = sete.Lmin + (sete.Lmin*rng.value(-0.1, 0.1));
       } else {
 	if (sete.Sspan === null || data.age <= sete.Mspan){
@@ -981,14 +982,61 @@
             supportGardenWorlds: (options.supportGardenWorlds === true) ? true : false
           });
           
-          if (options.supportGardenWorlds === true){
-            if (this.data.companion.length === 0){
-              // This is the first companion...
-              opts.rollMod = 4;
-            } else { // And this is the second companion...
-              opts.rollMod = 6;
-            }
-          }
+	  var secondCompanion = this.data.companion.length === 1;
+	  var rollMod = 0;
+	  if (secondCompanion === true){
+	    rollMod = 6;
+	  }
+	  if (options.supportGardenWorlds === true){
+	    rollMod += 4;
+	  }
+          opts.rollMod = rollMod;
+
+	  function OrbPosition(o){
+	    switch(o.description){
+	      case "Very Close": return 0;
+	      case "Close": return 1;
+	      case "Moderate": return 2;
+	      case "Wide": return 3;
+	      case "Distant": return 4;
+	    }
+	    return -1;
+	  }
+
+	  function CloseRadius(o1, o2){
+	    var drmin = Math.abs(o1.rMin - o2.rMin);
+	    var drmax = Math.abs(o1.rMax - o2.rMax);
+	    var dist = 100;
+	    switch(OrbPosition(o1)){
+	    case 0:
+	      dist = 0.025; break;
+	    case 1:
+	      dist = 0.25; break;
+	    case 2:
+	      dist = 1; break;
+	    case 3:
+	      dist = 5; break;
+	    case 4:
+	      dist = 10; break;
+	    } 
+
+	    return drmin <dist || drmax < dist;
+	  }
+
+	  var orb = CalcOrbitalInformation(rng, this.data.mass, cmp.mass, opts);
+	  if (secondCompanion === true){
+	    var loop = 10;
+	    var porb = this.data.companion[0].orbit;
+	    while (loop > 0 && (OrbPosition(orb) <= OrbPosition(porb) || CloseRadius(porb, orb) === true)){
+	      console.log("Invalid Companion... " + porb.description + "/" + orb.description + " | (" + porb.rMin + ", " + porb.rMax + ") / (" + orb.rMin + ", " + orb.rMax + ")");
+	      orb = CalcOrbitalInformation(rng, this.data.mass, cmp.mass, opts);
+	      loop -= 1;
+	    }
+	    if (loop === 0){
+	      console.log("Cannot gen second companion.");
+	      return; // No new companion.
+	    }
+	  }
 
           var c = {
             body: cmp,

@@ -103,27 +103,22 @@
     var self = this;
     function zoomed() {
       var nscale = d3.event.scale;
-      var diffX = 0;
-      var diffY = 0;
       if (renderScale !== nscale){
-	var dscale = nscale - renderScale;
-	var oldRenderRadius = star.fullSystemRadius*renderScale;
+	var oldRadius = mapScale(renderRadius)*(1/renderScale);
 	renderScale = nscale;
 	renderRadius = star.fullSystemRadius*renderScale;
-	//var buff = Math.max(1, Math.round(renderRadius*0.1));
 	UpdateMapScale();
+	var newRadius = mapScale(renderRadius)*(1/renderScale);
 
-	var ratio = (renderOffset.x - d3.event.sourceEvent.pageX)/oldRenderRadius;
-	renderOffset.x = d3.event.sourceEvent.pageX + renderRadius*ratio;
-	ratio = (renderOffset.y - d3.event.sourceEvent.pageY)/oldRenderRadius;
-	renderOffset.y = d3.event.sourceEvent.pageY + renderRadius*ratio;
+	var offscale = ((d3.event.sourceEvent.clientX - renderOffset.x)/oldRadius);
+	renderOffset.x = d3.event.sourceEvent.clientX - (newRadius*offscale);
+	offscale = ((d3.event.sourceEvent.clientY - renderOffset.y)/oldRadius);
+	renderOffset.y = d3.event.sourceEvent.clientY - (newRadius*offscale);
       }
 
       renderOffset.x += d3.event.sourceEvent.movementX;
       renderOffset.y += d3.event.sourceEvent.movementY;
 
-      //console.log(d3.event.sourceEvent);
-      //console.log("(" + renderOffset.x + ", " + renderOffset.y + ")");
       scroller.attr("transform", "translate(" + renderOffset.x + ", " + renderOffset.y + ")");
       self.render();
     }
