@@ -106,23 +106,57 @@ div.panel{
 .star{
     stroke: none;
 }
+.star ellipse{
+    fill: none;
+    stroke-width: 1;
+}
+
 .star.M{
     fill: #ffbc7c;
 }
+.star.M ellipse{
+    stroke: #ffbc7c;
+    fill: none;
+}
+
 .star.K{
     fill: #ffddb9;
 }
+.star.K ellipse{
+    stroke: #ffddb9;
+    fill: none;
+}
+
 .star.G{
     fill: #fff5eb;
 }
+.star.G ellipse{
+    stroke: #fff5eb;
+    fill: none;
+}
+
 .star.F{
     fill: #efefff;
 }
+.star.F ellipse{
+    stroke: #efefff;
+    fill: none;
+}
+
 .star.A{
     fill: #becfff;
 }
+.star.A ellipse{
+    stroke: #becfff;
+    fill: none;
+}
+
 .star.D{
     fill: #fff1e0;
+}
+.star.D ellipse{
+    stroke: #fff1e0;
+    fill: none;
 }
 
 .star text{

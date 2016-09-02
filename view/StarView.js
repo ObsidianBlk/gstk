@@ -66,6 +66,13 @@
 
   function StarView(d3, svg){
     var scroller = svg.append("g");
+    var bgLayer = scroller.append("g");
+    var fzLayer = scroller.append("g");
+    var snowlineLayer = scroller.append("g");
+    var goldielocksLayer = scroller.append("g");
+    var starLayer = scroller.append("g");
+    var planetLayer = scroller.append("g");
+
     var star = null;
     var mapSize = 1;
     var hmapSize = 1;
@@ -74,7 +81,6 @@
     var bodyScale = d3.scale.linear().domain([0.1, 20]).range([2, 4]);
 
     var renderScale = 1.0;
-    var renderCenter = {x:DOMEventNotifier.getWidth()*0.5, y:DOMEventNotifier.getHeight()*0.5};
     var renderOffset = {x:DOMEventNotifier.getWidth()*0.5, y:DOMEventNotifier.getHeight()*0.5};
     var renderRadius = 0;
     var showSnowline = false;
@@ -291,9 +297,12 @@
       }
     }
 
-    function RenderOrbits(g, objs, clsname, noCircle){
+    function RenderOrbits(orbit, objs, clsname, noCircle){
       noCircle = (noCircle === true) ? true : false;
-      var group = g.append("g").attr("class", clsname);
+      var group = planetLayer.append("g")
+	.attr("class", clsname)
+	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(orbit.rMax) + ")");
+
       var ellipses = group.selectAll("ellipse")
 	.data(objs).enter()
 	.append("ellipse")
@@ -336,31 +345,93 @@
       }
     }
 
-    function RenderStar(s, g){
-      var _star = g.append("g")
-	.attr("class", "star " + s.sequence.substring(0, 1))
-	.append("circle")
+    function RenderStar(cdata, g){
+      var s = cdata.body;
+      var orbit = (typeof(cdata.orbit) !=='undefined') ? cdata.orbit : null;
+      var fz = (typeof(cdata.forbiddenZone) !== 'undefined') ? cdata.forbiddenZone : null;
+
+      var arc = null;
+      // NOTE: We only want to render the snowline for the primary star
+      // TODO: Perhaps there can be a method for selecting which star to render the snowline around?
+      if (showSnowline === true && orbit === null){
+	arc = d3.svg.arc()
+	  .innerRadius(mapScale(s.limit.snowLine))
+	  .outerRadius(mapScale(s.fullSystemRadius))
+	  .startAngle(0)
+	  .endAngle(360*(Math.PI/180));
+	snowlineLayer.append("path")
+	  .attr("d", arc)
+	  .attr("fill", "#007")
+	  .attr("stroke", "none")
+	  .attr("opacity", 0.25);
+      }
+
+      var gl = null;
+      if (showGoldielocks === true){
+	gl = s.goldielocks;
+	arc = d3.svg.arc()
+	  .innerRadius(mapScale(gl.min))
+	  .outerRadius(mapScale(gl.max))
+	  .startAngle(0)
+	  .endAngle(360*(Math.PI/180));
+	goldielocksLayer.append("g")
+	  .attr("transform", "translate(" + mapScale(0) + ", " + mapScale((orbit !== null) ? orbit.rMax : 0) + ")")
+	  .append("path")
+	  .attr("d", arc)
+	  .attr("fill", "#070")
+	  .attr("stroke", "none")
+	  .attr("opacity", 0.25);
+      }
+
+      if (showForbiddenZone === true && fz !== null){
+	for (var i=0; i < star.companionCount; i++){
+	  arc = d3.svg.arc()
+	    .innerRadius(mapScale(fz.innerRadius))
+	    .outerRadius(mapScale(fz.outerRadius))
+	    .startAngle(0)
+	    .endAngle(360*(Math.PI/180));
+	  var path = fzLayer.append("path")
+	    .attr("d", arc)
+	    .attr("fill", "#700")
+	    .attr("stroke", "none")
+	    .attr("opacity", 0.25);
+	}
+      }
+
+      g.attr("class", "star " + s.sequence.substring(0, 1));
+      if (orbit !== null){
+	g.append("ellipse")
+	  .attr("cx", mapScale(0))
+	  .attr("cy", mapScale(0))
+	  .attr("rx", mapScale(orbit.rMin))
+	  .attr("ry", mapScale(orbit.rMax));
+      } else {
+	orbit = {rMin: 0, rMax: 0};
+      }
+
+      g.append("circle")
+	.attr("cy", mapScale(orbit.rMax))
 	.attr("r", starScale(s.radius));
       if (starEvents.mouseOver){
-	_star.on("mouseover", function(){starEvents.mouseOver(s);});
+	g.on("mouseover", function(){starEvents.mouseOver(s);});
       }
       if (starEvents.mouseOut){
-	_star.on("mouseout", starEvents.mouseOut);
+	g.on("mouseout", starEvents.mouseOut);
       }
       if (starEvents.click){
-	_star.on("click", function(){starEvents.click(s);});
+	g.on("click", function(){starEvents.click(s);});
       }
 
       if (s.hasBodiesOfType(Terrestrial.Type)){
-	RenderOrbits(g, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
+	RenderOrbits(orbit, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
       }
 
       if (s.hasBodiesOfType(GasGiant.Type)){
-	RenderOrbits(g, s.getBodiesOfType(GasGiant.Type), "orbit-gasgiant");
+	RenderOrbits(orbit, s.getBodiesOfType(GasGiant.Type), "orbit-gasgiant");
       }
 
       if (s.hasBodiesOfType(AsteroidBelt.Type)){
-	RenderOrbits(g, s.getBodiesOfType(AsteroidBelt.Type), "orbit-asteroids", true);
+	RenderOrbits(orbit, s.getBodiesOfType(AsteroidBelt.Type), "orbit-asteroids", true);
       }
     }
 
@@ -368,96 +439,30 @@
       if (star === null){return;}
 
       svg.call(zoom);
-      scroller.selectAll("*").remove();
+      //scroller.selectAll("*").remove();
+      bgLayer.selectAll("*").remove();
+      fzLayer.selectAll("*").remove();
+      snowlineLayer.selectAll("*").remove();
+      goldielocksLayer.selectAll("*").remove();
+      starLayer.selectAll("*").remove();
+      planetLayer.selectAll("*").remove();
       
-      scroller.append("circle")
-	.attr("r", mapScale(star.fullSystemRadius))
-	.attr("stroke", "none")
-	.attr("fill", "#000");
-      scroller.append("circle")
+      bgLayer.append("circle")
 	.attr("r", mapScale(star.fullSystemRadius))
 	.attr("stroke", "#9F0")
-	.attr("stroke-wdith", "2")
-	.attr("fill", "none");
+	.attr("stroke-width", "2")
+	.attr("fill", "#000");
 
-      if (showSnowline === true){
-	var arc = d3.svg.arc()
-	  .innerRadius(mapScale(star.limit.snowLine))
-	  .outerRadius(mapScale(star.fullSystemRadius))
-	  .startAngle(0)
-	  .endAngle(360*(Math.PI/180));
-	scroller.append("path")
-	  .attr("d", arc)
-	  .attr("fill", "#007")
-	  .attr("stroke", "none");
-      }
-
-      var gl = null;
-      if (showGoldielocks === true){
-	gl = star.goldielocks;
-	arc = d3.svg.arc()
-	  .innerRadius(mapScale(gl.min))
-	  .outerRadius(mapScale(gl.max))
-	  .startAngle(0)
-	  .endAngle(360*(Math.PI/180));
-	scroller.append("path")
-	  .attr("d", arc)
-	  .attr("fill", "#070")
-	  .attr("stroke", "none");
-      }
-
-      var primary = scroller.append("g")
+      var primary = starLayer.append("g")
 	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");
-      RenderStar(star, primary);
+      RenderStar({body:star}, primary);
 
       if (star.companionCount > 0){
 	var companions = star.companions;
-	if (showForbiddenZone === true){
-	  for (var i=0; i < star.companionCount; i++){
-	    var cdata = companions[i];
-	    var fz = cdata.forbiddenZone;
-	    arc = d3.svg.arc()
-	      .innerRadius(mapScale(fz.innerRadius))
-	      .outerRadius(mapScale(fz.outerRadius))
-	      .startAngle(0)
-	      .endAngle(360*(Math.PI/180));
-	    var path = scroller.append("path")
-	      .attr("d", arc)
-	      .attr("fill", "#700")
-	      .attr("stroke", "none")
-	      .attr("opacity", 0.5);
-	  }
-	}
-
-	for (i=0; i < star.companionCount; i++){
-	  cdata = companions[i];
-
-	  if (showGoldielocks === true){
-	    gl = cdata.body.goldielocks;
-	    arc = d3.svg.arc()
-	      .innerRadius(mapScale(gl.min))
-	      .outerRadius(mapScale(gl.max))
-	      .startAngle(0)
-	      .endAngle(360*(Math.PI/180));
-	    scroller.append("g")
-	      .attr("transform", "translate(0, " + mapScale(cdata.orbit.rMax) + ")")
-	      .append("path")
-	      .attr("d", arc)
-	      .attr("fill", "#070")
-	      .attr("stroke", "none");
-	  }
-
-	  scroller.append("ellipse")
-	    .attr("cx", mapScale(0))
-	    .attr("cy", mapScale(0))
-	    .attr("rx", mapScale(cdata.orbit.rMin))
-	    .attr("ry", mapScale(cdata.orbit.rMax))
-	    .attr("fill", "none")
-	    .attr("stroke", "#FFDD00")
-	    .attr("stroke-width", 1);
-	  var surf = scroller.append("g")
-	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(cdata.orbit.rMax) + ")");
-	  RenderStar(cdata.body, surf);
+	for (var i=0; i < star.companionCount; i++){
+	  var cdata = companions[i];
+	  var surf = starLayer.append("g");
+	  RenderStar(cdata, surf);
 	}
       }
     };
