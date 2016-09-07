@@ -708,7 +708,8 @@
       break;
     }
 
-    data.diameter = Dmin + ((Dmax - Dmin)*rng.uniform()); // NOTE: Cheating. The book random effect says something about rolling 2D-2 or something.
+    data.diameter = (typeof(options.diameter) === 'number' && options.diameter >= Dmin && options.diameter <= Dmax) ? 
+      options.diameter : Dmin + ((Dmax - Dmin)*rng.uniform()); // NOTE: Cheating. The book random effect says something about rolling 2D-2 or something.
     data.surfaceGravity = data.diameter * data.density;
     data.mass = data.density * (data.diameter * data.diameter * data.diameter);
     data.atmosphere.pressure = CalculateAtmosphericPressure(sc.size, sc.class, data.atmosphere.mass, data.surfaceGravity);

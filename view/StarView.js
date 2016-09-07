@@ -93,6 +93,12 @@
 
     var scaleGridPos = [0, 0];
 
+    var showOrbitCursor = false;
+    var ocursorRadius = 0;
+    var ocursorEccentricity = 0;
+
+    var selectedBody = null;
+
     var starEvents = {
       mouseOver:null,
       mouseOut:null,
@@ -155,7 +161,11 @@
 	  }
 	  star = s;
 	  if (star !== null){
-	    zoom.scaleExtent([1/star.fullSystemRadius, 1]);
+	    ocursorRadius = star.limit.innerRadius;
+	    selectedBody = null;
+	    var minExtent = star.limit.innerRadius/star.fullSystemRadius;
+	    //minExtent = (minExtent >= 0.0001) ? minExtent : 0.0001;
+	    zoom.scaleExtent([minExtent, 1]);
 	    if (star.fullSystemRadius < renderRadius || renderRadius === 0){
 	      renderRadius = star.fullSystemRadius;
 	      renderScale = 1.0;
@@ -252,6 +262,77 @@
 	      .attr("transform", "translate(" + scaleGridPos[0] + ", " + scaleGridPos[1] + ")");
 	    axis.append("g").attr("id", "xaxis").call(xAxis);
 	    axis.append("g").attr("id", "yaxis").call(yAxis);
+	  }
+	}
+      },
+
+      "selectBody":{
+	enumerate:true,
+	get:function(){return selectedBody;},
+	set:function(i){
+	  if (typeof(i) === 'number'){
+	    if (star !== null){
+	      if (i >= 0 && i < star.bodyCount){
+		selectedBody = i;
+	      }
+	    }
+	  } else if (i === null){
+
+	  } else {
+	    throw new TypeError("Expected number value or null.");
+	  }
+	}
+      },
+
+      "orbitCursorRadius":{
+	enumerate: true,
+	get:function(){return ocursorRadius;},
+	set:function(r){
+	  if (typeof(r) !== 'number'){
+	    throw new TypeError("Expected number value.");
+	  }
+	  if (r < 0){
+	    throw new RangeError("Value must be zero or greater.");
+	  }
+	  if (star !== null){
+	    if (r < star.limit.innerRadius){
+	      ocursorRadius = star.limit.innerRadius;
+	    } else if (r > star.limit.outerRadius){
+	      ocursorRadius = star.limit.outerRadius;
+	    } else {
+	      ocursorRadius = r;
+	    }
+	  } else {
+	    ocursorRadius = r;
+	  }
+	}
+      },
+
+      "orbitCursorEccentricity":{
+	enumerate: true,
+	get:function(){return ocursorEccentricity;},
+	set:function(e){
+	  if (typeof(e) !== 'number'){
+	    throw new TypeError("Expected number value.");
+	  }
+	  if (e < 0 || e > 0.95){
+	    throw new RangeError("Value out of range.");
+	  }
+	  ocursorEccentricity = e;
+	}
+      },
+
+      "showOrbitCursor":{
+	enumerate:true,
+	get:function(){return showOrbitCursor;},
+	set:function(e){
+	  if (typeof(e) !== 'boolean'){
+	    throw new TypeError("Expected boolean value.");
+	  }
+	  showOrbitCursor = e;
+	  if (star !== null){
+	    ocursorRadius = star.limit.innerRadius;
+	    ocursorEccentricity = 0;
 	  }
 	}
       },
@@ -464,6 +545,23 @@
 	  var surf = starLayer.append("g");
 	  RenderStar(cdata, surf);
 	}
+      }
+
+      if (showOrbitCursor === true){
+	var ocolor = (star.orbitRadiusAllowed(ocursorRadius, ocursorEccentricity) === true) ? "#0F0" : "#F00";
+	var rmin = (1-ocursorEccentricity) * ocursorRadius;
+	var rmax = (1+ocursorEccentricity) * ocursorRadius;
+	planetLayer.append("ellipse")
+	  .attr("rx", mapScale(rmin))
+	  .attr("ry", mapScale(rmax))
+	  .attr("fill", "none")
+	  .attr("stroke", ocolor)
+	  .attr("stroke-width", 2);
+	planetLayer.append("circle")
+	  .attr("cy", mapScale(rmax))
+	  .attr("r", mapScale(6))
+	  .attr("fill", ocolor)
+	  .attr("stroke", "none");
       }
     };
 

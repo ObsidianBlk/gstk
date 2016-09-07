@@ -201,7 +201,6 @@
       e = options.eccentricity;
     } else {
       roll = (rng.rollDice(6, 3) + mod);
-      console.log("Eccentricity Roll: " + roll + " | Mod: " + mod);
       if (roll <= 3){
 	e = 0;
       } else if (roll > 3 && roll <= 17){
@@ -894,6 +893,21 @@
       }
     };
 
+    this.orbitRadiusAllowed = function(r, ecc){
+      var limit = this.data.limit;
+      var rMin = 0;
+      var rMax = 0;
+      if (r < limit.innerRadius || r > limit.outerRadius){
+	return false;
+      }
+      if (ecc < 0 || ecc > 0.95){
+	return false;
+      }
+      rMin = (1-ecc) * r;
+      rMax = (1+ecc) * r;
+      return ConfirmRadius(this.data, rMin, rMax);
+    };
+
     this.hasBodiesOfType = function(type){
       if (typeof(this.data.body) !== 'undefined'){
 	var count = this.data.body.length;
@@ -1028,12 +1042,10 @@
 	    var loop = 10;
 	    var porb = this.data.companion[0].orbit;
 	    while (loop > 0 && (OrbPosition(orb) <= OrbPosition(porb) || CloseRadius(porb, orb) === true)){
-	      console.log("Invalid Companion... " + porb.description + "/" + orb.description + " | (" + porb.rMin + ", " + porb.rMax + ") / (" + orb.rMin + ", " + orb.rMax + ")");
 	      orb = CalcOrbitalInformation(rng, this.data.mass, cmp.mass, opts);
 	      loop -= 1;
 	    }
 	    if (loop === 0){
-	      console.log("Cannot gen second companion.");
 	      return; // No new companion.
 	    }
 	  }
@@ -1258,7 +1270,7 @@
       if (body instanceof Star){
 	throw new TypeError("Star instance objects not allowed as basic orbital bodies.");
       }
-      if (typeof(body.parent) === 'undefined' || body.parent !== null){
+      if (typeof(body.parent) === 'undefined' || body.parent !== this){
 	throw new Error("StellarBody instance object either does not support parenting or is already parented to another StellarBody.");
       }
 

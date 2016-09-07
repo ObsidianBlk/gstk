@@ -868,7 +868,7 @@ requirejs([
 	      diameter: body.diameterKM.toFixed(4),
 	      gravity: body.surfaceGravity.toFixed(2)
 	    });
-	    infoPanel.showSection("gasgiant");
+	    infoPanel.showSection("gasgiant", true, true);
 	  } else if (body instanceof AsteroidBelt){
 	    infoPanel.set({
 	      body: "Asteroid Belt",
@@ -877,7 +877,7 @@ requirejs([
 	      temperatureF: StellarBody.Kelvin2F(body.temperature).toFixed(2),
 	      resources: body.resources
 	    });
-	    infoPanel.showSection("asteroidbelt");
+	    infoPanel.showSection("asteroidbelt", true, true);
 	  } else if (body instanceof Terrestrial){
 	    var atm = body.atmosphere;
 	    infoPanel.set({
@@ -903,7 +903,7 @@ requirejs([
 	      composition: (typeof(atm.composition) !== 'undefined') ? atm.composition.join(", ") : "None",
 	      affinity: body.affinity
 	    });
-	    infoPanel.showSection("terrestrial");
+	    infoPanel.showSection("terrestrial", true, true);
 	  }
 
 	  infoPanel.show(true, x, y + 20);
