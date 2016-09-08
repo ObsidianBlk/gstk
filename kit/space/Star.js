@@ -908,6 +908,14 @@
       return ConfirmRadius(this.data, rMin, rMax);
     };
 
+    this.orbitRadiusFromBlackbody = function(blackbody){
+      return (77300/Math.pow(blackbody, 2))*Math.sqrt(this.data.luminosity);
+    };
+
+    this.blackbodyFromOrbitRadius = function(radius){
+      return 278*(Math.pow(this.data.luminosity, 0.25)/Math.sqrt(radius));
+    };
+
     this.hasBodiesOfType = function(type){
       if (typeof(this.data.body) !== 'undefined'){
 	var count = this.data.body.length;
@@ -1263,6 +1271,48 @@
       GenerateRandomBodies(this, this.data.limit.innerRadius, 1, this.data.body.length, maxBodies);
     };
 
+    this.generateBody = function(r, ecc, type, options){
+      // Nothing to do if body cannot be placed.
+      if (this.orbitRadiusAllowed(r, ecc) === false){return;}
+
+      var b = {
+	avgRadius: r,
+	rMin: (1-ecc)*r,
+	rMax: (1+ecc)*r,
+	period: Math.sqrt(Math.pow(r, 3)/this.data.mass),
+	body: null
+      };
+
+      type = (typeof(type) === 'number') ? Math.floor(type) : Math.floor(rng.rollDice(6, 1)/3);
+      var ops = (typeof(options) === typeof({})) ? JSON.parse(JSON.stringify(options)) : {};
+      ops.seed = rng.generateUUID();
+      ops.parent = this;
+
+      switch(type){
+      case 0: // Gas Giant
+	b.body = new GasGiant(ops);
+	break;
+      case 1: // Terrestrial
+	ops.orbitalRadius = r;
+	b.body = new Terrestrial(ops);
+	break;
+      case 2: // Asteroid Belt
+	ops.orbitalRadius = r;
+	b.body = new AsteroidBelt(ops);
+	break;
+      }
+
+      if (b.body !== null){
+	if (typeof(this.data.body) === 'undefined'){
+	  this.data.body = [];
+	}
+	this.data.body.push(b);
+	this.data.body.sort(function(a, b){
+	  return a.avgRadius - b.avgRadius;
+	});
+      }
+    };
+
     this.addBody = function(body, options){
       if (!(body instanceof StellarBody)){
 	throw new TypeError("Unknown/Unsupported object given");
@@ -1411,8 +1461,7 @@
     mass = Number(mass.toFixed(4));
     for (var i=0; i < StellarBody.Table.StellarEvolutionTable.length; i++){
       var diff = Number(Math.abs(StellarBody.Table.StellarEvolutionTable[i].mass - mass).toFixed(2));
-      if (diff < 0.05){
-	// NOTE: I check for a difference of 0.051 due to a rounding error. It really should be 0.05.
+      if (diff <= 0.05){
 	return StellarBody.Table.StellarEvolutionTable[i];
       }
     }

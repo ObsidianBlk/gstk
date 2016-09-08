@@ -46,15 +46,20 @@ requirejs([
 
   function RangeSliderInput(dom){
     Emitter.call(this);
+    var valueDispNode = d3.select(dom.node().parentNode.parentNode).select(".value");
     var self = this;
-
+    var fixedSize = 4;
+    var updateValueDisplayFuncDef = function(d3node, value){
+      if (d3node.empty() === false){
+	d3node.html(Number(value).toFixed(fixedSize));
+      }
+    };
+    var updateValueDisplayFunc = updateValueDisplayFuncDef;
     
     function HandleChange(){
+      var node = d3.select(this).node();
       var value = d3.select(this).node().value;
-      var vdisp = d3.select(this.parentNode.parentNode).select(".value");
-      if (vdisp.empty() === false){
-	vdisp.html(value);
-      }
+      updateValueDisplayFunc(d3.select(node.parentNode.parentNode).select(".value"), value);
       self.emit("change", this, value);
     }
 
@@ -70,6 +75,8 @@ requirejs([
 	    throw new TypeError("Expected a number value.");
 	  }
 	  dom.attr("value", v);
+	  updateValueDisplayFunc(valueDispNode, v);
+	  self.emit("change", dom.node(), v);
         }
       },
 
@@ -83,6 +90,7 @@ requirejs([
 	  var val = Number(dom.attr("value"));
 	  if (m < val){
 	    dom.attr("value", m);
+	    updateValueDisplayFunc(valueDispNode, m);
 	  }
 	  dom.attr("max", m);
 	}
@@ -98,8 +106,34 @@ requirejs([
 	  var val = Number(dom.attr("value"));
 	  if (m > val){
 	    dom.attr("value", m);
+	    updateValueDisplayFunc(valueDispNode, m);
 	  }
 	  dom.attr("min", m);
+	}
+      },
+
+      "fixedSize":{
+	enumerate:true,
+	get:function(){return fixedSize;},
+	set:function(fs){
+	  if (typeof(fs) !== 'number'){
+	    throw new TypeError("Expected number value.");
+	  }
+	  if (fs < 0){
+	    throw new RangeError("Value must be zero or greater.");
+	  }
+	  fixedSize = fs;
+	}
+      },
+
+      "updateValueDisplayFunc":{
+	get:function(){return updateValueDisplayFunc;},
+	set:function(f){
+	  if (typeof(f) === 'function'){
+	    updateValueDisplayFunc = f;
+	  } else if (f === null){
+	    updateValueDisplayFunc = updateValueDisplayFuncDef;
+	  }
 	}
       }
     });
@@ -486,6 +520,182 @@ requirejs([
   StarEditorPanelCtrl.prototype.__proto__ = HoverPanelCtrl.prototype;
   StarEditorPanelCtrl.prototype.constructor = StarEditorPanelCtrl;
 
+  // -------------------------------------------------------------------------------------------------------------------------------------
+
+  function BodyEditorPanelCtrl(dom){
+    HoverPanelCtrl.call(this, dom);
+    var self = this;
+
+    var star = null;
+    var NoUpdate = false;
+    var genType = 0; // 0 = Random | 1 = Gas Giant | 2 = Terrestrial | 3 = Asteroid Belt
+    var terrClass = 0;
+
+    function UpdateTerrestrialClass(){
+      var makeGarden = GardenRange.value >= 1;
+      terrClass = Terrestrial.GetClassFromBlackbody(TerrSizeRange.value, BlackbodyRange.value, makeGarden, 0);
+      var drng = Terrestrial.GetDensityRange(TerrSizeRange.value, terrClass);
+      DiameterRange.min = drng.min;
+      DiameterRange.max = drng.max;
+      self.set({terrclass: Terrestrial.ClassToName(terrClass)});
+    }
+
+    var OrbitRange = new RangeSliderInput(d3.select("#body-orbit"));
+    OrbitRange.on("change", function(node, value){
+      self.emit("orbitradiuschange", node, value);
+      if (NoUpdate === false){
+	if (star !== null){
+	  NoUpdate = true;
+	  var bb = star.blackbodyFromOrbitRadius(Number(value));
+	  console.log("Blackbody: " + bb.toFixed(4));
+	  BlackbodyRange.value = bb;
+	}
+      } else {
+	NoUpdate = false;
+      }
+    });
+
+    var EccentricityRange = new RangeSliderInput(d3.select("#body-oecc"));
+    EccentricityRange.on("change", function(node, value){
+      self.emit("orbiteccentricitychange", node, value);
+    });
+
+    var BlackbodyRange = new RangeSliderInput(d3.select("#body-blackbody"));
+    BlackbodyRange.on("change", function(node, value){
+      self.emit("blackbodychange", node, value);
+      UpdateTerrestrialClass();
+      if (NoUpdate === false){
+	if (star !== null){
+	  NoUpdate = true;
+	  OrbitRange.value = star.orbitRadiusFromBlackbody(Number(value));
+	}
+      } else {
+	NoUpdate = false;
+      }
+    });
+
+    var TerrSizeRange = new RangeSliderInput(d3.select("#body-terrsize"));
+    TerrSizeRange.updateValueDisplayFunc = function(d3node, value){
+      if (d3node.empty() === false){
+	d3node.html(Terrestrial.SizeToName(Number(value)));
+      }
+    };
+    TerrSizeRange.on("change", function(node, value){
+      self.emit("terrestrialsizechange", node, value);
+      UpdateTerrestrialClass();
+    });
+
+    var DiameterRange = new RangeSliderInput(d3.select("#body-diameter"));
+    DiameterRange.on("change", function(node, value){
+      self.emit("diameterchange", node, value);
+    });
+
+    var AtmmassRange = new RangeSliderInput(d3.select("#body-atmmass"));
+    AtmmassRange.on("change", function(node, value){
+      self.emit("atmmasschange", node, value);
+    });
+
+    var HydroRange = new RangeSliderInput(d3.select("#body-hydro"));
+    HydroRange.on("change", function(node, value){
+      self.emit("hydrographicchange", node, value);
+    });
+
+    var GardenRange = new RangeSliderInput(d3.select("#body-garden"));
+    GardenRange.on("change", function(node, value){
+      self.emit("gardenchange", node, value);
+      UpdateTerrestrialClass();
+    });
+
+    this.on("tab-genrandom", function(){
+      genType = 0;
+      self.showSection("basiceditor", true, true);
+    });
+
+    this.on("tab-genterrestrial", function(){
+      genType = 2;
+      self.showSection(["basiceditor", "terrestrialeditor"], true, true);
+    });
+
+    Object.defineProperties(this, {
+      "bodyName":{
+	enumerate:true,
+	get:function(){
+	  var value = d3.select("#body-name").node().value;
+	  if (value.length <= 0){
+	    value = null;
+	  }
+	  return value;
+	}
+      },
+
+      "star":{
+	enumerate:true,
+	get:function(){return star;},
+	set:function(s){
+	  if (s === null){
+	    star = null;
+	  } else if (s instanceof Star){
+	    star = s;
+	    OrbitRange.min = star.limit.innerRadius;
+	    OrbitRange.max = star.limit.outerRadius;
+	    OrbitRange.value = star.limit.innerRadius;
+
+	    BlackbodyRange.max = star.blackbodyFromOrbitRadius(star.limit.innerRadius);
+	    BlackbodyRange.min = star.blackbodyFromOrbitRadius(star.limit.outerRadius);
+	    BlackbodyRange.value = BlackbodyRange.min;
+	  }
+	}
+      },
+
+      "orbitalRadius":{
+	enumerate:true,
+	get:function(){return OrbitRange.value;}
+      },
+
+      "orbitalEccentricity":{
+	enumerate:true,
+	get:function(){return EccentricityRange.value;}
+      },
+
+      "blackbody":{
+	enumerate:true,
+	get:function(){return BlackbodyRange.value;}
+      },
+
+      "terrestrialClass":{
+	enumerate:true,
+	get:function(){return terrClass;}
+      },
+
+      "terrestrialSize":{
+	enumerate:true,
+	get:function(){return TerrSizeRange.value;}
+      },
+
+      "terrestrialDiameter":{
+	enumerate:true,
+	get:function(){return DiameterRange.value;}
+      },
+
+      "hydrographics":{
+	enumerate:true,
+	get:function(){return HydroRange.value;}
+      },
+
+      "atmosphericMass":{
+	enumerate:true,
+	get:function(){return AtmmassRange.value;}
+      },
+
+      "generationType":{
+	enumerate:true,
+	get:function(){return genType;}
+      }
+    });
+  }
+  BodyEditorPanelCtrl.prototype.__proto__ = HoverPanelCtrl.prototype;
+  BodyEditorPanelCtrl.prototype.constructor = BodyEditorPanelCtrl;
+
 
   // -------------------------------------------------------------------------------------------------------------------------------------
 
@@ -836,6 +1046,7 @@ requirejs([
     var hmapSize = Math.round(mapSize*0.5);
 
     var map = svg.append("g");
+
     var starView = new StarView(d3, map);
     starView.mapSize = mapSize;
     starView.onBodyMouseOver = function(d, i){
@@ -961,6 +1172,60 @@ requirejs([
       starPanel.show(false);
     };
 
+    var bodyEditorPanel = new BodyEditorPanelCtrl(d3.select(".hoverPanel.bodyEditor"));
+    bodyEditorPanel.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
+    bodyEditorPanel.flipEdge = false;
+    bodyEditorPanel.on("place", function(){
+      var ops = {};
+      if (bodyEditorPanel.name !== null){
+	ops.name = bodyEditorPanel.name;
+      }
+      switch(bodyEditorPanel.generationType){
+      case 0: // Random Anything!
+	starView.star.generateBody(
+	  bodyEditorPanel.orbitalRadius,
+	  bodyEditorPanel.orbitalEccentricity,
+	  Math.floor(Math.random()*3),
+	  ops
+	);
+	break;
+      case 2: // Custom Terrestrial
+	ops.size = bodyEditorPanel.terrestrialSize;
+	ops.class = bodyEditorPanel.terrestrialClass;
+	ops.hydrographics = bodyEditorPanel.hydrographics;
+	ops.diameter = bodyEditorPanel.terrestrialDiameter;
+	ops.atmmass = bodyEditorPanel.atmosphericMass;
+
+	starView.star.generateBody(
+	  bodyEditorPanel.orbitalRadius,
+	  bodyEditorPanel.orbitalEccentricity,
+	  1,
+	  ops
+	);
+	break;
+      }
+      starView.showOrbitCursor = false;
+      bodyEditorPanel.show(false);
+      starViewMenu.show(true);
+      starView.render();
+    });
+    bodyEditorPanel.on("cancel", function(){
+      starView.showOrbitCursor = false;
+      bodyEditorPanel.show(false);
+      starViewMenu.show(true);
+      starView.render();
+    });
+    bodyEditorPanel.on("orbitradiuschange", function(node, value){
+      starView.orbitCursorRadius = Number(value);
+      d3.select(node.parentNode.parentNode).select(".value").html(value);
+      starView.render();
+    });
+    bodyEditorPanel.on("orbiteccentricitychange", function(node, value){
+      starView.orbitCursorEccentricity = Number(value);
+      d3.select(node.parentNode.parentNode).select(".value").html(value);
+      starView.render();
+    });
+
     var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.planet"));
     infoPanel.edge = HoverPanelCtrl.Edge.Right;
     infoPanel.flipEdge = true;
@@ -976,6 +1241,9 @@ requirejs([
     starViewMenu.flipEdge = true;
     starViewMenu.on("toggle", function(){
       starViewMenu.showSection("infotoggle", true, true);
+    });
+    starViewMenu.on("modify", function(){
+      starViewMenu.showSection("modify", true, true);
     });
     starViewMenu.on("exitStarView", function(){
       self.emit("region");
@@ -994,6 +1262,12 @@ requirejs([
     starViewMenu.on("toggleforbiddenzone", function(){
       starView.showForbiddenZone = !starView.showForbiddenZone;
       starView.render();
+    });
+    starViewMenu.on("newbody", function(){
+      starView.showOrbitCursor = true;
+      bodyEditorPanel.star = starView.star;
+      bodyEditorPanel.show(true);
+      starViewMenu.show(false);
     });
 
     map.on("mousemove", function(){

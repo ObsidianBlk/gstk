@@ -450,18 +450,24 @@
       var gl = null;
       if (showGoldielocks === true){
 	gl = s.goldielocks;
-	arc = d3.svg.arc()
-	  .innerRadius(mapScale(gl.min))
-	  .outerRadius(mapScale(gl.max))
-	  .startAngle(0)
-	  .endAngle(360*(Math.PI/180));
-	goldielocksLayer.append("g")
-	  .attr("transform", "translate(" + mapScale(0) + ", " + mapScale((orbit !== null) ? orbit.rMax : 0) + ")")
-	  .append("path")
-	  .attr("d", arc)
-	  .attr("fill", "#070")
-	  .attr("stroke", "none")
-	  .attr("opacity", 0.25);
+	var ir = s.limit.innerRadius;
+	var or = s.limit.outerRadius;
+
+	// Only render if goldielocks is within the valid planet range of the star.
+	if (gl.min >= ir && gl.max <= or){
+	  arc = d3.svg.arc()
+	    .innerRadius(mapScale(gl.min))
+	    .outerRadius(mapScale(gl.max))
+	    .startAngle(0)
+	    .endAngle(360*(Math.PI/180));
+	  goldielocksLayer.append("g")
+	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale((orbit !== null) ? orbit.rMax : 0) + ")")
+	    .append("path")
+	    .attr("d", arc)
+	    .attr("fill", "#070")
+	    .attr("stroke", "none")
+	    .attr("opacity", 0.25);
+	}
       }
 
       if (showForbiddenZone === true && fz !== null){
@@ -559,7 +565,7 @@
 	  .attr("stroke-width", 2);
 	planetLayer.append("circle")
 	  .attr("cy", mapScale(rmax))
-	  .attr("r", mapScale(6))
+	  .attr("r", bodyScale(2))
 	  .attr("fill", ocolor)
 	  .attr("stroke", "none");
       }

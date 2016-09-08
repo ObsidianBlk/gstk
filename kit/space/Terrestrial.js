@@ -163,7 +163,13 @@
     var cls = 0; // 0 = Rock
     var temp = 0;
 
-    switch (size){
+    return {
+      class: Terrestrial.GetClassFromBlackbody(size, blackbody, options.makeGarden, rng.uniform()),
+      size: size,
+      temp: 0 // Value not calculated here.
+    };
+
+    /*switch (size){
     case 0:
       if (blackbody <= 140){
 	if (rng.uniform() <= 0.5){
@@ -232,9 +238,9 @@
 	cls = 6; // Chthonian
       }
       break;
-    }
+    }*/
 
-    return {size: size, class: cls, temp: 0}; // Temp is 0 as no temp is calculated here.
+    //return {size: size, class: cls, temp: 0}; // Temp is 0 as no temp is calculated here.
   };
 
   
@@ -1025,6 +1031,132 @@
   Terrestrial.prototype.__proto__ = StellarBody.prototype;
   Terrestrial.prototype.constructor = Terrestrial;
   Terrestrial.Type = 2;
+
+  Terrestrial.GetClassFromBlackbody = function(size, blackbody, makeGarden, rnd){
+    var cls = 0; // 0 = Rock
+
+    makeGarden = (makeGarden === true) ? true : false;
+    rnd = (typeof(rnd) === 'number') ? Math.max (0.0, Math.min(1.0, rnd)) : Math.random();
+    
+    if (size < 0){
+      size = 0;
+    } else if (size > 3){
+      size = 3;
+    }
+
+    switch (size){
+    case 0:
+      if (blackbody <= 140){
+	if (rnd <= 0.5){
+	  cls = 1; // Ice
+	} else {
+	  cls = 7; // Sulfur
+	}
+      }
+      break;
+    case 1:
+      if (blackbody <= 80){
+	cls = 5; // Hadean
+      } else if (blackbody > 80 && blackbody < 140){
+	cls = 1; // Ice
+      }
+      break;
+    case 2:
+      if (blackbody <= 80){
+	cls = 5; // Hadean
+      } else if (blackbody > 80 && blackbody <= 150){
+	cls = 1; // Ice
+      } else if (blackbody > 150 && blackbody <= 230){
+	if (rnd <= 0.5){
+	  cls = 1; // Ice
+	} else {
+	  cls = 8; // Ammonia
+	}
+      } else if (blackbody > 230 && blackbody <= 240){
+	cls = 1; // Ice ... Damn... lot of ice
+      } else if (blackbody > 240 && blackbody <= 320){
+	if (makeGarden === true){
+	  cls = 3; // Garden
+	} else if (rnd <= 0.5){
+	  cls = 3; // Garden .. again... we like gardens!
+	} else {
+	  cls = 2; // Ocean
+	}
+      } else if (blackbody > 320 && blackbody <= 500){
+	cls = 4; // Greenhouse
+      } else {
+	cls = 6; // Chthonian
+      }
+      break;
+    case 3:
+      if (blackbody <= 150){
+	cls = 1; // Ice
+      } else if (blackbody > 150 && blackbody <= 230){
+	if (rnd <= 0.5){
+	  cls = 1; // Ice
+	} else {
+	  cls = 8; // Ammonia
+	}
+      } else if (blackbody > 230 && blackbody <= 240){
+	cls = 1; // Ice ... Damn... lot of ice
+      } else if (blackbody > 240 && blackbody <= 320){
+	if (makeGarden === true){
+	  cls = 3; // Garden
+	} else if (rnd <= 0.5){
+	  cls = 3; // Garden .. again... we like gardens!
+	} else {
+	  cls = 2; // Ocean
+	}
+      } else if (blackbody > 320 && blackbody <= 500){
+	cls = 4; // Greenhouse
+      } else {
+	cls = 6; // Chthonian
+      }
+      break;
+    }
+
+    return cls;
+  };
+
+  Terrestrial.GetDensityRange = function(size, cls){
+    var drng = {min: 0, max:0};
+
+    if ((size === 0 && cls === 1) || (size === 0 && cls === 7) || (size === 1 && cls === 5) || (size === 1 && cls === 1) ||
+        (size === 2 && cls === 5) || (size === 2 && cls === 8) || (size === 3 && cls === 8)){
+      drng.min = 0.3;
+      drng.max = 0.7;
+    } else if ((size === 0 && cls === 0) || (size === 1 && cls === 0)){
+      drng.min = 0.6;
+      drng.max = 1.0;
+    } else {
+      drng.min = 0.8;
+      drng.max = 1.2;
+    }
+
+    return drng;
+  };
+
+  Terrestrial.ClassToName = function(cls){
+    if (cls >= 0 && cls < StellarBody.Table.TerrestrialClassTable.length){
+      return StellarBody.Table.TerrestrialClassTable[cls];
+    }
+    return "UNKNOWN";
+  };
+
+  Terrestrial.SizeToName = function(size){
+    switch(size){
+    case 0:
+      return "Tiny";
+    case 1:
+      return "Small";
+    case 2:
+      return "Standard";
+    case 3:
+      return "Large";
+    }
+    return "UNKNOWN";
+  };
+
 
   StellarBody.RegisterType(Terrestrial);
   return Terrestrial;
