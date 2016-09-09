@@ -243,26 +243,31 @@
       }
     }
 
-    var ggmd = GetGGMassDensityVariance(rng, rng.rollDice(6,3));
-    var diff = diff = (ggmd.Lmass - ggmd.Mmass)*0.45; // Both medium and large use the same variance.
-    var subd = 0;
-    switch(body.size){
-    case 0:
-      diff = (ggmd.Mmass - ggmd.Smass)*0.45; // Small uses a slightly different variance.
-      body.mass = ggmd.Smass + rng.value(0, diff);
-      subd = ggmd.Sdensity*0.1;
-      body.density = ggmd.Sdensity + rng.value(-subd, subd);
-      break;
-    case 1:
-      body.mass = ggmd.Mmass + rng.value(0, diff);
-      subd = ggmd.Mdensity*0.1;
-      body.density = ggmd.Mdensity + rng.value(-subd, subd);
-      break;
-    case 2:
-      body.mass = ggmd.Lmass + rng.value(0, diff);
-      subd = ggmd.Ldensity*0.1;
-      body.density = ggmd.Ldensity + rng.value(-subd, subd);
-      break;
+    if (typeof(options.mass) === 'number' && options.mass > 0 && typeof(options.density) === 'number' && options.density > 0){
+      body.mass = options.mass;
+      body.density = options.density;
+    } else {
+      var ggmd = GetGGMassDensityVariance(rng, rng.rollDice(6,3));
+      var diff = diff = (ggmd.Lmass - ggmd.Mmass)*0.45; // Both medium and large use the same variance.
+      var subd = 0;
+      switch(body.size){
+      case 0:
+	diff = (ggmd.Mmass - ggmd.Smass)*0.45; // Small uses a slightly different variance.
+	body.mass = ggmd.Smass + rng.value(0, diff);
+	subd = ggmd.Sdensity*0.1;
+	body.density = ggmd.Sdensity + rng.value(-subd, subd);
+	break;
+      case 1:
+	body.mass = ggmd.Mmass + rng.value(0, diff);
+	subd = ggmd.Mdensity*0.1;
+	body.density = ggmd.Mdensity + rng.value(-subd, subd);
+	break;
+      case 2:
+	body.mass = ggmd.Lmass + rng.value(0, diff);
+	subd = ggmd.Ldensity*0.1;
+	body.density = ggmd.Ldensity + rng.value(-subd, subd);
+	break;
+      }
     }
 
     body.diameter = Math.cbrt(body.mass / body.density);
@@ -272,10 +277,16 @@
 
   function Generate(body, rng, options){
     SetSize(body, rng, options);
-    body.rotationalPeriod = GetRotationalPeriod(rng, body.size);
-    body.axialTilt = GetAxialTilt(rng);
+    body.rotationalPeriod = (typeof(options.rotationPeriod) === 'number' && options.rotationPeriod > 0) ?
+      options.rotationPeriod : 
+      GetRotationalPeriod(rng, body.size);
+    body.axialTilt = (typeof(options.axialTilt) === 'number' && options.axialTilt >= 0 && options.axialTilt <= 90) ?
+      options.axialTile :
+      GetAxialTilt(rng);
 
-    if (typeof(options.parent) !== 'undefined' && typeof(options.parent.luminosity) === 'number' && typeof(options.orbitalRadius) === 'number'){
+    if (typeof(options.blackbody) === 'number' && options.blackbody >= 0){
+      body.blackbody = options.blackbody;
+    } else if (typeof(options.parent) !== 'undefined' && typeof(options.parent.luminosity) === 'number' && typeof(options.orbitalRadius) === 'number'){
       var l = options.parent.luminosity;
       var r = options.orbitalRadius;
       body.blackbody = 278*(Math.pow(l, 0.25)/Math.sqrt(r));
@@ -495,6 +506,34 @@
   GasGiant.prototype.constructor = GasGiant;
   GasGiant.Type = 1;
 
+  GasGiant.MassDensityRangeFromIndexAndSize = function(index, size){
+    index = Math.max(0, Math.min(8, index));
+    size = Math.max(0, Math.min(2, size));
+
+    var ent = StellarBody.Table.GGMassDensityTable[index];
+    var res = {};
+    switch (size){
+    case 0:
+      res.massMin = ent.Smass - ((index <= 1) ? 2.5 : 5);
+      res.massMax = ent.Smass + ((index <= 1) ? 2.5 : 5);
+      res.densityMin = ent.Sdensity - (0.1*ent.Sdensity);
+      res.densityMax = ent.Sdensity + (0.1*ent.Sdensity);
+      break;
+    case 1:
+      res.massMin = ent.Mmass - 25;
+      res.massMax = ent.Mmass + 25;
+      res.densityMin = ent.Mdensity - (0.1*ent.Mdensity);
+      res.densityMax = ent.Mdensity + (0.1*ent.Mdensity);
+      break;
+    case 2:
+      res.massMin = ent.Lmass - ((index <= 1) ? 100 : 250);
+      res.massMax = ent.Lmass + ((index <= 1) ? 100 : 250);
+      res.densityMin = ent.Ldensity - (0.1*ent.Ldensity);
+      res.densityMax = ent.Ldensity + (0.1*ent.Ldensity);
+      break;
+    }
+    return res;
+  };
 
   StellarBody.RegisterType(GasGiant);
   return GasGiant;

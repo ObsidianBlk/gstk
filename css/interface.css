@@ -20,6 +20,14 @@ div.hoverPanel {
     border-radius: 8px;
 }
 
+.hoverPanel.w200{ /* Optional Helper */
+    min-width: 200px;
+}
+
+.hoverPanel.w350{ /* Optional Helper */
+    min-width: 350px;
+}
+
 .hoverPanel.noPadding{ /* Optional Helper */
     padding: 0;
 }

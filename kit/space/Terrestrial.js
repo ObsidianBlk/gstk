@@ -538,7 +538,13 @@
     var sc = (data.blackbody > 0) ? GetSizeClassTempFromBlackBody(rng, data.blackbody, options) : GetSizeClassTemp(rng, options);
 
     data.size = sc.size;
+    if (typeof(options.size) === 'number' && options.size >= 0 && options.size < 4){
+      data.size = sc.size;
+    }
     data.class = sc.class;
+    if (typeof(options.class) === 'number' && options.class >= 0 && options.class <= StellarBody.Table.TerrestrialClassTable.length){
+      data.class = options.class;
+    }
     data.temperature = sc.temp;
 
     if (typeof(options.hydrographicPercent) === 'number'){
@@ -557,40 +563,40 @@
     }
 
     var atm = {
-      mass: 100, // Not a real value at the moment.
+      mass: 100, // This is a false value ATM.
       suffocating: false,
       corrosive: false,
       breathable: false,
       marginal: false,
       toxicity: 0
     };
-    switch (sc.size){
+    switch (data.size){
     case 0: // Tiny
-      switch(sc.class){
+      switch(data.class){
       case 0: case 1: case 7:
 	atm.mass = 0;
       }
       break;
     case 1: // Small
-      switch(sc.class){
+      switch(data.class){
       case 0: case 5:
 	atm.mass = 0;
       }
       break;
     case 2: // Standard
-      switch(sc.class){
+      switch(data.class){
       case 5: case 6:
 	atm.mass = 0;
       }
     case 3: // Large
-      if (sc.class === 6){
+      if (data.class === 6){
 	atm.mass = 0;
       }
     }
-    if (atm.mass > 0){
+    if (atm.mass > 2.0){
       // If atmosphere mass is not zero, then we actually calculate it now...
-      if (typeof(options.atmosphereicMass) === 'number'){
-	atm.mass = options.atmosphericMass;
+      if (typeof(options.atmmass) === 'number' && options.atmmass >= 0.25){
+	atm.mass = options.atmmass;
 	if (atm.mass < 0.25){
 	  atm.mass = 0.25;
 	} else if (atm.mass > 1.85){
@@ -602,50 +608,58 @@
     }
 
     // Defining atmosphere composition...
-    if (sc.size === 1 && sc.class === 1){
+    if (data.size === 1 && data.class === 1){
       atm.suffocating = true;
       atm.toxicity = (rng.rollDice(6, 3) >= 15) ? 2 : 1;
       atm.composition = ["nitrogen", "methane"];
-    } else if (sc.size === 2 && sc.class === 8){
+    } else if (data.size === 2 && data.class === 8){
       atm.suffocating = true;
       atm.corrosive = true;
       atm.toxicity = 3;
       atm.composition = ["ammonia", "methane", "nitrogen"];
-    } else if (sc.size === 2 && sc.class === 1){
+    } else if (data.size === 2 && data.class === 1){
       atm.suffocating = true;
       atm.toxicity = (rng.rollDice(6, 3) > 12) ? 1 : 0;
       atm.composition = ["carbon dioxide", "nitrogen"];
-    } else if (sc.size === 2 && sc.class === 2){
+    } else if (data.size === 2 && data.class === 2){
       atm.suffocating = true;
       atm.toxicity = (rng.rollDice(6, 3) > 12) ? 1 : 0;
       atm.composition = ["carbon dioxide", "nitrogen"];
-    } else if (sc.size === 2 && sc.class === 3){
+    } else if (data.size === 2 && data.class === 3){
       atm.composition = ["oxygen", "nitrogen"];
       atm.breathable = true;
-      atm.marginal = (rng.rollDice(6, 3) >= 12);
-    } else if (sc.size === 2 && sc.class === 4){
+      if (typeof(options.marginal) === 'boolean'){
+	atm.marginal = options.marginal;
+      } else {
+	atm.marginal = (rng.rollDice(6, 3) >= 12);
+      }
+    } else if (data.size === 2 && data.class === 4){
       atm.suffocating = true;
       atm.corrosive = true;
       atm.toxicity = 3;
       atm.composition = (rng.uniform() >= 0.5) ? ["carbon dioxide"] : ["nitrogen"];
-    } else if (sc.size === 3 && sc.class === 8){
+    } else if (data.size === 3 && data.class === 8){
       atm.suffocating = true;
       atm.corrosive = true;
       atm.toxicity = 3;
       atm.composition = ["helium", "ammonia", "methane"];
-    } else if (sc.size === 3 && sc.class === 1){
+    } else if (data.size === 3 && data.class === 1){
       atm.suffocating = true;
       atm.toxicity = 2;
       atm.composition = ["helium", "nitrogen"];
-    } else if (sc.size === 3 && sc.class === 2){
+    } else if (data.size === 3 && data.class === 2){
       atm.suffocating = true;
       atm.toxicity = 2;
       atm.composition = ["helium", "nitrogen"];
-    } else if (sc.size === 3 && sc.class === 3){
+    } else if (data.size === 3 && data.class === 3){
       atm.composition = ["oxygen", "nitrogen"];
       atm.breathable = true;
-      atm.marginal = (rng.rollDice(6, 3) >= 12);
-    } else if (sc.size === 3 && sc.class === 4){
+      if (typeof(options.marginal) === 'boolean'){
+	atm.marginal = options.marginal;
+      } else {
+	atm.marginal = (rng.rollDice(6, 3) >= 12);
+      }
+    } else if (data.size === 3 && data.class === 4){
       atm.suffocating = true;
       atm.corrosive = true;
       atm.toxicity = 3;
@@ -695,7 +709,7 @@
     var Dmax = 0;
     var BK = (data.density !== 0) ? Math.sqrt(data.blackbody/data.density) : 0;
 
-    switch(sc.size){
+    switch(data.size){
     case 0:
       Dmin = BK*0.004;
       Dmax = BK*0.024;
@@ -718,22 +732,26 @@
       options.diameter : Dmin + ((Dmax - Dmin)*rng.uniform()); // NOTE: Cheating. The book random effect says something about rolling 2D-2 or something.
     data.surfaceGravity = data.diameter * data.density;
     data.mass = data.density * (data.diameter * data.diameter * data.diameter);
-    data.atmosphere.pressure = CalculateAtmosphericPressure(sc.size, sc.class, data.atmosphere.mass, data.surfaceGravity);
-    data.resourceIndex = (function(){
-      switch(rng.rollDice(6, 3)){
-      case 3: case 4:
-        return 3;
-      case 5: case 6: case 7:
-        return 4;
-      case 8: case 9: case 10: case 11: case 12: case 13:
-        return 5;
-      case 14: case 15: case 16:
-        return 6;
-      case 17: case 18:
-        return 7;
-      }
-      return 0;
-    })();
+    data.atmosphere.pressure = CalculateAtmosphericPressure(data.size, data.class, data.atmosphere.mass, data.surfaceGravity);
+    if (typeof(options.resourceIndex) === 'number' && options.resourceIndex >= 0 && options.resourceIndex < StellarBody.Table.ResourceValueTable.length){
+      data.resourceIndex = Math.floor(options.resourceIndex);
+    } else {
+      data.resourceIndex = (function(){
+	switch(rng.rollDice(6, 3)){
+	case 3: case 4:
+          return 3;
+	case 5: case 6: case 7:
+          return 4;
+	case 8: case 9: case 10: case 11: case 12: case 13:
+          return 5;
+	case 14: case 15: case 16:
+          return 6;
+	case 17: case 18:
+          return 7;
+	}
+	return 0;
+      })();
+    }
     
     
     // --- Calculating Affinity Score...
@@ -781,8 +799,12 @@
     data.affinity = affinity;
 
     // --- Misc data.
-    data.rotationalPeriod = GetRotationalPeriod(rng, data.size);
-    data.axialTilt = GetAxialTilt(rng);
+    data.rotationalPeriod = (typeof(options.rotationPeriod) === 'number' && options.rotationPeriod > 0) ?
+      options.rotationPeriod : 
+      GetRotationalPeriod(rng, data.size);
+    data.axialTilt = (typeof(options.axialTilt) === 'number' && options.axialTilt >= 0 && options.axialTilt <= 90) ?
+      options.axialTile :
+      GetAxialTilt(rng);
   }
 
 

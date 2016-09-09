@@ -96,7 +96,10 @@
 
   function Generate(data, rng, options){
     // Calculating temperature
-    if (typeof(options.parent) !== 'undefined' && typeof(options.parent.luminosity) === 'number' && typeof(options.orbitalRadius) === 'number'){
+    if (typeof(options.blackbody) === 'number' && options.blackbody >= 0){
+      data.blackbody = options.blackbody;
+      data.temperature = data.blackbody*0.97;
+    } else if (typeof(options.parent) !== 'undefined' && typeof(options.parent.luminosity) === 'number' && typeof(options.orbitalRadius) === 'number'){
       var l = options.parent.luminosity;
       var r = options.orbitalRadius;
       data.blackbody = 278*(Math.pow(l, 0.25)/Math.sqrt(r));
@@ -107,12 +110,20 @@
       data.blackbody = data.temperature/0.97;
     }
 
-    data.resourceIndex = CalculateResources(rng);
+    if (typeof(options.resourceIndex) === 'number' && options.resourceIndex >= 0 && options.resourceIndex <= 10){
+      data.resourceIndex = Math.floor(options.resourceIndex);
+    } else {
+      data.resourceIndex = CalculateResources(rng);
+    }
     data.size = 0;
-    if (data.resourceIndex > 2){
-      data.size = 1;
-      if (data.resourceIndex > 5){
-        data.size = 2;
+    if (typeof(options.size) === 'number' && options.size >= 0 && options.size <= 2){
+      data.size = Math.floor(options.size);
+    } else {
+      if (data.resourceIndex > 2){
+	data.size = 1;
+	if (data.resourceIndex > 5){
+          data.size = 2;
+	}
       }
     }
   }
@@ -208,6 +219,18 @@
   AsteroidBelt.prototype.__proto__ = StellarBody.prototype;
   AsteroidBelt.prototype.constructor = AsteroidBelt;
   AsteroidBelt.Type = 3;
+
+  AsteroidBelt.SizeToName = function(size){
+    switch(size){
+    case 0:
+      return "Thin";
+    case 1:
+      return "Standard";
+    case 2:
+      return "Dense";
+    }
+    return "UNKNOWN";
+  };
 
   StellarBody.RegisterType(AsteroidBelt);
   return AsteroidBelt;

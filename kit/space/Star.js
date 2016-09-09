@@ -916,6 +916,14 @@
       return 278*(Math.pow(this.data.luminosity, 0.25)/Math.sqrt(radius));
     };
 
+    this.bodyOrbitalPeriodFromRadius = function(radius){
+      return Math.sqrt(Math.pow(radius, 3)/this.data.mass);
+    };
+
+    this.companionOrbitalPeriod = function(radius, cmass){
+      return Math.sqrt((radius*radius*radius)/(this.data.mass + cmass));
+    };
+
     this.hasBodiesOfType = function(type){
       if (typeof(this.data.body) !== 'undefined'){
 	var count = this.data.body.length;

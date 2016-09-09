@@ -63,6 +63,12 @@ requirejs([
       self.emit("change", this, value);
     }
 
+    function ForceRefresh(){
+      dom.node().value++;
+      dom.node().value--;
+      updateValueDisplayFuncDef(valueDispNode, dom.node().value);
+    }
+
     dom.on("change", HandleChange)
       .on("input", HandleChange);
 
@@ -74,8 +80,8 @@ requirejs([
           if (typeof(v) !== 'number'){
 	    throw new TypeError("Expected a number value.");
 	  }
-	  dom.attr("value", v);
-	  updateValueDisplayFunc(valueDispNode, v);
+	  dom.node().value = v;
+	  updateValueDisplayFuncDef(valueDispNode, v);
 	  self.emit("change", dom.node(), v);
         }
       },
@@ -90,9 +96,9 @@ requirejs([
 	  var val = Number(dom.attr("value"));
 	  if (m < val){
 	    dom.attr("value", m);
-	    updateValueDisplayFunc(valueDispNode, m);
 	  }
 	  dom.attr("max", m);
+	  ForceRefresh();
 	}
       },
 
@@ -106,9 +112,9 @@ requirejs([
 	  var val = Number(dom.attr("value"));
 	  if (m > val){
 	    dom.attr("value", m);
-	    updateValueDisplayFunc(valueDispNode, m);
 	  }
 	  dom.attr("min", m);
+	  ForceRefresh();
 	}
       },
 
@@ -123,6 +129,7 @@ requirejs([
 	    throw new RangeError("Value must be zero or greater.");
 	  }
 	  fixedSize = fs;
+	  ForceRefresh();
 	}
       },
 
@@ -534,10 +541,23 @@ requirejs([
     function UpdateTerrestrialClass(){
       var makeGarden = GardenRange.value >= 1;
       terrClass = Terrestrial.GetClassFromBlackbody(TerrSizeRange.value, BlackbodyRange.value, makeGarden, 0);
+      var orbPeriod = star.bodyOrbitalPeriodFromRadius(OrbitRange.value) * 365; // Convert earth years to earth days.
+      PeriodRange.max = orbPeriod;
       var drng = Terrestrial.GetDensityRange(TerrSizeRange.value, terrClass);
       DiameterRange.min = drng.min;
       DiameterRange.max = drng.max;
       self.set({terrclass: Terrestrial.ClassToName(terrClass)});
+    }
+
+    function UpdateGGMassDensityRanges(){
+      var rng = GasGiant.MassDensityRangeFromIndexAndSize(
+	GGMassIndexRange.value,
+	GGSizeRange.value
+      );
+      GGMassRange.min = rng.massMin;
+      GGMassRange.max = rng.massMax;
+      GGDensityRange.min = rng.densityMin;
+      GGDensityRange.max = rng.densityMax;
     }
 
     var OrbitRange = new RangeSliderInput(d3.select("#body-orbit"));
@@ -546,13 +566,12 @@ requirejs([
       if (NoUpdate === false){
 	if (star !== null){
 	  NoUpdate = true;
-	  var bb = star.blackbodyFromOrbitRadius(Number(value));
-	  console.log("Blackbody: " + bb.toFixed(4));
-	  BlackbodyRange.value = bb;
+	  BlackbodyRange.value = star.blackbodyFromOrbitRadius(Number(value));
 	}
       } else {
 	NoUpdate = false;
       }
+      UpdateTerrestrialClass();
     });
 
     var EccentricityRange = new RangeSliderInput(d3.select("#body-oecc"));
@@ -563,15 +582,16 @@ requirejs([
     var BlackbodyRange = new RangeSliderInput(d3.select("#body-blackbody"));
     BlackbodyRange.on("change", function(node, value){
       self.emit("blackbodychange", node, value);
-      UpdateTerrestrialClass();
       if (NoUpdate === false){
 	if (star !== null){
 	  NoUpdate = true;
 	  OrbitRange.value = star.orbitRadiusFromBlackbody(Number(value));
+	  console.log(OrbitRange.value);
 	}
       } else {
 	NoUpdate = false;
       }
+      UpdateTerrestrialClass();
     });
 
     var TerrSizeRange = new RangeSliderInput(d3.select("#body-terrsize"));
@@ -600,10 +620,69 @@ requirejs([
       self.emit("hydrographicchange", node, value);
     });
 
+    var PeriodRange = new RangeSliderInput(d3.select("#body-period"));
+    PeriodRange.on("change", function(node, value){
+      self.emit("rotperiodchange", node, value);
+    });
+
+    var AxisRange = new RangeSliderInput(d3.select("#body-axis"));
+    AxisRange.on("change", function(node, value){
+      self.emit("axischange", node, value);
+    });
+
     var GardenRange = new RangeSliderInput(d3.select("#body-garden"));
     GardenRange.on("change", function(node, value){
       self.emit("gardenchange", node, value);
       UpdateTerrestrialClass();
+    });
+
+    var AstSizeRange = new RangeSliderInput(d3.select("#ast-size"));
+    AstSizeRange.on("change", function(node, value){
+      self.emit("asteroidsizechange", node, value);
+      self.set({astsize: AsteroidBelt.SizeToName(Number(value))});
+    });
+
+    var ResourceIndexRange = new RangeSliderInput(d3.select("#resourceindex"));
+    ResourceIndexRange.on("change", function(node, value){
+      self.emit("resourceindexchange", node, value);
+      var v = Number(value);
+      if (v >= 0 && v < StellarBody.Table.ResourceValueTable.length){
+	self.set({resourcedesc: StellarBody.Table.ResourceValueTable[v].desc});
+      } else {
+	self.set({resourcedesc: "UNKNOWN"});
+      }
+    });
+
+    var GGSizeRange = new RangeSliderInput(d3.select("#gg-size"));
+    GGSizeRange.on("change", function(node, value){
+      self.emit("gasgiantsizechange", node, value);
+      var v = Number(value);
+      if (v === 0){
+	self.set({ggsize: "Small"});
+      } else if (v === 1){
+	self.set({ggsize: "Standard"});
+      } else if (v === 2){
+	self.set({ggsize: "Large"});
+      } else {
+	self.set({ggsize: "UNKNOWN"});
+      }
+      UpdateGGMassDensityRanges();
+    });
+
+    var GGMassIndexRange = new RangeSliderInput(d3.select("#gg-mdindex"));
+    GGMassIndexRange.on("change", function(node, value){
+      self.emit("gasgiantmassindexchange", node, value);
+      UpdateGGMassDensityRanges();
+    });
+
+    var GGMassRange = new RangeSliderInput(d3.select("#gg-mass"));
+    GGMassIndexRange.on("change", function(node, value){
+      self.emit("gasgiantmasschange", node, value);
+    });
+
+    var GGDensityRange = new RangeSliderInput(d3.select("#gg-density"));
+    GGMassIndexRange.on("change", function(node, value){
+      self.emit("gasgiantdensitychange", node, value);
     });
 
     this.on("tab-genrandom", function(){
@@ -611,9 +690,19 @@ requirejs([
       self.showSection("basiceditor", true, true);
     });
 
+    this.on("tab-gengasgiant", function(){
+      genType = 1;
+      self.showSection(["basiceditor", "gasgianteditor", "orientationeditor"], true, true);
+    });
+
     this.on("tab-genterrestrial", function(){
       genType = 2;
-      self.showSection(["basiceditor", "terrestrialeditor"], true, true);
+      self.showSection(["basiceditor", "terrestrialeditor", "orientationeditor", "resourceeditor"], true, true);
+    });
+
+    this.on("tab-genasteroidbelt", function(){
+      genType = 3;
+      self.showSection(["basiceditor", "asteroideditor", "resourceeditor"], true, true);
     });
 
     Object.defineProperties(this, {
@@ -642,7 +731,7 @@ requirejs([
 
 	    BlackbodyRange.max = star.blackbodyFromOrbitRadius(star.limit.innerRadius);
 	    BlackbodyRange.min = star.blackbodyFromOrbitRadius(star.limit.outerRadius);
-	    BlackbodyRange.value = BlackbodyRange.min;
+	    BlackbodyRange.value = BlackbodyRange.max;
 	  }
 	}
       },
@@ -655,6 +744,60 @@ requirejs([
       "orbitalEccentricity":{
 	enumerate:true,
 	get:function(){return EccentricityRange.value;}
+      },
+
+      "terrestrialConfig":{
+	enumerate:true,
+	get:function(){
+	  var ops = {
+	    size: TerrSizeRange.value,
+	    class: terrClass,
+	    diameter: DiameterRange.value,
+	    hydrographicPercent: HydroRange.value,
+	    atmmass: AtmmassRange.value,
+	    rotationPeriod: PeriodRange.value,
+	    axialTile: AxisRange.value,
+	    resourceIndex: ResourceIndexRange.value
+	  };
+	  var name = this.bodyName;
+	  if (name !== null){
+	    ops.name = name;
+	  }
+	  return ops;
+	}
+      },
+
+      "asteroidBeltConfig":{
+	enumerate:true,
+	get:function(){
+	  var ops = {
+	    resourceIndex: ResourceIndexRange.value,
+	    size: AstSizeRange.value
+	  };
+	  var name = this.bodyName;
+	  if (name !== null){
+	    ops.name = name;
+	  }
+	  return ops;
+	}
+      },
+
+      "gasGiantConfig":{
+	enumerate:true,
+	get:function(){
+	  var ops = {
+	    size: GGSizeRange.value,
+	    mass: GGMassRange.value,
+	    density: GGDensityRange.value,
+	    rotationPeriod: PeriodRange.value,
+	    axialTile: AxisRange.value
+	  };
+	  var name = this.bodyName;
+	  if (name !== null){
+	    ops.name = name;
+	  }
+	  return ops;
+	}
       },
 
       "blackbody":{
@@ -1177,11 +1320,11 @@ requirejs([
     bodyEditorPanel.flipEdge = false;
     bodyEditorPanel.on("place", function(){
       var ops = {};
-      if (bodyEditorPanel.name !== null){
-	ops.name = bodyEditorPanel.name;
-      }
       switch(bodyEditorPanel.generationType){
       case 0: // Random Anything!
+	if (bodyEditorPanel.bodyName !== null){
+	  ops.name = bodyEditorPanel.bodyName;
+	}
 	starView.star.generateBody(
 	  bodyEditorPanel.orbitalRadius,
 	  bodyEditorPanel.orbitalEccentricity,
@@ -1189,20 +1332,29 @@ requirejs([
 	  ops
 	);
 	break;
+      case 1: // Custom Gas Giant
+	starView.star.generateBody(
+	  bodyEditorPanel.orbitalRadius,
+	  bodyEditorPanel.orbitalEccentricity,
+	  0,
+	  bodyEditorPanel.gasGiantConfig
+	);
+	break;
       case 2: // Custom Terrestrial
-	ops.size = bodyEditorPanel.terrestrialSize;
-	ops.class = bodyEditorPanel.terrestrialClass;
-	ops.hydrographics = bodyEditorPanel.hydrographics;
-	ops.diameter = bodyEditorPanel.terrestrialDiameter;
-	ops.atmmass = bodyEditorPanel.atmosphericMass;
-
 	starView.star.generateBody(
 	  bodyEditorPanel.orbitalRadius,
 	  bodyEditorPanel.orbitalEccentricity,
 	  1,
-	  ops
+	  bodyEditorPanel.terrestrialConfig
 	);
 	break;
+      case 3: // Custom Asteroid Belt
+	starView.star.generateBody(
+	  bodyEditorPanel.orbitalRadius,
+	  bodyEditorPanel.orbitalEccentricity,
+	  2,
+	  bodyEditorPanel.asteroidBeltConfig
+	);
       }
       starView.showOrbitCursor = false;
       bodyEditorPanel.show(false);

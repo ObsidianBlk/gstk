@@ -21,7 +21,7 @@
     <div id="RegionPanel" class="panel hidden"></div>
     <div id="StarsystemPanel" class="panel hidden"></div>
 
-    <div class="hoverPanel noPadding hidden MainMenu">
+    <div class="hoverPanel w200 noPadding hidden MainMenu">
       <span class="heading">Main Menu</span>
       <ul class="menu">
 	<li><a href="#" id="region">Enter Region</a></li>
@@ -30,7 +30,7 @@
       </ul>
     </div>
 
-    <div class="hoverPanel noPadding hidden RegionMenu">
+    <div class="hoverPanel w200 noPadding hidden RegionMenu">
       <span class="heading">selection</span>
       <div class="section regionmain">
 	<ul class="menu">
@@ -62,7 +62,7 @@
       </div>
     </div>
 
-    <div class="hoverPanel noPadding hidden StarViewMenu">
+    <div class="hoverPanel w200 noPadding hidden StarViewMenu">
       <span class="heading">selection</span>
       <div class="section starviewmain">
 	<ul class="menu">
@@ -106,7 +106,7 @@
       </ul>
     </div>
 
-    <div class="hoverPanel hidden starEditor">
+    <div class="hoverPanel w350 hidden starEditor">
       <span class="heading">Star Editor</span>
       <ul class="hmenu thin tabs">
 	<li><a class="selected" href="#" id="genrandom">Random</a></li>
@@ -166,7 +166,7 @@
       </ul>
     </div>
 
-    <div class="hoverPanel hidden bodyEditor">
+    <div class="hoverPanel w350 hidden bodyEditor">
       <span class="heading">Stellar Body Editor</span>
       <ul class="hmenu thin tabs">
 	<li><a class="selected" href="#" id="genrandom">Random</a></li>
@@ -198,6 +198,20 @@
 	</div>
       </div>
 
+      <div class="section hidden orientationeditor">
+        <span class="subheading">Orientation</span>
+	<div class="gstkinput">
+	  <label for="body-axis">Axial Tilt:</label>
+	  <div class="field"><input type="range" min="0" max="90" value="0" step="0.01" id="body-axis"></div>
+	  <span class="value">0</span>
+	</div>
+	<div class="gstkinput">
+	  <label for="body-period">Rot. Period:</label>
+	  <div class="field"><input type="range" min="0.1" max="3650" value="1" step="0.1" id="body-period"></div>
+	  <span class="value">1</span>
+	</div>
+      </div>
+
       <div class="section hidden terrestrialeditor">
         <span class="subheading">Terrestrial: <span class="info" id="terrclass">UNKNOWN</span></span>
 	<div class="gstkinput">
@@ -223,6 +237,48 @@
 	<div class="gstkinput">
 	  <label for="body-garden">Garden World:</label>
 	  <div class="field"><input type="range" min="0" max="1" value="0" step="1" id="body-garden"></div>
+	  <span class="value">0</span>
+	</div>
+      </div>
+
+      <div class="section hidden asteroideditor">
+        <span class="subheading">Asteroid: <span class="info" id="astsize">Thin</span></span>
+	<div class="gstkinput">
+	  <label for="ast-size">Size:</label>
+	  <div class="field"><input type="range" min="0" max="2" value="0" step="1" id="ast-size"></div>
+	  <span class="value">0</span>
+	</div>
+      </div>
+
+      <div class="section hidden gasgianteditor">
+        <span class="subheading">Gas Giant: <span class="info" id="ggsize">Small</span></span>
+	<div class="gstkinput">
+	  <label for="gg-size">Size:</label>
+	  <div class="field"><input type="range" min="0" max="2" value="0" step="1" id="gg-size"></div>
+	  <span class="value">0</span>
+	</div>
+	<div class="gstkinput">
+	  <label for="gg-mdindex">Mass Index:</label>
+	  <div class="field"><input type="range" min="0" max="8" value="0" step="1" id="gg-mdindex"></div>
+	  <span class="value">0</span>
+	</div>
+	<div class="gstkinput">
+	  <label for="gg-mass">Mass:</label>
+	  <div class="field"><input type="range" min="0" max="2" value="0" step="0.01" id="gg-mass"></div>
+	  <span class="value">0</span>
+	</div>
+	<div class="gstkinput">
+	  <label for="gg-density">Density:</label>
+	  <div class="field"><input type="range" min="0" max="2" value="0" step="0.01" id="gg-density"></div>
+	  <span class="value">0</span>
+	</div>
+      </div>
+
+      <div class="section hidden resourceeditor">
+        <span class="subheading">Resources: <span class="info" id="resourcedesc">Worthless</span></span>
+	<div class="gstkinput">
+	  <label for="resourceindex">Index:</label>
+	  <div class="field"><input type="range" min="0" max="10" value="0" step="1" id="resourceindex"></div>
 	  <span class="value">0</span>
 	</div>
       </div>
