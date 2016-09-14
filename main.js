@@ -973,8 +973,8 @@ requirejs([
     });
 
     var menuPanel = new HoverPanelCtrl(d3.select(".hoverPanel.RegionMenu"));
-    menuPanel.edge = HoverPanelCtrl.Edge.Right;
-    menuPanel.flipEdge = true;
+    menuPanel.edge = HoverPanelCtrl.Edge.Left;
+    menuPanel.flipEdge = false;
     menuPanel.on("filters", function(){
       menuPanel.showSection("regionfilters", true, true);
     });
@@ -1389,7 +1389,7 @@ requirejs([
     var starPanelIntervalID = null;
 
     var starViewMenu = new HoverPanelCtrl(d3.select(".hoverPanel.StarViewMenu"));
-    starViewMenu.edge = HoverPanelCtrl.Edge.Right;
+    starViewMenu.edge = HoverPanelCtrl.Edge.Left;
     starViewMenu.flipEdge = true;
     starViewMenu.on("toggle", function(){
       starViewMenu.showSection("infotoggle", true, true);
