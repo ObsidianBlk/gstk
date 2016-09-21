@@ -1076,9 +1076,31 @@
           };
           
           this.data.companion.push(c);
+	  this.data.companion.sort(function(a, b){
+	    return a.orbit.avgRadius - b.orbit.avgRadius;
+	  });
         }
       }
     };
+
+    this.removeCompanion = function(index){
+      if (this.data.companion instanceof Array){
+	if (index >= 0 && index <= this.data.companion.length){
+	  this.data.companion.splice(index, 1);
+	}
+      }
+    };
+
+    this.getCompanion = function(index){
+      if (this.data.companion instanceof Array){
+	if (index >= 0 && index <= this.data.companion.length){
+	  return WrapCompanion(this.data.companion[index]);
+	}
+      }
+      return null;
+    };
+
+    // --------
 
     function GetGasGiantSize(inSnowline){
       var roll = rng.rollDice(6, 3) + ((inSnowline) ? 4 : 0);
@@ -1277,6 +1299,10 @@
 	GenerateRandomGasGiants(this, radius, 0, this.data.body.length, maxBodies);
       }
       GenerateRandomBodies(this, this.data.limit.innerRadius, 1, this.data.body.length, maxBodies);
+
+      this.data.body.sort(function(a, b){
+	return a.avgRadius - b.avgRadius;
+      });
     };
 
     this.generateBody = function(r, ecc, type, options){
@@ -1425,6 +1451,28 @@
 
       }
 
+      return false;
+    };
+
+
+    this.removeBody = function(body){
+      if (this.data.body instanceof Array){
+	for (var i=0; i < this.data.body.length; i++){
+	  if (this.data.body[i].body === body){
+	    this.data.body.splice(i, 1);
+	  }
+	}
+      }
+    };
+
+    this.hasBody = function(body){
+      if (this.data.body instanceof Array){
+	for (var i=0; i < this.data.body.length; i++){
+	  if (this.data.body[i].body === body){
+	    return true;
+	  }
+	}
+      }
       return false;
     };
 

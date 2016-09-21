@@ -97,35 +97,6 @@
     ]
   };
 
-  /*function GenerateStar(rng, seed, companionProbability, supportGardenWorlds, forceBreathable, depth){
-    if (typeof(depth) !== 'number'){
-      depth = 0;
-    }
-    if (depth >= MAX_GEN_RECURSION){return null;}
-
-    supportGardenWorlds = (supportGardenWorlds === true) ? true : false;
-    forceBreathable = (forceBreathable === true) ? true : false;
-
-    var cp = companionProbability * 0.01;
-    var s = new Star({
-      seed: seed,
-      supportGardenWorlds: supportGardenWorlds
-    });
-
-    if (rng.uniform() <= cp){
-      s.generateCompanion();
-      if (rng.uniform() <= cp){
-	s.generateCompanion();
-      }
-    }
-    s.generateStellarBodies();
-    
-    if (forceBreathable === true && s.containsBreathableBody() === false){
-      return GenerateStar(rng, companionProbability, forceBreathable, depth + 1);
-    }
-    return s;
-  }*/
-
   function DistanceBetween(r1, a1, r2, a2){
     var res = ((r1*r1)+(r2*r2)) - (2*r1*r2*Math.cos(a1 - a2));
     return Math.sqrt(res);

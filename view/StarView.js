@@ -269,17 +269,15 @@
       "selectBody":{
 	enumerate:true,
 	get:function(){return selectedBody;},
-	set:function(i){
-	  if (typeof(i) === 'number'){
-	    if (star !== null){
-	      if (i >= 0 && i < star.bodyCount){
-		selectedBody = i;
-	      }
+	set:function(b){
+	  if (b instanceof StellarBody){
+	    if (star !== null && star.hasBody(b) === true){
+	      selectedBody = b;
 	    }
-	  } else if (i === null){
-
+	  } else if (b === null){
+	    selectedBody = null;
 	  } else {
-	    throw new TypeError("Expected number value or null.");
+	    throw new TypeError("Expected StellarBody instance object or null.");
 	  }
 	}
       },
@@ -380,11 +378,24 @@
 
     function RenderOrbits(orbit, objs, clsname, noCircle){
       noCircle = (noCircle === true) ? true : false;
+      if (selectedBody !== null){
+	objs.forEach(function(b){
+	  if (b.body === selectedBody){
+	    planetLayer.append("g")
+	      .attr("class", "orbit-selected")
+	      .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(orbit.rMax) + ")")
+	      .append("ellipse")
+	      .attr("rx", mapScale(b.rMin))
+	      .attr("ry", mapScale(b.rMax));
+	  }
+	});
+      }
       var group = planetLayer.append("g")
 	.attr("class", clsname)
 	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(orbit.rMax) + ")");
+	
 
-      var ellipses = group.selectAll("ellipse")
+      group.selectAll("ellipse")
 	.data(objs).enter()
 	.append("ellipse")
 	.attr("rx", function(d){
@@ -392,8 +403,11 @@
 	})
 	.attr("ry", function(d){
 	  return mapScale(d.rMax);
-	});
-      if (bodyEvents.mouseOver){
+	})
+	.on("mouseover", (bodyEvents.mouseOver) ? bodyEvents.mouseOver : null)
+	.on("mouseout", (bodyEvents.mouseOut) ? bodyEvents.mouseOut : null)
+	.on("click", (bodyEvents.clicked) ? bodyEvents.clicked : null);
+      /*if (bodyEvents.mouseOver){
 	ellipses.on("mouseover", bodyEvents.mouseOver);
       }
       if (bodyEvents.mouseOut){
@@ -401,10 +415,10 @@
       }
       if (bodyEvents.click){
 	ellipses.on("click", bodyEvents.click);
-      }
+      }*/
 
       if (noCircle === false){
-	var circles = group.selectAll("circle")
+	group.selectAll("circle")
 	  .data(objs).enter()
 	  .append("circle")
 	  .attr("cy", function(d){
@@ -412,9 +426,12 @@
 	  })
 	  .attr("r", function(d){
 	    return bodyScale(d.body.diameter);
-	  });
+	  })
+	  .on("mouseover", (bodyEvents.mouseOver) ? bodyEvents.mouseOver : null)
+	  .on("mouseout", (bodyEvents.mouseOut) ? bodyEvents.mouseOut : null)
+	  .on("click", (bodyEvents.clicked) ? bodyEvents.clicked : null);
 
-	if (bodyEvents.mouseOver){
+	/*if (bodyEvents.mouseOver){
 	  circles.on("mouseover", bodyEvents.mouseOver);
 	}
 	if (bodyEvents.mouseOut){
@@ -422,7 +439,7 @@
 	}
 	if (bodyEvents.click){
 	  circles.on("click", bodyEvents.click);
-	}
+	}*/
       }
     }
 

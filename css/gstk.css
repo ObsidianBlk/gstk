@@ -103,6 +103,17 @@ div.panel{
     stroke-dasharray: 3,2;
 }
 
+.orbit-selected circle{
+    fill: #F00;
+    stroke: none;
+}
+
+.orbit-selected ellipse{
+    fill: none;
+    stroke: #F00;
+    stroke-width: 4;
+}
+
 .star{
     stroke: none;
 }

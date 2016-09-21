@@ -884,6 +884,8 @@ requirejs([
     var mapSize = Math.min(DOMEventNotifier.getWidth(), DOMEventNotifier.getHeight());
     var hmapSize = Math.round(mapSize*0.5);
 
+    var selectedStar = null;
+
     var map = svg.append("g");
 
     var regionView = new RegionView(d3, map);
@@ -906,6 +908,27 @@ requirejs([
 	click:handleClick
       });
     }
+
+    var starSelectionPanel = new HoverPanelCtrl(d3.select(".hoverPanel.RegionStarSelection"));
+    starSelectionPanel.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
+    starSelectionPanel.flipEdge = false;
+    starSelectionPanel.on("view", function(){
+      starSelectionPanel.show(false);
+      self.emit("starClicked", selectedStar);
+      selectedStar = null;
+    });
+    starSelectionPanel.on("remove", function(){
+      starSelectionPanel.show(false);
+      regionView.region.removeStar(selectedStar);
+      selectedStar = null;
+      SetDisplayMode();
+      menuPanel.show(true);
+    });
+    starSelectionPanel.on("cancel", function(){
+      selectedStar = null;
+      starSelectionPanel.show(false);
+      menuPanel.show(true);
+    });
 
     var starEditorPanel = new StarEditorPanelCtrl(d3.select(".hoverPanel.starEditor"));
     starEditorPanel.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
@@ -1036,39 +1059,41 @@ requirejs([
       var x = d3.event.x;
       var y = d3.event.y;
 
-      if (infoPanelIntervalID === null){
-	infoPanelIntervalID = window.setTimeout(function(){
-	  window.clearTimeout(infoPanelIntervalID);
-	  infoPanelIntervalID = null;
+      if (starSelectionPanel.showing() === false){
+	if (infoPanelIntervalID === null){
+	  infoPanelIntervalID = window.setTimeout(function(){
+	    window.clearTimeout(infoPanelIntervalID);
+	    infoPanelIntervalID = null;
 
-	  infoPanel.set({
-	    position:"(R:" + d.r.toFixed(2) + ", A:" + d.a.toFixed(2) + ")",
-	    name: d.star.name,
-	    sequence: d.star.sequence + " / " + d.star.class,
-	    mass: "" + d.star.mass,
-	    radius: "" + d.star.radius.toFixed(4),
-	    age: "" + d.star.age.toFixed(2),
-	    temperature: "" + d.star.temperature,
-	    orbitals: "(" + 
-	      d.star.companionCount + " / " + 
-	      d.star.countBodiesOfType(GasGiant.Type) + " / " + 
-	      d.star.countBodiesOfType(Terrestrial.Type) + " / " + 
-	      d.star.countBodiesOfType(AsteroidBelt.Type) + ")"
-	  });
-	  infoPanel.show(true, x, y);
-	}, 1000);
+	    infoPanel.set({
+	      position:"(R:" + d.r.toFixed(2) + ", A:" + d.a.toFixed(2) + ")",
+	      name: d.star.name,
+	      sequence: d.star.sequence + " / " + d.star.class,
+	      mass: "" + d.star.mass,
+	      radius: "" + d.star.radius.toFixed(4),
+	      age: "" + d.star.age.toFixed(2),
+	      temperature: "" + d.star.temperature,
+	      orbitals: "(" + 
+		d.star.companionCount + " / " + 
+		d.star.countBodiesOfType(GasGiant.Type) + " / " + 
+		d.star.countBodiesOfType(Terrestrial.Type) + " / " + 
+		d.star.countBodiesOfType(AsteroidBelt.Type) + ")"
+	    });
+	    infoPanel.show(true, x, y);
+	  }, 1000);
+	}
+
+	d3.select(this)
+	  .append("circle")
+	  .attr("id", id2)
+	  .attr("r", regionView.mapScale(3))
+	  .attr("fill", "none")
+	  .attr("stroke", "#F00")
+	  .attr("strokeWidth", 0.5);
+
+	d3.select("#circle_" + i)
+	  .attr("r", regionView.starScale(0.01*AU));
       }
-
-      d3.select(this)
-	.append("circle")
-	.attr("id", id2)
-	.attr("r", regionView.mapScale(3))
-	.attr("fill", "none")
-	.attr("stroke", "#F00")
-	.attr("strokeWidth", 0.5);
-
-      d3.select("#circle_" + i)
-	.attr("r", regionView.starScale(0.01*AU));
     }
 
     function handleMouseOut(d, i){
@@ -1088,7 +1113,16 @@ requirejs([
     }
 
     function handleClick(d, i){
-      self.emit("starClicked", d.star);
+      if (starSelectionPanel.showing() === false){
+	menuPanel.show(false);
+	selectedStar = d.star;
+	var name = selectedStar.name;
+	if (name.length > 12){
+	  name = name.substr(0, 9) + "...";
+	}
+	starSelectionPanel.set({starname:name});
+	starSelectionPanel.show(true);
+      }
     }
     
     DOMEventNotifier.on("resize", function(width, height){
@@ -1273,6 +1307,21 @@ requirejs([
       infoPanel.show(false);
     };
 
+    starView.onBodyClicked = function(d){
+      starView.selectedBody = d.body;
+      starViewMenu.show(false);
+      bodyEditorPanel.show(false);
+      var name = d.body.name;
+      if (name.length > 12){
+	name = name.substr(0, 9) + "...";
+      }
+      bodySelectedMenu.set({
+	bodyname:name
+      });
+      starView.render();
+      bodySelectedMenu.show(true);
+    };
+
     starView.onStarMouseOver = function(s){
       var x = d3.event.x;
       var y = d3.event.y;
@@ -1390,7 +1439,7 @@ requirejs([
 
     var starViewMenu = new HoverPanelCtrl(d3.select(".hoverPanel.StarViewMenu"));
     starViewMenu.edge = HoverPanelCtrl.Edge.Left;
-    starViewMenu.flipEdge = true;
+    starViewMenu.flipEdge = false;
     starViewMenu.on("toggle", function(){
       starViewMenu.showSection("infotoggle", true, true);
     });
@@ -1420,6 +1469,22 @@ requirejs([
       bodyEditorPanel.star = starView.star;
       bodyEditorPanel.show(true);
       starViewMenu.show(false);
+    });
+
+    var bodySelectedMenu = new HoverPanelCtrl(d3.select(".hoverPanel.StarBodySelection"));
+    bodySelectedMenu.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
+    bodySelectedMenu.flipEdge = false;
+    bodySelectedMenu.on("remove", function(){
+      bodySelectedMenu.show(false);
+      starView.star.removeBody(starView.selectedBody);
+      starView.selectedBody = null;
+      starView.render();
+      starViewMenu.show(true);
+    });
+    bodySelectedMenu.on("cancel", function(){
+      bodySelectedMenu.show(false);
+      starView.selectedBody = null;
+      starViewMenu.show(true);
     });
 
     map.on("mousemove", function(){
