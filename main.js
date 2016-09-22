@@ -1232,7 +1232,7 @@ requirejs([
       var x = d3.event.x;
       var y = d3.event.y;
 
-      if (infoPanelIntervalID === null){
+      if (bodySelectedMenu.showing() === false && infoPanelIntervalID === null){
 	infoPanelIntervalID = window.setTimeout(function(){
 	  window.clearTimeout(infoPanelIntervalID);
 	  infoPanelIntervalID = null;
@@ -1308,8 +1308,9 @@ requirejs([
     };
 
     starView.onBodyClicked = function(d){
-      starView.selectedBody = d.body;
+      starView.selectBody = d.body;
       starViewMenu.show(false);
+      infoPanel.show(false);
       bodyEditorPanel.show(false);
       var name = d.body.name;
       if (name.length > 12){
@@ -1326,7 +1327,7 @@ requirejs([
       var x = d3.event.x;
       var y = d3.event.y;
 
-      if (starPanelIntervalID === null){
+      if (bodySelectedMenu.showing() === false && starPanelIntervalID === null){
 	starPanelIntervalID = window.setTimeout(function(){
 	  window.clearTimeout(starPanelIntervalID);
 	  starPanelIntervalID = null;
@@ -1476,14 +1477,15 @@ requirejs([
     bodySelectedMenu.flipEdge = false;
     bodySelectedMenu.on("remove", function(){
       bodySelectedMenu.show(false);
-      starView.star.removeBody(starView.selectedBody);
-      starView.selectedBody = null;
+      starView.star.removeBody(starView.selectBody);
+      starView.selectBody = null;
       starView.render();
       starViewMenu.show(true);
     });
     bodySelectedMenu.on("cancel", function(){
       bodySelectedMenu.show(false);
-      starView.selectedBody = null;
+      starView.selectBody = null;
+      starView.render();
       starViewMenu.show(true);
     });
 
