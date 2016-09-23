@@ -535,6 +535,23 @@
     return res;
   };
 
+  GasGiant.ValidateData = function(data){
+    if (typeof(data) === 'string'){
+      try{
+	data = JSON.parse(data);
+      } catch (e) {
+	return false;
+      }
+    } 
+
+    if (typeof(data) === typeof({})){
+      if (tv4.validate(data, GasGiantSchema) === true){
+	return true;
+      }
+    }
+    return false;
+  };
+
   StellarBody.RegisterType(GasGiant);
   return GasGiant;
 });

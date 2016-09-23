@@ -1545,7 +1545,7 @@ requirejs([
 
   // -------------------------------------------------------------------------------------------------------------------------------------
 
-  function JSONControl(domID){
+  /*function JSONControl(domID){
     Emitter.call(this);
 
     var self = this;
@@ -1571,7 +1571,7 @@ requirejs([
     };
   }
   JSONControl.prototype.__proto__ = Emitter.prototype;
-  JSONControl.prototype.constructor = JSONControl;
+  JSONControl.prototype.constructor = JSONControl;*/
 
 
 
@@ -1579,15 +1579,8 @@ requirejs([
   // MAIN
 
   ready(function(){
-    var regionRadius = 21;
-    var seed = "Bryan Miller";
-    /*var region = new Region({
-      seed: seed,
-      radius: regionRadius,
-      autoGenerate: true
-    });
-    console.log(region);
-    return;*/ // Temporary cutoff!
+    //var regionRadius = 21;
+    //var seed = "Bryan Miller";
 
     var starsystemctrl = new StarSystemCtrl("StarsystemPanel");
     starsystemctrl.on("region", function(){
@@ -1607,7 +1600,11 @@ requirejs([
     });
     regionctrl.on("exportJSON", function(jstr){
       regionctrl.show(false);
-      loader.show(true, jstr);
+      var srcData = d3.select("#srcdata");
+      if (srcData.empty() === false){
+	srcData.property("value", jstr);
+      }
+      loader.show(true);
     });
 
     var mainmenu = new HoverPanelCtrl(d3.select(".hoverPanel.MainMenu"));
@@ -1627,7 +1624,10 @@ requirejs([
     mainmenu.show(true);
 
 
-    var loader = new JSONControl("jsonsrc");
+    //var loader = new JSONControl("jsonsrc");
+    var loader = new HoverPanelCtrl(d3.select(".hoverPanel.FileIO"));
+    loader.edge = HoverPanelCtrl.Edge.Center;
+    loader.flipEdge = false;
     loader.on("close", function(){
       loader.show(false);
       mainmenu.show(true);
@@ -1636,7 +1636,11 @@ requirejs([
     loader.on("load", function(jstr){
       loader.show(false);
       try{
-	regionctrl.generate({jsonString:jstr});
+	var srcData = d3.select("#srcdata");
+	if (srcData.empty() === false){
+	  //dom.select("#jsonsrc").property("value")
+	  regionctrl.generate({data:srcData.property("value")});
+	}
       } catch (e){
 	console.error(e);
 	mainmenu.show(true);
@@ -1645,6 +1649,107 @@ requirejs([
 
       regionctrl.show(true);
     });
-  });
 
+
+    /*
+      Drawing the logo!
+     */
+    function RenderOpeningScreen(){
+      var logo_padding_left = 10;
+      var logo_padding_right = 10;
+      var svg = d3.select("#OpeningScreenSVG");
+      if (svg.empty() === true){
+	svg = d3.select("#MainMenu")
+	  .append("svg")
+	  .attr("id", "OpeningScreenSVG")
+	  .attr("width", "100%")
+	  .attr("height", "100%");
+      }
+      svg.selectAll("*").remove();
+
+      var GLogoText = svg.append("text")
+	.attr("x", 0).attr("y", 0)
+	.attr("font-family", "Cormorant")
+	.attr("font-size", "40")
+	.attr("text-anchor", "middle")
+	.attr("alignment-baseline", "middle")
+	.attr("stroke", "none")
+	.attr("fill", "#09F")
+	.text("GURPS");
+      // NOTE: Because text is aligned middle (horizontal and verticle), the X,Y position will be changed from the 0 value given.
+
+      var GLBox = GLogoText.node().getBBox(); // Getting the current BBox
+      GLogoText.attr("x", GLBox.x + GLBox.width + logo_padding_left + 40); // Adjusting to the correct X position, given a middle alignment
+      GLogoText.attr("y", GLBox.y + GLBox.height + 20);
+      GLBox = GLogoText.node().getBBox(); // Getting the updated BBox.
+
+      svg.append("rect")
+	.attr("x", 0).attr("y", GLBox.y + (GLBox.height*0.25))
+	.attr("width", GLBox.x - logo_padding_left).attr("height", GLBox.height*0.5)
+	.attr("fill", "#09F")
+	.attr("stroke", "none");
+
+      svg.append("rect")
+	.attr("x", GLBox.x + GLBox.width + logo_padding_right).attr("y", GLBox.y + (GLBox.height*0.25))
+	.attr("width", DOMEventNotifier.getWidth() - (GLBox.x + GLBox.width + logo_padding_right))
+	.attr("height", GLBox.height*0.5)
+	.attr("fill", "#09F")
+	.attr("stroke", "none");
+
+      var hexCage = [
+	{x:GLBox.x - logo_padding_left, y:GLBox.y + (GLBox.height*0.25)},
+	{x:GLBox.x, y:GLBox.y},
+	{x:GLBox.x + GLBox.width, y:GLBox.y},
+	{x:GLBox.x + GLBox.width + logo_padding_right, y:GLBox.y + (GLBox.height*0.25)},
+	{x:GLBox.x + GLBox.width + logo_padding_right, y:GLBox.y + (GLBox.height*0.75)},
+	{x:GLBox.x + GLBox.width, y:GLBox.y + GLBox.height},
+	{x:GLBox.x, y:GLBox.y + GLBox.height},
+	{x:GLBox.x - logo_padding_left, y:GLBox.y + (GLBox.height*0.75)}
+      ];
+      
+      var d3line2 = d3.svg.line()
+	.x(function(d){return d.x;})
+	.y(function(d){return d.y;})
+	.interpolate("linear");
+
+      svg.append("svg:path")
+	.attr("d", d3line2(hexCage))
+	.style("stroke-width", 3)
+	.style("stroke", "#09F")
+	.style("fill", "none");
+
+      var SubLogos = svg.append("g");
+
+      var SLogoText = SubLogos.append("text")
+	.attr("x", 0).attr("y", 0)
+	.attr("font-family", "Coda")
+	.attr("font-size", "60")
+	.attr("alignment-baseline", "hanging")
+	.attr("stroke", "none")
+	.attr("fill", "#09F")
+	.text("SPACE");
+      var SLBox = SLogoText.node().getBBox();
+      
+      var ToolkitText = SubLogos.append("text")
+	.attr("x", SLBox.width + 4).attr("y", 3)
+	.attr("font-family", "Coda")
+	.attr("font-size", "30")
+	.attr("alignment-baseline", "hanging")
+	.attr("stroke", "none")
+	.attr("fill", "#09F")
+	.text("Toolkit");
+
+      // Now getting the SubLogos group bbox.
+      SLBox = SubLogos.node().getBBox();
+      var slx = (DOMEventNotifier.getWidth()*0.5) - (SLBox.width*0.5);
+      var sly = GLBox.y + GLBox.height + 10;
+      SubLogos.attr("transform", "translate(" + slx + ", " + sly + ")");
+    }
+
+    DOMEventNotifier.on("resize", function(width, height){
+      console.log("ping");
+      RenderOpeningScreen();
+    });
+    RenderOpeningScreen();
+  });
 });

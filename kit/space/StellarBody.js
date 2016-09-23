@@ -129,6 +129,17 @@
     return null;
   };
 
+  StellarBody.ValidateData = function(data){
+    if (typeof(data._type) !== 'undefined'){
+      if (data._type in REGISTERED_CLASS){
+	if (typeof(REGISTERED_CLASS[data._type].ValidateData) === 'function'){
+	  return REGISTERED_CLASS[data._type].ValidateData(data);
+	}
+      }
+    }
+    return false;
+  };
+
   StellarBody.Kelvin2C = function(k){
     return k - 273.15;
   };

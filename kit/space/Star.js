@@ -82,7 +82,7 @@
       "name": {"type": "string"},
       "primaryStar": {"type": ["string", "null"]},
       "radius": {"type": "number"},
-      "temp": {"type": "integer"},
+      "temp": {"type": "number"},
       "sequence": {"type": "string"},
       "arrangement": {"type": "number"},
       "body": {
@@ -1512,6 +1512,38 @@
   Star.prototype.__proto__ = StellarBody.prototype;
   Star.prototype.constructor = Star;
   Star.Type = 0;
+
+  Star.ValidateData = function(data){
+    if (typeof(data) === 'string'){
+      try{
+	data = JSON.parse(data);
+      } catch (e) {
+	return false;
+      }
+    } 
+
+    if (typeof(data) === typeof({})){
+      if (tv4.validate(data, StarSchema) === true){
+	if (data.companion instanceof Array){
+	  for (var c=0; c < data.companion.length; c++){
+	    if (Star.ValidateData(data.companion[c].body) === false){
+	      return false;
+	    }
+	  }
+	}
+
+	if (data.body instanceof Array){
+	  for (var b=0; b < data.body.length; b++){
+	    if (StellarBody.ValidateData(data.body[b].body) === false){
+	      return false;
+	    }
+	  }
+	};
+	return true;
+      }
+    }
+    return false;
+  };
 
   Star.GetStellarEvolutionEntry = function(mass){
     mass = Number(mass.toFixed(4));

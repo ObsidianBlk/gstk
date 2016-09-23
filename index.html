@@ -10,16 +10,17 @@
     <link rel="stylesheet" type="text/css" href="css/gstk.css">
   </head>
   <body>
-    <div id="jsonsrc" class="panel hidden">
-      <textarea id="jsonsrc" name="textarea" rows="10" cols="50">Enter JSON here</textarea>
-      <ul class="menu">
-	<li><a href="#" id="btn_jsonload">Load</a></li>
-	<li><a href="#" id="btn_close">Close</a></li>
-      </ul>
-    </div>
-    <div id="MainMenu" class="panel hidden"></div>
+    <div id="MainMenu" class="panel"></div>
     <div id="RegionPanel" class="panel hidden"></div>
     <div id="StarsystemPanel" class="panel hidden"></div>
+
+    <div class="hoverPanel hidden FileIO">
+      <textarea id="srcdata" name="textarea" rows="10" cols="80" placeholder="Enter JSON Here"></textarea>
+      <ul class="menu">
+	<li><a href="#" id="load">Load</a></li>
+	<li><a href="#" id="close">Close</a></li>
+      </ul>
+    </div>
 
     <div class="hoverPanel w200 noPadding hidden MainMenu">
       <span class="heading">Main Menu</span>

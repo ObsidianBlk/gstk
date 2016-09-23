@@ -87,7 +87,7 @@
       "rotationalPeriod": {"type": "number"},
       "size": {"type": "integer"},
       "surfaceGravity": {"type": "number"},
-      "temperature": {"type": "integer"},
+      "temperature": {"type": "number"},
       "_type": {"type": "integer"},
       "companion": {
 	"type": "array",
@@ -1177,6 +1177,24 @@
       return "Large";
     }
     return "UNKNOWN";
+  };
+
+  Terrestrial.ValidateData = function(data){
+    if (typeof(data) === 'string'){
+      try{
+	data = JSON.parse(data);
+      } catch (e) {
+	return false;
+      }
+    } 
+
+    if (typeof(data) === typeof({})){
+      if (tv4.validate(data, TerrestrialSchema) === true){
+	// TODO: Handle satillites, when I finally include them :-p
+	return true;
+      }
+    }
+    return false;
   };
 
 

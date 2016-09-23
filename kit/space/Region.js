@@ -625,5 +625,29 @@
   }
   Region.prototype.constructor = Region;
 
+  Region.ValidateData = function(data){
+    if (typeof(data) === 'string'){
+      try{
+	data = JSON.parse(data);
+      } catch (e) {
+	return false;
+      }
+    } 
+
+    if (typeof(data) === typeof({})){
+      if (tv4.validate(data, RegionSchema) === true){
+	if (data.systems instanceof Array){
+	  for (var i=0; i < data.systems.length; i++){
+	    if (Star.ValidateData(data.systems[i].star) === false){
+	      return false;
+	    }
+	  }
+	}
+	return true;
+      }
+    }
+    return false;
+  };
+
   return Region;
 });

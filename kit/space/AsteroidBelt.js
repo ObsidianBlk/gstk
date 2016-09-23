@@ -53,7 +53,7 @@
       "name": {"type": "string"},
       "resourceIndex": {"type": "integer"},
       "size": {"type": "integer"},
-      "temperature": {"type": "integer"},
+      "temperature": {"type": "number"},
       "_type": {"type": "integer"}
     },
     "required": [
@@ -230,6 +230,23 @@
       return "Dense";
     }
     return "UNKNOWN";
+  };
+
+  AsteroidBelt.ValidateData = function(data){
+    if (typeof(data) === 'string'){
+      try{
+	data = JSON.parse(data);
+      } catch (e) {
+	return false;
+      }
+    } 
+
+    if (typeof(data) === typeof({})){
+      if (tv4.validate(data, AsteroidSchema) === true){
+	return true;
+      }
+    }
+    return false;
   };
 
   StellarBody.RegisterType(AsteroidBelt);
