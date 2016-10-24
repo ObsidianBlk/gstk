@@ -15,11 +15,19 @@
     <div id="StarsystemPanel" class="panel hidden"></div>
 
     <div class="hoverPanel hidden FileIO">
-      <textarea id="srcdata" name="textarea" rows="10" cols="80" placeholder="Enter JSON Here"></textarea>
-      <ul class="menu">
-	<li><a href="#" id="load">Load</a></li>
-	<li><a href="#" id="close">Close</a></li>
-      </ul>
+      <div class="section import">
+	<span>Copy and paste JSON or drag and drop file here.</span>
+	<textarea id="srcdata" name="textarea" rows="10" cols="80" placeholder="Enter JSON Here"></textarea>
+	<ul class="hmenu">
+	  <li><a href="#" id="load">Load</a></li>
+	  <li><a href="#" id="close">Close</a></li>
+	</ul>
+      </div>
+      <div class="section export hidden">
+	<span>Right-click and select "save-as"</span>
+	<div id="export-target"></div>
+	<ul class="hmenu"><li><a href="#" id="close">Close</a></li></ul>
+      </div>
     </div>
 
     <div class="hoverPanel w200 noPadding hidden MainMenu">

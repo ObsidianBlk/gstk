@@ -384,6 +384,56 @@ requirejs([
     Center: 0x1111
   };
 
+  // -------------------------------------------------------------------------------------------------------------------------------------
+
+  function FileIOPanelCtrl(dom){
+    HoverPanelCtrl.call(this, dom);
+    var self = this;
+    var source = dom.select("#srcdata");
+    var etarget = dom.select("#export-target");
+    
+    source.on("drop", function(){
+      var event = d3.event;
+      event.stopPropagation();
+      event.preventDefault();
+
+      var files = event.dataTransfer.files; // FileList object.
+      if (files.length > 0){
+	var reader = new FileReader();  
+	reader.onload = function(e) {            
+          self.data = e.target.result;
+	};
+	reader.readAsText(files[0],"UTF-8");
+      }
+    });
+
+    Object.defineProperties(this, {
+      "data":{
+	enumerate: true,
+	get:function(){
+	  return source.node().value;
+	},
+	set:function(d){
+	  if (typeof(d) !== 'string'){
+	    throw new TypeError("Expected a string value.");
+	  }
+	  source.node().value = d;
+
+	  var blob = new Blob([d], {type: "application/json"});
+	  var url  = URL.createObjectURL(blob);
+
+	  etarget.select("*").remove();
+	  etarget.append("a")
+	    .attr("download", "region.json")
+	    .attr("href", url)
+	    .text("Region JSON");
+	}
+      }
+    });
+  }
+  FileIOPanelCtrl.prototype.__proto__ = HoverPanelCtrl.prototype;
+  FileIOPanelCtrl.prototype.constructor = FileIOPanelCtrl;
+
 
   // -------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1542,39 +1592,6 @@ requirejs([
   StarSystemCtrl.prototype.constructor = StarSystemCtrl;
 
 
-
-  // -------------------------------------------------------------------------------------------------------------------------------------
-
-  /*function JSONControl(domID){
-    Emitter.call(this);
-
-    var self = this;
-    var dom = d3.select("#" + domID);
-    dom.select("#btn_jsonload").on("click", function(){
-      self.emit("load", dom.select("#jsonsrc").property("value"));
-    });
-
-    dom.select("#btn_close").on("click", function(){
-      self.emit("close");
-    });
-
-    this.show = function(enable, data){
-      enable = (enable === false) ? false : true;
-      if (enable && dom.classed("hidden")){
-	dom.classed("hidden", false);
-	if (typeof(data) === 'string'){
-	  dom.select("#jsonsrc").property("value", data);
-	}
-      } else if (enable === false && dom.classed("hidden") === false){
-	dom.classed("hidden", true);
-      }
-    };
-  }
-  JSONControl.prototype.__proto__ = Emitter.prototype;
-  JSONControl.prototype.constructor = JSONControl;*/
-
-
-
   // -------------------------------------------------------------------------------------------------------------------------------------
   // MAIN
 
@@ -1600,10 +1617,12 @@ requirejs([
     });
     regionctrl.on("exportJSON", function(jstr){
       regionctrl.show(false);
-      var srcData = d3.select("#srcdata");
+      /*var srcData = d3.select("#srcdata");
       if (srcData.empty() === false){
 	srcData.property("value", jstr);
-      }
+	}*/
+      loader.data = jstr;
+      loader.showSection("export", true, true);
       loader.show(true);
     });
 
@@ -1616,6 +1635,7 @@ requirejs([
     });
     mainmenu.on("import", function(){
       mainmenu.show(false);
+      loader.showSection("import", true, true);
       loader.show(true);
     });
     mainmenu.on("quitapp", function(){
@@ -1625,7 +1645,8 @@ requirejs([
 
 
     //var loader = new JSONControl("jsonsrc");
-    var loader = new HoverPanelCtrl(d3.select(".hoverPanel.FileIO"));
+    //var loader = new HoverPanelCtrl(d3.select(".hoverPanel.FileIO"));
+    var loader = new FileIOPanelCtrl(d3.select(".hoverPanel.FileIO"));
     loader.edge = HoverPanelCtrl.Edge.Center;
     loader.flipEdge = false;
     loader.on("close", function(){
