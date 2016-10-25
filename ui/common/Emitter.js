@@ -16,10 +16,7 @@
     /* -------------------------------------------------
        Standard Browser style connection.
        ------------------------------------------------- */
-    if (typeof(root.R.Browser) === 'undefined'){
-      throw new Error("Missing R initilization.");
-    }
-    root.R.Browser.def (root, "R.System.Emitter", factory());
+    root.$sys.def (root, "ui.common.Emitter", factory());
   }
 })(this, function () {
 

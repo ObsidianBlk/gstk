@@ -4,7 +4,7 @@
        AMD style connection.
        ------------------------------------------------- */
     define([
-      'kit/PRng',
+      'kit/common/PRng',
       'node_modules/tv4/tv4'
     ], factory);
   } else if (typeof exports === 'object') {
@@ -13,7 +13,7 @@
        ------------------------------------------------- */
     if(typeof module === "object" && module.exports){
       module.exports = factory(
-	require('../PRng'),
+	require('../common/PRng'),
 	require('tv4')
       );
     }
@@ -21,21 +21,19 @@
     /* -------------------------------------------------
        Standard Browser style connection.
        ------------------------------------------------- */
-    if (typeof(root.GSTK) === 'undefined'){
-      throw new Error("Missing GSTK initilization.");
-    } else if (typeof(root.GSTK.$) === 'undefined'){
-      throw new Error("GSTK improperly initialized.");
+    if (typeof(root.$sys) === 'undefined'){
+      throw new Error("Missing $sys initilization.");
     }
 
-    if (root.GSTK.$.exists(root, [
-      "GSTK.PRng",
-      "tv4"
+    if (root.$sys.exists(root, [
+      "tv4",
+      "GSTK.common.PRng"
     ]) === false){
       throw new Error("Required component not defined.");
     }
 
-    root.GSTK.$.def (root.GSTK, "space.StellarBody", factory(
-      root.GSTK.PRng,
+    root.$sys.def (root, "GSTK.space.StellarBody", factory(
+      root.GSTK.common.PRng,
       root.tv4
     ));
   }

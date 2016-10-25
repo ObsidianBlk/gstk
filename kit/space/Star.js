@@ -4,7 +4,7 @@
        AMD style connection.
        ------------------------------------------------- */
     define([
-      'kit/PRng',
+      'kit/common/PRng',
       'kit/space/StellarBody',
       'kit/space/GasGiant',
       'kit/space/Terrestrial',
@@ -17,7 +17,7 @@
        ------------------------------------------------- */
     if(typeof module === "object" && module.exports){
       module.exports = factory(
-	require('../PRng'),
+	require('../common/PRng'),
 	require('./StellarBody'),
 	require('./GasGiant'),
 	require('./Terrestrial'),
@@ -29,25 +29,23 @@
     /* -------------------------------------------------
        Standard Browser style connection.
        ------------------------------------------------- */
-    if (typeof(root.GSTK) === 'undefined'){
-      throw new Error("Missing GSTK initilization.");
-    } else if (typeof(root.GSTK.$) === 'undefined'){
-      throw new Error("GSTK improperly initialized.");
+    if (typeof(root.$sys) === 'undefined'){
+      throw new Error("Missing $sys initilization.");
     }
 
-    if (root.GSTK.$.exists(root, [
-      "GSTK.PRng",
+    if (root.$sys.exists(root, [
+      "tv4",
+      "GSTK.common.PRng",
       "GSTK.space.StellarBody",
       "GSTK.space.GasGiant",
       "GSTK.space.Terrestrial",
       "GSTK.space.AsteroidBelt",
-      "tv4"
     ]) === false){
       throw new Error("Required component not defined.");
     }
 
-    root.GSTK.$.def (root.GSTK, "space.Star", factory(
-      root.GSTK.PRng,
+    root.$sys.def (root, "GSTK.space.Star", factory(
+      root.GSTK.common.PRng,
       root.GSTK.space.StellarBody,
       root.GSTK.space.GasGiant,
       root.GSTK.space.Terrestrial,

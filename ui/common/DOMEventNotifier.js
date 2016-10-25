@@ -4,7 +4,7 @@
        AMD style connection.
        ------------------------------------------------- */
     define([
-      'kit/Emitter',
+      'ui/common/Emitter',
     ], factory);
   } else if (typeof exports === 'object') {
     /* -------------------------------------------------
@@ -12,25 +12,25 @@
        ------------------------------------------------- */
     if(typeof module === "object" && module.exports){
       module.exports = factory(
-	require('../Emitter')
+	require('./Emitter')
       );
     }
   } else {
     /* -------------------------------------------------
        Standard Browser style connection.
        ------------------------------------------------- */
-    if (typeof(root.GSTK) === 'undefined'){
-      throw new Error("Missing GSTK initilization.");
-    } else if (typeof(root.GSTK.$) === 'undefined'){
-      throw new Error("GSTK improperly initialized.");
+    if (typeof(root.$sys) === 'undefined'){
+      throw new Error("Missing $sys initilization.");
     }
 
-    if (root.GSTK.$.exists(root, ["GSTK.Emitter"]) === false){
+    if (root.$sys.exists(root, [
+      "ui.common.Emitter",
+    ]) === false){
       throw new Error("Required component not defined.");
     }
 
-    root.GSTK.$.def (root.GSTK, "DOMEventNotifier", factory(
-      root.GSTK.Emitter
+    root.$sys.def (root, "ui.common.DOMEventNotifier", factory(
+      root.ui.common.Emitter
     ));
   }
 })(this, function (Emitter) {

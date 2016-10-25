@@ -16,13 +16,11 @@
     /* -------------------------------------------------
        Standard Browser style connection.
        ------------------------------------------------- */
-    if (typeof(root.GSTK) === 'undefined'){
-      throw new Error("Missing GSTK initilization.");
-    } else if (typeof(root.GSTK.$) === 'undefined'){
-      throw new Error("GSTK improperly initialized.");
+    if (typeof(root.$sys) === 'undefined'){
+      throw new Error("Missing $sys initilization.");
     }
 
-    root.GSTK.$.def (root.GSTK, "PRng", factory());
+    root.$sys.def (root, "GSTK.common.PRng", factory());
   }
 })(this, function () {
 

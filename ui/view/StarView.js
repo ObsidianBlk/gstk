@@ -4,8 +4,8 @@
        AMD style connection.
        ------------------------------------------------- */
     define([
-      'kit/Emitter',
-      'kit/DOMEventNotifier',
+      'ui/common/Emitter',
+      'ui/common/DOMEventNotifier',
       'kit/space/Star',
       'kit/space/StellarBody',
       'kit/space/GasGiant',
@@ -18,43 +18,37 @@
        ------------------------------------------------- */
     if(typeof module === "object" && module.exports){
       module.exports = factory(
-	require('../kit/Emitter'),
-	require('../kit/DOMEventNotifier'),
-	require('../kit/space/Star'),
-	require('../kit/space/StellarBody'),
-	require('../kit/space/GasGiant'),
-	require('../kit/space/Terrestrial'),
-	require('../kit/space/AsteroidBelt')
+	require('../common/Emitter'),
+	require('../common/DOMEventNotifier'),
+	require('../../kit/space/Star'),
+	require('../../kit/space/StellarBody'),
+	require('../../kit/space/GasGiant'),
+	require('../../kit/space/Terrestrial'),
+	require('../../kit/space/AsteroidBelt')
       );
     }
   } else {
     /* -------------------------------------------------
        Standard Browser style connection.
        ------------------------------------------------- */
-    if (typeof(root.GSTK) === 'undefined'){
-      throw new Error("Missing GSTK initilization.");
-    } else if (typeof(root.GSTK.$) === 'undefined'){
-      throw new Error("GSTK improperly initialized.");
+    if (typeof(root.$sys) === 'undefined'){
+      throw new Error("Missing $sys initilization.");
     }
-
-    if (root.GSTK.$.exists(root, ["GSTK.Emitter",
-				  "GSTK.DOMEventNotifier",
-				  "GSTK.space.Star",
-				  "GSTK.space.StellarBody",
-				  "GSTK.space.GasGiant",
-				  "GSTK.space.Terrestrial",
-				  "GSTK.space.AsteroidBelt"
-				 ]) === false){
+    if (root.$sys.exists(root, [
+      "ui.common.Emitter",
+      "ui.common.DOMEventNotifier",
+      "GSTK.space.Star",
+      "GSTK.space.StellarBody",
+      "GSTK.space.GasGiant",
+      "GSTK.space.Terrestrial",
+      "GSTK.space.AsteroidBelt"
+    ]) === false){
       throw new Error("Required component not defined.");
     }
 
-    if (typeof(root.View) !== typeof({})){
-      root.View = {};
-    }
-
-    root.GSTK.$.def (root.GSTK, "View.RegionView", factory(
-      root.GSTK.Emitter,
-      root.GSTK.DOMEventNotifier,
+    root.$sys.def (root, "ui.view.StarView", factory(
+      root.ui.common.Emitter,
+      root.ui.common.DOMEventNotifier,
       root.GSTK.space.Star,
       root.GSTK.space.StellarBody,
       root.GSTK.space.GasGiant,
