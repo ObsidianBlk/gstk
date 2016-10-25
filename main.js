@@ -158,6 +158,7 @@ requirejs([
     if (dom.classed("hoverPanel") === false){
       throw new Error("Element does not contain required class");
     }
+    var BTNEvents = [];
 
     function onMenuLink(){
       d3.select(this).selectAll("a").each(function(){
@@ -165,6 +166,7 @@ requirejs([
 	var isTab = parent.classed("tabs");
 	var a = d3.select(this);
 	var event = a.attr("id");
+	BTNEvents.push((isTab === true) ? "tab-" + event : event);
 	a.on("click", (function(ename){
 	  return function(){
 	    if (isTab === false || a.classed("selected") === false){
@@ -238,6 +240,11 @@ requirejs([
 	  }
 	  stickyFlipEnabled = e;
 	}
+      },
+
+      "events":{
+	enumerate: true,
+	get:function(){return BTNEvents;}
       }
     });
 
@@ -386,6 +393,31 @@ requirejs([
 
   // -------------------------------------------------------------------------------------------------------------------------------------
 
+  function DialogPanelCtrl(dom){
+    HoverPanelCtrl.call(this, dom);
+    var self = this;
+    var msgspan = dom.select(".heading");
+
+    var Show = this.show.bind(this);
+    this.show = function(enable, msg, x, y){
+      msg = (typeof(msg) === 'string') ? msg : null;
+      if (msg !== null){
+	msgspan.text((enable === true) ? msg : "");
+      }
+      Show(enable, x, y);
+    };
+
+    this.events.forEach(function(evt){
+      self.on(evt, function(){
+	self.show(false);
+      });
+    });
+  }
+  DialogPanelCtrl.prototype.__proto__ = HoverPanelCtrl.prototype;
+  DialogPanelCtrl.prototype.constructor = DialogPanelCtrl;
+
+  // -------------------------------------------------------------------------------------------------------------------------------------
+
   function FileIOPanelCtrl(dom){
     HoverPanelCtrl.call(this, dom);
     var self = this;
@@ -414,19 +446,22 @@ requirejs([
 	  return source.node().value;
 	},
 	set:function(d){
-	  if (typeof(d) !== 'string'){
-	    throw new TypeError("Expected a string value.");
+	  if (d !== null && typeof(d) !== 'string'){
+	    throw new TypeError("Expected a string or null value.");
 	  }
-	  source.node().value = d;
-
-	  var blob = new Blob([d], {type: "application/json"});
-	  var url  = URL.createObjectURL(blob);
+	  source.node().value = (d === null) ? "" : d;
 
 	  etarget.select("*").remove();
-	  etarget.append("a")
-	    .attr("download", "region.json")
-	    .attr("href", url)
-	    .text("Region JSON");
+
+	  if (d !== null){
+	    var blob = new Blob([d], {type: "application/json"});
+	    var url  = URL.createObjectURL(blob);
+
+	    etarget.append("a")
+	      .attr("download", "region.json")
+	      .attr("href", url)
+	      .text("Region JSON");
+	  }
 	}
       }
     });
@@ -973,6 +1008,13 @@ requirejs([
       selectedStar = null;
       SetDisplayMode();
       menuPanel.show(true);
+    });
+    starSelectionPanel.on("export", function(){
+      starSelectionPanel.show(false);
+      regionView.region.removeStar(selectedStar);
+      SetDisplayMode();
+      self.emit("export-star", selectedStar.toString(true));
+      selectedStar = null;
     });
     starSelectionPanel.on("cancel", function(){
       selectedStar = null;
@@ -1598,6 +1640,9 @@ requirejs([
   ready(function(){
     //var regionRadius = 21;
     //var seed = "Bryan Miller";
+    var dialogBox = new DialogPanelCtrl(d3.select(".hoverPanel.DialogBox"));
+    dialogBox.edge = HoverPanelCtrl.Edge.Center;
+    dialogBox.flipEdge = false;
 
     var starsystemctrl = new StarSystemCtrl("StarsystemPanel");
     starsystemctrl.on("region", function(){
@@ -1617,13 +1662,23 @@ requirejs([
     });
     regionctrl.on("exportJSON", function(jstr){
       regionctrl.show(false);
-      /*var srcData = d3.select("#srcdata");
-      if (srcData.empty() === false){
-	srcData.property("value", jstr);
-	}*/
       loader.data = jstr;
       loader.showSection("export", true, true);
       loader.show(true);
+      loader.on("close", function(){
+	loader.show(false);
+	regionctrl.show(true);
+      });
+    });
+    regionctrl.on("export-star", function(data){
+      regionctrl.show(false);
+      loader.data = data;
+      loader.showSection("export", true, true);
+      loader.show(true);
+      loader.on("close", function(){
+	loader.show(false);
+	regionctrl.show(true);
+      });
     });
 
     var mainmenu = new HoverPanelCtrl(d3.select(".hoverPanel.MainMenu"));
@@ -1639,7 +1694,7 @@ requirejs([
       loader.show(true);
     });
     mainmenu.on("quitapp", function(){
-      console.log("Quit! ... Ummm, not yet");
+      dialogBox.show(true, "Quit! ... Ummmm, not yet.");
     });
     mainmenu.show(true);
 
@@ -1649,22 +1704,22 @@ requirejs([
     var loader = new FileIOPanelCtrl(d3.select(".hoverPanel.FileIO"));
     loader.edge = HoverPanelCtrl.Edge.Center;
     loader.flipEdge = false;
-    loader.on("close", function(){
+    /*loader.on("close", function(){
       loader.show(false);
       mainmenu.show(true);
-    });
+    });*/
 
     loader.on("load", function(jstr){
       loader.show(false);
       try{
-	var srcData = d3.select("#srcdata");
-	if (srcData.empty() === false){
-	  //dom.select("#jsonsrc").property("value")
-	  regionctrl.generate({data:srcData.property("value")});
+	if (loader.data !== null){
+	  regionctrl.generate({data:loader.data});
 	}
       } catch (e){
-	console.error(e);
-	mainmenu.show(true);
+	dialogBox.show(true, e.message);
+	dialogBox.once("ok", function(){
+	  mainmenu.show(true);
+	});
 	return;
       }
 
