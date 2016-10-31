@@ -8,6 +8,21 @@
     <link rel="stylesheet" type="text/css" href="css/rangeslidertheme.css">
     <link rel="stylesheet" type="text/css" href="css/interface.css">
     <link rel="stylesheet" type="text/css" href="css/gstk.css">
+
+    <script id="TMPL-Infomation" type="text/x-handlebars-template">
+      <div class="hoverPanel noPointerEvents stellarBodyInfo">
+	{{#each item}}
+	{{this.name}}:
+	{{#if this.item}}<BR>{{#each this.item}}
+	<span class="info">{{this.value}}</span>{{#if this.unit}}{{this.unit}}{{/if}}<BR>
+	{{/each}}
+	{{else}}
+	<span class="info">{{this.value}}</span>{{#if this.unit}}{{this.unit}}{{/if}}<BR>
+	{{/if}}
+	{{/each}}
+      </div>
+    </script>
+
   </head>
   <body>
     <div id="MainMenu" class="panel"></div>
@@ -376,13 +391,19 @@
 
     <div class="hoverPanel hidden DialogBox">
       <span class="heading">Hello World</span>
-      <ul class="hmenu thin">
-	<li><a href="#" id="ok">OK</a></li>
-	<li><a href="#" id="close">Close</a></li>
-      </ul>
+      <div class="section hidden BTN_OKCANCEL">
+	<ul class="hmenu thin">
+	  <li><a href="#" id="ok">OK</a></li>
+	  <li><a href="#" id="close">Close</a></li>
+	</ul>
+      </div>
+      <div class="section BTN_OK">
+	<ul class="hmenu thin">
+	  <li><a href="#" id="ok">OK</a></li>
+	</ul>
+      </div>
     </div>
   </body>
 
-  <script type="text/javascript" src="node_modules/d3/d3.min.js"></script>
   <script data-main="main" type="text/javascript" src="node_modules/requirejs/require.js"></script>
 </html>

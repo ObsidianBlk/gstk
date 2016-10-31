@@ -5,6 +5,7 @@
        AMD style connection.
        ------------------------------------------------- */
     define([
+      'd3',
       'ui/common/Emitter',
       'ui/common/DOMEventNotifier'
     ], factory);
@@ -14,6 +15,7 @@
        ------------------------------------------------- */
     if(typeof module === "object" && module.exports){
       module.exports = factory(
+	require('d3'),
 	require('../common/Emitter'),
 	require('../common/DOMEventNotifier')
       );
@@ -27,6 +29,7 @@
     }
 
     if (root.$sys.exists(root, [
+      'd3',
       'ui.common.Emitter',
       'ui.common.DOMEventNotifier'
     ]) === false){
@@ -34,11 +37,12 @@
     }
 
     root.$sys.def (root, "ui.ctrls.HoverPanelCtrl", factory(
+      root.d3,
       root.ui.common.Emitter,
       root.ui.common.DOMEventNotifier
     ));
   }
-})(this, function (Emitter, DOMEventNotifier) {
+})(this, function (d3, Emitter, DOMEventNotifier) {
 
   function HoverPanelCtrl(dom){
     Emitter.call(this);

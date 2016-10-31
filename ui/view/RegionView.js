@@ -4,6 +4,7 @@
        AMD style connection.
        ------------------------------------------------- */
     define([
+      'd3',
       'ui/common/Emitter',
       'ui/common/DOMEventNotifier',
       'kit/space/Region'
@@ -14,6 +15,7 @@
        ------------------------------------------------- */
     if(typeof module === "object" && module.exports){
       module.exports = factory(
+	require('d3'),
 	require('../common/Emitter'),
 	require('../common/DOMEventNotifier'),
 	require('../../kit/space/Region')
@@ -27,6 +29,7 @@
       throw new Error("Missing $sys initilization.");
     }
     if (root.$sys.exists(root, [
+      'd3',
       "ui.common.Emitter",
       "ui.common.DOMEventNotifier",
       "GSTK.space.Region"
@@ -35,17 +38,20 @@
     }
 
     root.$sys.def (root, "ui.view.RegionView", factory(
+      root.d3,
       root.ui.common.Emitter,
       root.ui.common.DOMEventNotifier,
       root.GSTK.space.Region
     ));
   }
-})(this, function (Emitter, DOMEventNotifier, Region) {
+})(this, function (d3, Emitter, DOMEventNotifier, Region) {
 
   var AU = Number("1.496e8");
 
-  function RegionView(d3, svg){
-
+  function RegionView(svg){
+    Emitter.call(this);
+    var self = this;
+    
     var scroller = svg.append("g");
     var mapSize = 1;
     var hmapSize = 1;
@@ -55,6 +61,8 @@
       .range([1.0, 6.0]);
     var displayMode = 0; // All stars in region.
     var r = null;
+
+    var selected = null;
 
     var showStarPlacerCursor = false;
     var placerCursorPos = [0, 0, 0];
@@ -125,6 +133,25 @@
 	    throw new TypeError("Expected a Region instance or null.");
 	  }
 	  r = reg;
+	}
+      },
+
+      "select":{
+	enumerate: true,
+	get:function(){return (selected !== null) ? {r:selected.r, a:selected.a} : null;},
+	set:function(s){
+	  if (s !== null && typeof(s) !== typeof({})){
+	    throw new TypeError("Expected null or object value.");
+	  }
+	  if (s !== null && typeof(s.r) === 'number' && typeof(s.a) === 'number'){
+	    if (selected === null || selected.r !== s.r || selected.a !== s.a){
+	      selected = {r: s.r, a:s.a};
+	      this.render();
+	    }
+	  } else if (selected !== null){
+	    selected = null;
+	    this.render();
+	  }
 	}
       },
 
@@ -256,24 +283,39 @@
 	  return "translate(" + x + ", " + y + ")";
 	});
 
-      if (typeof(options.mouseOver) === 'function'){
-	starGroups.on("mouseover", options.mouseOver);
-      }
-      if (typeof(options.mouseOut) === 'function'){ 
-	starGroups.on("mouseout", options.mouseOut);
-      }
-      if (typeof(options.click) === 'function'){
-	starGroups.on("click", options.click);
-      }
-
       starGroups.append("circle")
 	.attr("id", function(d, i){
 	  return "circle_" + i;
 	})
 	.attr("r", function(d){
-	  return starScale(d.star.radius*AU);
+	  if (selected === null || selected.r !== d.r || selected.a !== d.a){
+	    return starScale(d.star.radius*AU);
+	  } else {
+	    return starScale(0.01*AU); // This is a selected star!
+	  }
+	})
+	.on("mouseover", function(d, i){
+	  self.emit("starover", d, i, d3.event);
+	})
+	.on("mouseout", function(d, i){
+	  self.emit("starout", d, i, d3.event);
+	})
+	.on("click", function(d, i){
+	  self.emit("starclick", d, i, d3.event);
 	});
 
+      
+      if (selected !== null){
+	var x = mapScale(selected.r*Math.cos(selected.a));
+	var y = mapScale(selected.r*Math.sin(selected.a));
+	stars.append("circle")
+	  .attr("id", "STAR_SELECTOR")
+	  .attr("r", mapScale(3))
+	  .attr("fill", "none")
+	  .attr("stroke", "#F00")
+	  .attr("strokeWidth", 0.5)
+	  .attr("transform", "translate(" + x + ", " + y + ")");
+      }
 
       if (showStarPlacerCursor === true){
 	var cursor = scroller.append("g");
@@ -327,6 +369,7 @@
 	.text(function(d) { return d + "°"; });
     };
   }
+  RegionView.prototype.__proto__ = Emitter.prototype;
   RegionView.prototype.constructor = RegionView;
   RegionView.DISPLAY_INFO = {
     "ALL": 0,
