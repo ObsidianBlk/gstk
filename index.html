@@ -10,17 +10,15 @@
     <link rel="stylesheet" type="text/css" href="css/gstk.css">
 
     <script id="TMPL-Infomation" type="text/x-handlebars-template">
-      <div class="hoverPanel noPointerEvents stellarBodyInfo">
 	{{#each item}}
 	{{this.name}}:
 	{{#if this.item}}<BR>{{#each this.item}}
-	<span class="info">{{this.value}}</span>{{#if this.unit}}{{this.unit}}{{/if}}<BR>
+	<span class="info">{{this.value}}</span>{{#if this.unit}} {{this.unit}}{{/if}}<BR>
 	{{/each}}
 	{{else}}
-	<span class="info">{{this.value}}</span>{{#if this.unit}}{{this.unit}}{{/if}}<BR>
+	<span class="info">{{this.value}}</span>{{#if this.unit}} {{this.unit}}{{/if}}<BR>
 	{{/if}}
 	{{/each}}
-      </div>
     </script>
 
   </head>
@@ -328,6 +326,9 @@
 	<li><a href="#" id="place">Place</a></li>
 	<li><a href="#" id="cancel">Cancel</a></li>
       </ul>
+    </div>
+
+    <div class="hoverPanel noPointerEvents hidden stellarBodyInfo">
     </div>
 
     <div class="hoverPanel noPointerEvents hidden star">

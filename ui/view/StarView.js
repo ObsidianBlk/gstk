@@ -59,6 +59,8 @@
 })(this, function (Emitter, DOMEventNotifier, Star, StellarBody, GasGiant, Terrestrial, AsteroidBelt) {
 
   function StarView(d3, svg){
+    Emitter.call(this);
+    var self = this;
     var scroller = svg.append("g");
     var bgLayer = scroller.append("g");
     var fzLayer = scroller.append("g");
@@ -93,20 +95,8 @@
 
     var selectedBody = null;
 
-    var starEvents = {
-      mouseOver:null,
-      mouseOut:null,
-      clicked:null
-    };
+    var orbitFunc = null;
 
-    var bodyEvents = {
-      mouseOver:null,
-      mouseOut:null,
-      clicked:null
-    };
-
-
-    var self = this;
     function zoomed() {
       var nscale = d3.event.scale;
       if (renderScale !== nscale){
@@ -168,66 +158,6 @@
 	  }
 	  UpdateMapScale();
 	}
-      },
-
-      "onBodyMouseOver":{
-        enumerate:true,
-        get:function(){return bodyEvents.mouseOver;},
-        set:function(f){
-          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.mouseOver){
-            bodyEvents.mouseOver = f;
-          }
-        }
-      },
-
-      "onBodyMouseOut":{
-        enumerate:true,
-        get:function(){return bodyEvents.mouseOut;},
-        set:function(f){
-          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.mouseOut){
-            bodyEvents.mouseOut = f;
-          }
-        }
-      },
-
-      "onBodyClicked":{
-        enumerate:true,
-        get:function(){return bodyEvents.clicked;},
-        set:function(f){
-          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.clicked){
-            bodyEvents.clicked = f;
-          }
-        }
-      },
-
-      "onStarMouseOver":{
-        enumerate:true,
-        get:function(){return bodyEvents.mouseOver;},
-        set:function(f){
-          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.mouseOver){
-            starEvents.mouseOver = f;
-          }
-        }
-      },
-
-      "onStarMouseOut":{
-        enumerate:true,
-        get:function(){return bodyEvents.mouseOut;},
-        set:function(f){
-          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.mouseOut){
-            starEvents.mouseOut = f;
-          }
-        }
-      },
-
-      "onStarClicked":{
-        enumerate:true,
-        get:function(){return bodyEvents.clicked;},
-        set:function(f){
-          if ((typeof(f) === 'function' || f === null) && f !== bodyEvents.clicked){
-            starEvents.clicked = f;
-          }
-        }
       },
 
       "mapSize":{
@@ -398,19 +328,12 @@
 	.attr("ry", function(d){
 	  return mapScale(d.rMax);
 	})
-	.on("mouseover", (bodyEvents.mouseOver) ? bodyEvents.mouseOver : null)
-	.on("mouseout", (bodyEvents.mouseOut) ? bodyEvents.mouseOut : null)
-	.on("click", (bodyEvents.clicked) ? bodyEvents.clicked : null);
-      /*if (bodyEvents.mouseOver){
-	ellipses.on("mouseover", bodyEvents.mouseOver);
-      }
-      if (bodyEvents.mouseOut){
-	ellipses.on("mouseout", bodyEvents.mouseOut);
-      }
-      if (bodyEvents.click){
-	ellipses.on("click", bodyEvents.click);
-      }*/
+	.on("mouseover", function(d, i){self.emit("bodymouseover", d, i, d3.event);})
+	.on("mouseout", function(d, i){self.emit("bodymouseout", d, i, d3.event);})
+	.on("click", function(d, i){self.emit("bodyclick", d, i, d3.event);})
+	.on("dblclick", function(d, i){self.emit("bodydblclick", d, i, d3.event);});
 
+      orbitFunc = null;
       if (noCircle === false){
 	group.selectAll("circle")
 	  .data(objs).enter()
@@ -421,19 +344,21 @@
 	  .attr("r", function(d){
 	    return bodyScale(d.body.diameter);
 	  })
-	  .on("mouseover", (bodyEvents.mouseOver) ? bodyEvents.mouseOver : null)
-	  .on("mouseout", (bodyEvents.mouseOut) ? bodyEvents.mouseOut : null)
-	  .on("click", (bodyEvents.clicked) ? bodyEvents.clicked : null);
+	  .on("mouseover", function(d, i){self.emit("bodymouseover", d, i, d3.event);})
+	  .on("mouseout", function(d, i){self.emit("bodymouseout", d, i, d3.event);})
+	  .on("click", function(d, i){self.emit("bodyclick", d, i, d3.event);})
+	  .on("dblclick", function(d, i){self.emit("bodydblclick", d, i, d3.event);});
 
-	/*if (bodyEvents.mouseOver){
-	  circles.on("mouseover", bodyEvents.mouseOver);
-	}
-	if (bodyEvents.mouseOut){
-	  circles.on("mouseout", bodyEvents.mouseOut);
-	}
-	if (bodyEvents.click){
-	  circles.on("click", bodyEvents.click);
-	}*/
+	orbitFunc = function(){
+	  group.selectAll("circle").data(objs).enter()
+	    .attr("cx", function(d){
+
+	    })
+	    .attr("cy", function(d){
+
+	    });
+	};
+	
       }
     }
 
@@ -509,16 +434,11 @@
 
       g.append("circle")
 	.attr("cy", mapScale(orbit.rMax))
-	.attr("r", starScale(s.radius));
-      if (starEvents.mouseOver){
-	g.on("mouseover", function(){starEvents.mouseOver(s);});
-      }
-      if (starEvents.mouseOut){
-	g.on("mouseout", starEvents.mouseOut);
-      }
-      if (starEvents.click){
-	g.on("click", function(){starEvents.click(s);});
-      }
+	.attr("r", starScale(s.radius))
+	.on("mouseover", function(){self.emit("starmouseover", s, d3.event);})
+	.on("mouseover", function(){self.emit("starmouseout", s, d3.event);})
+	.on("mouseover", function(){self.emit("starclick", s, d3.event);})
+	.on("mouseover", function(){self.emit("stardblclick", s, d3.event);});
 
       if (s.hasBodiesOfType(Terrestrial.Type)){
 	RenderOrbits(orbit, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
@@ -597,6 +517,7 @@
       renderRadius = star.fullSystemRadius;
     };
   }
+  StarView.prototype.__proto__ = Emitter.prototype;
   StarView.prototype.constructor = StarView;
 
   return StarView;

@@ -6,6 +6,7 @@
        ------------------------------------------------- */
     define([
       'd3',
+      'handlebars',
       'kit/common/PRng',
       'kit/space/Region',
       'ui/common/Emitter',
@@ -22,6 +23,7 @@
     if(typeof module === "object" && module.exports){
       module.exports = factory(
 	require('d3'),
+	require('handlebars'),
 	require('../../kit/common/PRng'),
 	require('../../kit/space/Region'),
 	require('../common/Emitter'),
@@ -42,6 +44,7 @@
 
     if (root.$sys.exists(root, [
       'd3',
+      'handlebars',
       'GSTK.common.PRng',
       'GSTK.space.Region',
       'ui.common.Emitter',
@@ -56,6 +59,7 @@
 
     root.$sys.def (root, "ui.states.RegionState", factory(
       root.d3,
+      root.handlebars,
       root.GSTK.common.PRng,
       root.GSTK.space.Region,
       root.ui.common.Emitter,
@@ -66,7 +70,16 @@
       root.ui.view.RegionView
     ));
   }
-})(this, function (d3, PRng, Region, Emitter, DOMEventNotifier, HoverPanelCtrl, StarEditorCtrl, CreateRegionCtrl, RegionView) {
+})(this, function (d3, handlebars, PRng, Region, Emitter, DOMEventNotifier, HoverPanelCtrl, StarEditorCtrl, CreateRegionCtrl, RegionView) {
+
+  function BuildInfoPanel(context){
+    var source   = d3.select("#TMPL-Infomation").html();
+    var template = handlebars.compile(source);
+    var html = template(context);
+    var infodiv = d3.select(".hoverPanel.stellarBodyInfo");
+    infodiv.selectAll().remove();
+    infodiv.html(html);
+  };
 
   function RegionState(dom, options){
     Emitter.call(this);
@@ -79,7 +92,7 @@
     var mapSize = Math.min(DOMEventNotifier.getWidth(), DOMEventNotifier.getHeight());
     var hmapSize = Math.round(mapSize*0.5);
 
-    var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.star"));
+    var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.stellarBodyInfo"));
     infoPanel.edge = HoverPanelCtrl.Edge.Right;
     infoPanel.flipEdge = true;
     infoPanel.offsetY = 20;
@@ -267,20 +280,17 @@
 	    clearTimeout(infoPanelIntervalID);
 	    infoPanelIntervalID = null;
 
-	    infoPanel.set({
-	      position:"(R:" + d.r.toFixed(2) + ", A:" + d.a.toFixed(2) + ")",
-	      name: d.star.name,
-	      sequence: d.star.sequence + " / " + d.star.class,
-	      mass: "" + d.star.mass,
-	      radius: d.star.radius.toFixed(4),
-	      age: d.star.age.toFixed(2),
-	      temperature: "" + d.star.temperature,
-	      orbitals:"unknown"
-	      /*orbitals: "(" + 
-		d.star.companionCount + " / " + 
-		d.star.countBodiesOfType(GasGiant.Type) + " / " + 
-		d.star.countBodiesOfType(Terrestrial.Type) + " / " + 
-		d.star.countBodiesOfType(AsteroidBelt.Type) + ")"*/
+	    BuildInfoPanel({
+	      item:
+	      [
+		{name:"Position", value:"(R:" + d.r.toFixed(2) + ", A:" + d.a.toFixed(2) + ")"},
+		{name:"Name", value:d.star.name},
+		{name:"Sequence", value:d.star.sequence + " / " + d.star.class},
+		{name:"Mass", value:d.star.mass.toFixed(4), unit:"Solar Units"},
+		{name:"Radius", value:d.star.radius.toFixed(4), unit:"AU"},
+		{name:"Age", value:d.star.age.toFixed(2), unit:"bY"},
+		{name:"Temperature", value:d.star.temperature.toFixed(2), unit:"k"}
+	      ]
 	    });
 	    infoPanel.show(true, x, y);
 	  }, 1000);
@@ -294,7 +304,9 @@
 	clearTimeout(infoPanelIntervalID);
 	infoPanelIntervalID = null;
       }
-      infoPanel.show(false);
+      if (infoPanel !== null){
+	infoPanel.show(false);
+      }
       regionView.select = null;
     });
 
@@ -309,6 +321,12 @@
 	selectedPanel.set({starname:name});
 	selectedPanel.show(true);
       }
+    });
+
+    regionView.on("stardblclick", function(d, i, event){
+      selectedPanel.show(false);
+      selectedStar = null;
+      self.emit("starClicked", d.star);
     });
 
     // -------------------------------------------------------------------------------------------------------------------------------

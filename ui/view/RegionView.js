@@ -246,6 +246,7 @@
       mapScale.domain([0, r.radius]).range([0, hmapSize]);
 
       svg.call(zoom);
+      svg.on("dblclick.zoom", null);
       scroller.selectAll("*").remove();
       var data = null;
       switch (displayMode){
@@ -283,6 +284,19 @@
 	  return "translate(" + x + ", " + y + ")";
 	});
 
+      starGroups.on("mouseover", function(d, i){
+	self.emit("starover", d, i, d3.event);
+      })
+	.on("mouseout", function(d, i){
+	  self.emit("starout", d, i, d3.event);
+	})
+	.on("click", function(d, i){
+	  self.emit("starclick", d, i, d3.event);
+	})
+	.on("dblclick", function(d, i){
+	  self.emit("stardblclick", d, i, d3.event);
+	});
+
       starGroups.append("circle")
 	.attr("id", function(d, i){
 	  return "circle_" + i;
@@ -293,15 +307,6 @@
 	  } else {
 	    return starScale(0.01*AU); // This is a selected star!
 	  }
-	})
-	.on("mouseover", function(d, i){
-	  self.emit("starover", d, i, d3.event);
-	})
-	.on("mouseout", function(d, i){
-	  self.emit("starout", d, i, d3.event);
-	})
-	.on("click", function(d, i){
-	  self.emit("starclick", d, i, d3.event);
 	});
 
       

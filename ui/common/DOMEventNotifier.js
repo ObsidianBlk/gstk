@@ -39,12 +39,30 @@
   var INITIALIZED = false;
   var WinWidth = 0;
   var WinHeight = 0;
+  var enableRenderFrameEvent = false;
+  var renderFrameFunc = null;
+  var renderFrameStart = null;
+  
   return {
     ready:function(){return INITIALIZED;},
     initialize:function(d3, window){
       if (INITIALIZED === false){
 	WinWidth = window.innerWidth;
 	WinHeight = window.innerHeight;
+
+	renderFrameStart = function(){
+	  if (renderFrameFunc !== null){
+	    enableRenderFrameEvent = true;
+	    window.requestAnimationFrame(renderFrameFunc);
+	  }
+	};
+
+	renderFrameFunc = function(timestamp){
+	  if (enableRenderFrameEvent === true){
+	    DOMEmitter.emit("renderframe", timestamp);
+	    window.requestAnimationFrame(renderFrameFunc);
+	  }
+	};
 
 	d3.select(window).on("resize", function(){
 	  WinWidth = window.innerWidth;
@@ -59,6 +77,12 @@
 	d3.select("body").on("keyup", function(){
 	  DOMEmitter.emit("keyup", d3.event);
 	});
+      }
+    },
+
+    enableRenderFrames:function(){
+      if (renderFrameStart !== null){
+	renderFrameStart();
       }
     },
 
