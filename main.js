@@ -45,70 +45,16 @@ requirejs([
   // MAIN
 
   ready(function(){
+
     var dialogBox = new DialogBoxCtrl(d3.select(".hoverPanel.DialogBox"));
     dialogBox.edge = HoverPanelCtrl.Edge.Center;
     dialogBox.flipEdge = false;
 
-    var starsystemctrl = new StarSystemState(d3.select("#StarsystemPanel"));
-    starsystemctrl.on("region", function(){
-      starsystemctrl.show(false);
-      regionctrl.show(true);
-    });
-    
-    var regionctrl = new RegionState(d3.select("#RegionPanel"));
-    regionctrl.on("starClicked", function(s){
-      regionctrl.show(false);
-      starsystemctrl.show(true);
-      starsystemctrl.setStar(s);
-    });
-    regionctrl.on("mainmenu", function(){
-      regionctrl.show(false);
-      mainmenu.show(true);
-    });
-    regionctrl.on("exportJSON", function(jstr){
-      regionctrl.show(false);
-      loader.data = jstr;
-      loader.showSection("export", true, true);
-      loader.show(true);
-      loader.on("close", function(){
-	loader.show(false);
-	regionctrl.show(true);
-      });
-    });
-    regionctrl.on("export-star", function(data){
-      regionctrl.show(false);
-      loader.data = data;
-      loader.showSection("export", true, true);
-      loader.show(true);
-      loader.on("close", function(){
-	loader.show(false);
-	regionctrl.show(true);
-      });
-    });
-
-    var mainmenu = new HoverPanelCtrl(d3.select(".hoverPanel.MainMenu"));
-    mainmenu.edge = HoverPanelCtrl.Edge.Center;
-    mainmenu.flipEdge = false;
-    mainmenu.on("region", function(){
-      mainmenu.show(false);
-      regionctrl.show(true);
-    });
-    mainmenu.on("import", function(){
-      mainmenu.show(false);
-      loader.showSection("import", true, true);
-      loader.show(true);
-    });
-    mainmenu.on("quitapp", function(){
-      dialogBox.show(true, "Quit! ... Ummmm, not yet.");
-    });
-    mainmenu.show(true);
-
-    
     var loader = new FileIOCtrl(d3.select(".hoverPanel.FileIO"));
     loader.edge = HoverPanelCtrl.Edge.Center;
     loader.flipEdge = false;
 
-    loader.on("load", function(jstr){
+    function LoadRegion(){
       loader.show(false);
       try{
 	if (loader.data !== null){
@@ -123,7 +69,88 @@ requirejs([
       }
 
       regionctrl.show(true);
+    }
+
+
+    function LoadStarSystem(){
+      loader.show(false);
+      regionctrl.addStar({star:loader.data});
+    }
+
+    function LoadPlanet(){
+
+    }
+
+    var starsystemctrl = new StarSystemState(d3.select("#StarsystemPanel"));
+    starsystemctrl.on("region", function(){
+      starsystemctrl.show(false);
+      regionctrl.show(true);
     });
+    starsystemctrl.on("error", function(msg){
+      dialogBox.show(true, msg);
+    });
+    
+    var regionctrl = new RegionState(d3.select("#RegionPanel"));
+    regionctrl.on("starClicked", function(s){
+      regionctrl.show(false);
+      starsystemctrl.show(true);
+      starsystemctrl.setStar(s);
+    });
+    regionctrl.on("mainmenu", function(){
+      regionctrl.show(false);
+      mainmenu.show(true);
+    });
+    regionctrl.on("exportregion", function(jstr){
+      regionctrl.show(false);
+      loader.data = jstr;
+      loader.showSection("export", true, true);
+      loader.show(true);
+      loader.on("close", function(){
+	loader.show(false);
+	regionctrl.show(true);
+      });
+    });
+    regionctrl.on("exportstar", function(data){
+      regionctrl.show(false);
+      loader.data = data;
+      loader.unlistenEvent("load");
+      loader.unlistenEvent("close");
+      loader.showSection("export", true, true);
+      loader.once("close", function(){
+	loader.show(false);
+	regionctrl.show(true);
+      });
+      loader.show(true);
+    });
+    regionctrl.on("error", function(msg){
+      dialogBox.show(true, msg);
+    });
+
+    var mainmenu = new HoverPanelCtrl(d3.select(".hoverPanel.MainMenu"));
+    mainmenu.edge = HoverPanelCtrl.Edge.Center;
+    mainmenu.flipEdge = false;
+    mainmenu.on("region", function(){
+      mainmenu.show(false);
+      regionctrl.show(true);
+    });
+    mainmenu.on("import", function(){
+      mainmenu.show(false);
+      loader.showSection("import", true, true);
+      loader.unlistenEvent("load");
+      loader.unlistenEvent("close");
+      loader.once("load", LoadRegion);
+      loader.once("close", function(){
+	loader.show(false);
+	mainmenu.show(true);
+      });
+      loader.show(true);
+    });
+    mainmenu.on("quitapp", function(){
+      dialogBox.show(true, "Quit! ... Ummmm, not yet.");
+    });
+    mainmenu.show(true);
+
+    
 
 
     /*
@@ -222,7 +249,6 @@ requirejs([
     }
 
     DOMEventNotifier.on("resize", function(width, height){
-      console.log("ping");
       RenderOpeningScreen();
     });
     RenderOpeningScreen();

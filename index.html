@@ -6,6 +6,7 @@
     <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="css/fonts.css">
     <link rel="stylesheet" type="text/css" href="css/rangeslidertheme.css">
+    <link rel="stylesheet" type="text/css" href="css/textareatheme.css">
     <link rel="stylesheet" type="text/css" href="css/interface.css">
     <link rel="stylesheet" type="text/css" href="css/gstk.css">
 
@@ -13,7 +14,7 @@
 	{{#each item}}
 	{{this.name}}:
 	{{#if this.item}}<BR>{{#each this.item}}
-	<span class="info">{{this.value}}</span>{{#if this.unit}} {{this.unit}}{{/if}}<BR>
+	&nbsp;&nbsp;&nbsp;&nbsp;{{#if this.name}}{{this.name}}: {{/if}}<span class="info">{{this.value}}</span>{{#if this.unit}} {{this.unit}}{{/if}}<BR>
 	{{/each}}
 	{{else}}
 	<span class="info">{{this.value}}</span>{{#if this.unit}} {{this.unit}}{{/if}}<BR>
@@ -329,65 +330,6 @@
     </div>
 
     <div class="hoverPanel noPointerEvents hidden stellarBodyInfo">
-    </div>
-
-    <div class="hoverPanel noPointerEvents hidden star">
-      Position: <span class="info" id="position">(R:0, A:0)</span><BR>
-      Name: <span class="info" id="name">None</span><BR>
-      Sequence/Class: <span class="info" id="sequence">K9/V</span><BR>
-      Age: <span class="info" id="age">0</span> billion years<BR>
-      Mass: <span class="info" id="mass">0.0</span> Solar Units <BR>
-      Radius: <span class="info" id="radius">0</span> AU <BR>
-      Temperature: <span class="info" id="temperature">0</span> k,
-      <span class="info" id="temperatureC">0</span> c,
-      <span class="info" id="temperatureF">0</span> f,<BR>
-      Orbitals: <span class="info" id="orbitals">(0/0/0/0)</span>
-    </div>
-
-    <div class="hoverPanel noPointerEvents hidden planet">
-      Name: <span class="info" id="name">None</span><BR>
-      Body Type: <span class="info" id="body">UNKNOWN</span><BR>
-      Size: <span class="info" id="size">UNKNOWN</span><BR>
-      Perigee: <span class="info" id="perigee">0.0</span> AU<BR>
-      Apogee: <span class="info" id="apogee">0.0</span> AU<BR>
-      <div class="section gasgiant hidden">
-	Orbital Period: <span class="info" id="orbit">0</span> earth years<BR>
-	Rotational Period: <span class="info" id="period">0</span> earth days<BR>
-	Axial Tilt: <span class="info" id="tilt">0</span> degrees<BR>
-	Blackbody Temperature: <span class="info" id="blackbody">0</span> kelvin<BR>
-	Mass: <span class="info" id="mass">0.0</span> earths<BR>
-	Density: <span class="info" id="density">0.0</span> earths<BR>
-	Diameter: <span class="info" id="diameter">0.0</span> km<BR>
-	Gravity: <span class="info" id="gravity">0.0</span> earths
-      </div>
-
-      <div class="section asteroidbelt hidden">
-	Temperature: <span class="info" id="temperature">0</span> kelvin<BR>
-	Resources: <span class="info" id="resources">0</span><BR>
-      </div>
-
-      <div class="section terrestrial hidden">
-	Orbital Period: <span class="info" id="orbit">0</span> earth years<BR>
-	Rotational Period: <span class="info" id="period">0</span> earth days<BR>
-	Axial Tilt: <span class="info" id="tilt">0</span> degrees<BR>
-	Temperature: <span class="info" id="temperature">0</span> k,
-	<span class="info" id="temperatureC">0</span> c,
-	<span class="info" id="temperatureF">0</span> f<BR>
-	Mass: <span class="info" id="mass">0.0</span> earths<BR>
-	Class: <span class="info" id="cls">UNKNOWN</span><BR>
-	Density: <span class="info" id="density">0.0</span> earths<BR>
-	Diameter: <span class="info" id="diameter">0.0</span> km<BR>
-	Gravity: <span class="info" id="gravity">0.0</span> earths<BR>
-	Hydrographic Coverage: <span class="info" id="hydrographics">0</span>%<BR>
-	Atmosphere:<BR>
-	&nbsp;&nbsp;&nbsp;&nbsp;Breathable: <span class="info" id="breathable">False</span> Minor Toxin: 
-	<span class="info" id="toxin">None</span><BR>
-	&nbsp;&nbsp;&nbsp;&nbsp;Suffocating: <span class="info" id="suffocating">False</span><BR>
-	&nbsp;&nbsp;&nbsp;&nbsp;Corrosive: <span class="info" id="corrosive">False</span><BR>
-	&nbsp;&nbsp;&nbsp;&nbsp;Composition: <span class="info" id="composition">None</span><BR>
-	Resources: <span class="info" id="resources">0</span><BR>
-	Affinity: <span class="info" id="affinity">0</span>
-      </div>
     </div>
 
     <div class="hoverPanel hidden DialogBox">

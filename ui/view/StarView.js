@@ -96,6 +96,19 @@
     var selectedBody = null;
 
     var orbitFunc = null;
+    var animateOrbits = false;
+    var lastTimestamp = 0;
+    var timeDuration = 0;
+    var timeYearsPerSecond = 1;
+
+
+    function OnRenderOrbits(timestamp){
+      if (lastTimestamp !== 0){
+	timeDuration += (timestamp - lastTimestamp)/1000;
+      }
+      lastTimestamp = timestamp;
+      self.emit("updateorbit", timeDuration/timeYearsPerSecond);
+    }
 
     function zoomed() {
       var nscale = d3.event.scale;
@@ -290,6 +303,21 @@
 	  }
 	  showGoldielocks = e;
 	}
+      },
+
+      "enableOrbitAnimation":{
+	enumerable:true,
+	get:function(){return animateOrbits;},
+	set:function(e){
+	  if (e === true){
+	    animateOrbits = true;
+	    lastTimestamp = 0;
+	    timeDuration = 0;
+	    DOMEventNotifier.on("renderframe", OnRenderOrbits);
+	  } else if (e === false){
+	    DOMEventNotifier.unlisten("renderframe", OnRenderOrbits);
+	  }
+	}
       }
     });
 
@@ -349,15 +377,17 @@
 	  .on("click", function(d, i){self.emit("bodyclick", d, i, d3.event);})
 	  .on("dblclick", function(d, i){self.emit("bodydblclick", d, i, d3.event);});
 
-	orbitFunc = function(){
-	  group.selectAll("circle").data(objs).enter()
+	self.on("updateorbit", function(time){
+	  group.selectAll("circle").data(objs)
 	    .attr("cx", function(d){
-
+	      var progress = (time%d.period)/d.period;
+	      return mapScale(d.rMin * Math.cos(progress * 2 * Math.PI));
 	    })
 	    .attr("cy", function(d){
-
+	      var progress = (time%d.period)/d.period;
+	      return mapScale(d.rMax * Math.sin(progress * 2 * Math.PI));
 	    });
-	};
+	});
 	
       }
     }
@@ -436,9 +466,9 @@
 	.attr("cy", mapScale(orbit.rMax))
 	.attr("r", starScale(s.radius))
 	.on("mouseover", function(){self.emit("starmouseover", s, d3.event);})
-	.on("mouseover", function(){self.emit("starmouseout", s, d3.event);})
-	.on("mouseover", function(){self.emit("starclick", s, d3.event);})
-	.on("mouseover", function(){self.emit("stardblclick", s, d3.event);});
+	.on("mouseout", function(){self.emit("starmouseout", s, d3.event);})
+	.on("click", function(){self.emit("starclick", s, d3.event);})
+	.on("dblclick", function(){self.emit("stardblclick", s, d3.event);});
 
       if (s.hasBodiesOfType(Terrestrial.Type)){
 	RenderOrbits(orbit, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
@@ -455,6 +485,8 @@
 
     this.render = function(options){
       if (star === null){return;}
+
+      self.unlistenEvent("updateorbit"); // Clear all current "updateorbit" listeners.
 
       svg.call(zoom);
       //scroller.selectAll("*").remove();

@@ -240,6 +240,30 @@
     });
 
 
+    this.ping = function(r, a){
+      if (r === null){return;}
+
+      var ping = scroller.append("circle")
+	  .attr("r", mapScale(0.1))
+	  .attr("fill", "none")
+	  .attr("stroke", "#00f")
+	  .attr("stroke-width", "2")
+	  .attr("transform", function(d){
+	    var x = mapScale(r*Math.cos(a));
+	    var y = mapScale(r*Math.sin(a));
+	    return "translate(" + x + ", " + y + ")";
+	  });
+      
+      ping.transition()
+	.duration(1000)
+	.attr("stroke-width", "0.1")
+	.attr("r", mapScale(4))
+	.each("end", function(){
+	  ping.remove();
+	});
+    };
+
+
     this.render = function(options){
       if (r === null){return;}
       var CompassRange = d3.range(0, 360, 30);

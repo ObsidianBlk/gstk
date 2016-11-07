@@ -127,7 +127,7 @@
 
     Object.defineProperties(this, {
       "systems":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){
 	  var sys = [];
 	  for (var i=0; i < systems.length; i++){
@@ -138,7 +138,7 @@
       },
 
       "radius":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return radius;},
         set:function(r){
           if (typeof(r) !== 'number'){
@@ -157,12 +157,12 @@
       },
 
       "depth":{
-        enumerate:true,
+        enumerable:true,
         get:function(){return 1 + (zmax - zmin);} // There's always a depth of at least 1
       },
 
       "zmax":{
-        enumerate:true,
+        enumerable:true,
         get:function(){return zmax;},
         set:function(z){
           if (typeof(z) !== 'number'){
@@ -181,7 +181,7 @@
       },
 
       "zmin":{
-        enumerate:true,
+        enumerable:true,
         get:function(){return zmin;},
         set:function(z){
           if (typeof(z) !== 'number'){
@@ -200,12 +200,12 @@
       },
 
       "systemCount":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return systems.length;}
       },
 
       "emptySystemCount":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
@@ -218,7 +218,7 @@
       },
 
       "emptySystems":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
@@ -231,7 +231,7 @@
       },
 
       "nonEmptySystemCount":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
@@ -244,7 +244,7 @@
       },
 
       "nonEmptySystems":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
@@ -257,7 +257,7 @@
       },
 
       "terrestrialSystemCount":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
@@ -270,7 +270,7 @@
       },
 
       "terrestrialSystems":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
@@ -283,7 +283,7 @@
       },
 
       "habitableSystemCount":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
@@ -296,7 +296,7 @@
       },
 
       "habitableSystems":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
@@ -309,7 +309,7 @@
       },
 
       "asteroidSystemCount":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var count = 0;
           for (var i=0; i < systems.length; i++){
@@ -322,7 +322,7 @@
       },
 
       "asteroidSystems":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           var sys = [];
           for (var i=0; i < systems.length; i++){
@@ -339,7 +339,7 @@
       var wrap = {};
       Object.defineProperties(wrap, {
 	"r":{
-	  enumerate:true,
+	  enumerable:true,
 	  get:function(){return sys.r;},
 	  set:function(r){
 	    if (typeof(r) !== 'number'){throw new TypeError("Expecting Number Type.");}
@@ -348,7 +348,7 @@
 	  }
 	},
 	"a":{
-	  enumerate:true,
+	  enumerable:true,
 	  get:function(){return sys.a;},
 	  set:function(a){
 	    if (typeof(a) !== 'number'){throw new TypeError("Expecting Number Type.");}
@@ -357,7 +357,7 @@
 	  }
 	},
 	"z":{
-	  enumerate:true,
+	  enumerable:true,
 	  get:function(){return sys.z;},
 	  set:function(z){
 	    if (typeof(z) !== 'number'){throw new TypeError("Expecting Number Type.");}

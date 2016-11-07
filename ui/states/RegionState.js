@@ -174,7 +174,7 @@
       starEditorPanel.show(true);
     });
     menuPanel.on("export", function(){
-      self.emit("exportJSON", regionView.region.toString(true));
+      self.emit("exportregion", regionView.region.toString(true));
     });
     menuPanel.on("exitregionview", function(){
       self.emit("mainmenu");
@@ -223,7 +223,7 @@
       menuPanel.show(true);
     });
     selectedPanel.on("export", function(){
-      self.emit("export-star", selectedStar.toString(true));
+      self.emit("exportstar", selectedStar.toString(true));
     });
     selectedPanel.on("cancel", function(){
       regionView.select = null;
@@ -248,6 +248,7 @@
       regionView.region.addStar(ops);
       regionView.showPlacerCursor = false;
       regionView.render();
+      regionView.ping(ops.r, ops.a);
       starEditorPanel.show(false);
       menuPanel.show(true);
     });
@@ -359,6 +360,16 @@
       } else if (enable === false && dom.classed("hidden") === false){
 	dom.classed("hidden", true);
 	menuPanel.show(false);
+      }
+    };
+
+    this.addStar = function(options){
+      if (regionView.region !== null && (typeof(options.star) === typeof({}) || typeof(options.star) === 'string')){
+	try{
+	  regionView.region.addStar(options);
+	} catch (e) {
+	  this.emit("error", e.message);
+	}
       }
     };
 

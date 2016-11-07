@@ -6,6 +6,7 @@
        ------------------------------------------------- */
     define([
       'd3',
+      'handlebars',
       'kit/common/PRng',
       'kit/space/StellarBody',
       'kit/space/Terrestrial',
@@ -24,6 +25,7 @@
     if(typeof module === "object" && module.exports){
       module.exports = factory(
 	require('d3'),
+	require('handlebars'),
 	require('../../kit/common/PRng'),
 	require('../../kit/space/StellarBody'),
 	require('../../kit/space/Terrestrial'),
@@ -46,6 +48,7 @@
 
     if (root.$sys.exists(root, [
       'd3',
+      'handlebars',
       'GSTK.common.PRng',
       'GSTK.space.StellarBody',
       'GSTK.space.Terrestrial',
@@ -62,6 +65,7 @@
 
     root.$sys.def (root, "ui.states.StarSystemState", factory(
       root.d3,
+      root.handlebars,
       root.GSTK.common.PRng,
       root.GSTK.space.StellarBody,
       root.GSTK.space.Terrestrial,
@@ -74,8 +78,18 @@
       root.ui.view.StarView
     ));
   }
-})(this, function (d3, PRng, StellarBody, Terrestrial, GasGiant, AsteroidBelt, Emitter, DOMEventNotifier, HoverPanelCtrl, BodyEditorCtrl, StarView){
+})(this, function (d3, handlebars, PRng, StellarBody, Terrestrial, GasGiant, AsteroidBelt, Emitter, DOMEventNotifier, HoverPanelCtrl, BodyEditorCtrl, StarView){
 
+  function BuildInfoPanel(context){
+    var source   = d3.select("#TMPL-Infomation").html();
+    var template = handlebars.compile(source);
+    var html = template(context);
+    var infodiv = d3.select(".hoverPanel.stellarBodyInfo");
+    infodiv.selectAll().remove();
+    infodiv.html(html);
+  };
+
+  
   function StarSystemState(dom){
     Emitter.call(this);
     var self = this;
@@ -92,15 +106,15 @@
     // -------------------------------------------------------------------------------------------------------------------------------
     // Defining core state objects (but their events, yet)...
 
-    var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.planet"));
+    var infoPanel = new HoverPanelCtrl(d3.select(".hoverPanel.stellarBodyInfo"));
     infoPanel.edge = HoverPanelCtrl.Edge.Right;
     infoPanel.flipEdge = true;
     var infoPanelIntervalID = null;
 
-    var starPanel = new HoverPanelCtrl(d3.select(".hoverPanel.star"));
+    /*var starPanel = new HoverPanelCtrl(d3.select(".hoverPanel.star"));
     starPanel.edge = HoverPanelCtrl.Edge.Right;
     starPanel.flipEdge = true;
-    var starPanelIntervalID = null;
+    var starPanelIntervalID = null;*/
 
     var starViewMenu = new HoverPanelCtrl(d3.select(".hoverPanel.StarViewMenu"));
     starViewMenu.edge = HoverPanelCtrl.Edge.Left;
@@ -108,6 +122,7 @@
     
     var starView = new StarView(d3, map);
     starView.mapSize = mapSize;
+    starView.enableOrbitAnimation = true;
 
     var bodyEditorPanel = new BodyEditorCtrl(d3.select(".hoverPanel.bodyEditor"));
     bodyEditorPanel.edge = HoverPanelCtrl.Edge.VCenter | HoverPanelCtrl.Edge.Right;
@@ -255,61 +270,79 @@
 	  clearTimeout(infoPanelIntervalID);
 	  infoPanelIntervalID = null;
 
-	  infoPanel.set({
-	    apogee: d.rMax.toFixed(4),
-	    perigee: d.rMin.toFixed(4),
-	    name: body.name,
-	    size: body.size
-	  });
-
 	  if (body instanceof GasGiant){
-	    infoPanel.set({
-	      body: "Gas Giant",
-	      orbit: d.period.toFixed(2),
-	      blackbody: body.blackbody.toFixed(2),
-	      period: body.rotationalPeriod.toFixed(4),
-	      tilt: body.axialTilt.toFixed(1),
-	      mass: body.mass.toFixed(4),
-	      density: body.density.toFixed(4),
-	      diameter: body.diameterKM.toFixed(4),
-	      gravity: body.surfaceGravity.toFixed(2)
+	    BuildInfoPanel({
+	      item:
+	      [
+		{name:"Name", value:body.name},
+		{name:"Type", value:"Gas Giant"},
+		{name:"Size", value:body.size},
+		{name:"Apogee", value:d.rMax.toFixed(4), unit:"AU"},
+		{name:"Perigee", value:d.rMin.toFixed(4), unit:"AU"},
+		{name:"Orbital Period", value:d.period.toFixed(2), unit:"earth years"},
+		{name:"Rotation Period", value:body.rotationalPeriod.toFixed(4), unit:"earth days"},
+		{name:"Blackbody Temperature", value:body.blackbody.toFixed(2), unit:"k"},
+		{name:"Axial Tilt", value:body.axialTilt.toFixed(1), unit:"degrees"},
+		{name:"Mass", value:body.mass.toFixed(4), unit:"earths"},
+		{name:"Density", value:body.density.toFixed(4), unit:"earths"},
+		{name:"Diameter", value:body.diameterKM.toFixed(4), unit:"km"},
+		{name:"Gravity", value:body.surfaceGravity.toFixed(2), unit:"earths"}
+	      ]
 	    });
-	    infoPanel.showSection("gasgiant", true, true);
 	  } else if (body instanceof AsteroidBelt){
-	    infoPanel.set({
-	      body: "Asteroid Belt",
-	      temperature: body.temperature.toFixed(2),
-	      temperatureC: StellarBody.Kelvin2C(body.temperature).toFixed(2),
-	      temperatureF: StellarBody.Kelvin2F(body.temperature).toFixed(2),
-	      resources: body.resources
+	    BuildInfoPanel({
+	      item:
+	      [
+		{name:"Name", value:body.name},
+		{name:"Type", value:"Asteroid Belt"},
+		{name:"Size", value:body.size},
+		{name:"Apogee", value:d.rMax.toFixed(4), unit:"AU"},
+		{name:"Perigee", value:d.rMin.toFixed(4), unit:"AU"},
+		{name:"Temperature", item:[
+		  {value:body.temperature.toFixed(2), unit:"k"},
+		  {value:StellarBody.Kelvin2C(body.temperature).toFixed(2), unit:"c"},
+		  {value:StellarBody.Kelvin2F(body.temperature).toFixed(2), unit:"f"}
+		]},
+		{name:"Resources", value:body.resources}
+	      ]
 	    });
-	    infoPanel.showSection("asteroidbelt", true, true);
 	  } else if (body instanceof Terrestrial){
 	    var atm = body.atmosphere;
-	    infoPanel.set({
-	      body: "Terrestrial",
-	      orbit: d.period.toFixed(2),
-	      temperature: body.temperature.toFixed(2),
-	      temperatureC: StellarBody.Kelvin2C(body.temperature).toFixed(2),
-	      temperatureF: StellarBody.Kelvin2F(body.temperature).toFixed(2),
-	      period: body.rotationalPeriod.toFixed(4),
-	      tilt: body.axialTilt.toFixed(1),
-	      mass: body.mass.toFixed(4),
-	      density: body.density.toFixed(4),
-	      diameter: body.diameterKM.toFixed(4),
-	      gravity: body.surfaceGravity.toFixed(2),
-	      cls: body.class,
-	      resources: body.resources,
-	      hydrographics: body.hydrographics.toFixed(2),
-              breathable: (atm.breathable === true) ? "True" : "False",
-	      suffocating: (atm.suffocating === true) ? "True" : "False",
-	      corrosive: (atm.corrosive === true) ? "True" : "False",
-	      toxic: (typeof(atm.toxicity) === 'number' && atm.toxicity === 0) ? "None" : (atm.toxicity === 1) ? "Mild" : (atm.toxicity === 2) ? "Thick" : "Heavy",
-	      toxin: (typeof(atm.marginal) === true && typeof(atm.toxin) !== 'undefined') ? atm.toxin.join(", ") : "None",
-	      composition: (typeof(atm.composition) !== 'undefined') ? atm.composition.join(", ") : "None",
-	      affinity: body.affinity
+	    BuildInfoPanel({
+	      item:
+	      [
+		{name:"Name", value:body.name},
+		{name:"Type", value:"Terrestrial"},
+		{name:"Class", value:body.class},
+		{name:"Size", value:body.size},
+		{name:"Apogee", value:d.rMax.toFixed(4), unit:"AU"},
+		{name:"Perigee", value:d.rMin.toFixed(4), unit:"AU"},
+		{name:"Orbital Period", value:d.period.toFixed(2), unit:"earth years"},
+		{name:"Rotation Period", value:body.rotationalPeriod.toFixed(4), unit:"earth days"},
+		{name:"Axial Tilt", value:body.axialTilt.toFixed(1), unit:"degrees"},
+		{name:"Blackbody Temperature", value:body.blackbody.toFixed(2), unit:"k"},
+		{name:"Temperature", item:[
+		  {value:body.temperature.toFixed(2), unit:"k"},
+		  {value:StellarBody.Kelvin2C(body.temperature).toFixed(2), unit:"c"},
+		  {value:StellarBody.Kelvin2F(body.temperature).toFixed(2), unit:"f"}
+		]},
+		{name:"Mass", value:body.mass.toFixed(4), unit:"earths"},
+		{name:"Density", value:body.density.toFixed(4), unit:"earths"},
+		{name:"Diameter", value:body.diameterKM.toFixed(4), unit:"km"},
+		{name:"Gravity", value:body.surfaceGravity.toFixed(2), unit:"earths"},
+		{name:"Hydrographics", value:body.hydrographics.toFixed(2), unit:"%"},
+		{name:"Atmosphere:", item:[
+		  {name:"Breathable", value:(atm.breathable === true) ? "True" : "False"},
+		  {name:"Suffocating", value:(atm.suffocating === true) ? "True" : "False"},
+		  {name:"Corrosive", value:(atm.corrosive === true) ? "True" : "False"},
+		  {name:"Toxic", value:(typeof(atm.toxicity) === 'number' && atm.toxicity === 0) ? "None" : (atm.toxicity === 1) ? "Mild" : (atm.toxicity === 2) ? "Thick" : "Heavy"},
+		  {name:"Toxin", value:(typeof(atm.marginal) === true && typeof(atm.toxin) !== 'undefined') ? atm.toxin.join(", ") : "None"},
+		  {name:"Composition", value:(typeof(atm.composition) !== 'undefined') ? atm.composition.join(", ") : "None"}
+		]},
+		{name:"Resources", value:body.resources},
+		{name:"Affinity", value:body.affinity}
+	      ]
 	    });
-	    infoPanel.showSection("terrestrial", true, true);
 	  }
 
 	  infoPanel.show(true, x, y + 20);
@@ -349,13 +382,35 @@
     starView.on("starmouseover", function(s, event){
       var x = d3.event.x;
       var y = d3.event.y;
+      
 
-      if (bodySelectedMenu.showing() === false && starPanelIntervalID === null){
-	starPanelIntervalID = window.setTimeout(function(){
-	  window.clearTimeout(starPanelIntervalID);
-	  starPanelIntervalID = null;
+      if (bodySelectedMenu.showing() === false && infoPanelIntervalID === null){
+	infoPanelIntervalID = setTimeout(function(){
+	  clearTimeout(infoPanelIntervalID);
+	  infoPanelIntervalID = null;
 
-	  var posDesc = s.localPosition;
+	  var items = [];
+	  items.push({name:"Name", value:s.name});
+	  
+	  if (s.parent !== null){
+	    var orb = s.localOrbit;
+	    items.push({name:"Apogee", value:orb.rMax.toFixed(2), unit:"AU"});
+	    items.push({name:"Perigee", value:orb.rMin.toFixed(2), unit:"AU"});
+	  } else {
+	    items.push({name:"Position", value:s.localPosition});
+	  }
+
+	  items.push({name:"Sequence", value:s.sequence + " / " + s.class});
+	  items.push({name:"Mass", value:s.mass.toFixed(4), unit:"Solar Units"});
+	  items.push({name:"Radius", value:s.radius.toFixed(4), unit:"AU"});
+	  items.push({name:"Age", value:s.age.toFixed(2), unit:"bY"});
+	  items.push({name:"Temperature", value:s.temperature.toFixed(2), unit:"k"});
+
+	  BuildInfoPanel({
+	    item:items
+	  });
+
+	  /*var posDesc = s.localPosition;
 	  if (s.parent !== null){
 	    var orb = s.localOrbit;
 	    posDesc = "\"" + posDesc + "\" - Perigee: " + orb.rMin.toFixed(2) + " AU  |  Apogee: " + orb.rMax.toFixed(2) + " AU"; 
@@ -374,8 +429,8 @@
 	      s.countBodiesOfType(GasGiant.Type) + " / " + 
 	      s.countBodiesOfType(Terrestrial.Type) + " / " + 
 	      s.countBodiesOfType(AsteroidBelt.Type) + ")"
-	  });
-	  starPanel.show(true, x, y);
+	  });*/
+	  infoPanel.show(true, x, y);
 	}, 1000);
       }
     });
