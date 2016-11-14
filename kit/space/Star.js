@@ -502,13 +502,13 @@
       var c = {};
       Object.defineProperties(c, {
 	"orbit":{
-	  enumerate: true,
+	  enumerable: true,
 	  get:function(){
 	    return JSON.parse(JSON.stringify(cmp.orbit));
 	  }
 	},
 	"forbiddenZone":{
-	  enumerate: true,
+	  enumerable: true,
 	  get:function(){
 	    return JSON.parse(JSON.stringify(cmp.forbiddenZone));
 	  }
@@ -523,19 +523,19 @@
       var o = {};
       Object.defineProperties(o, {
 	"avgRadius":{
-	  enumerate:true,
+	  enumerable:true,
 	  get:function(){return sb.avgRadius;}
 	},
 	"rMin":{
-	  enumerate:true,
+	  enumerable:true,
 	  get:function(){return sb.rMin;}
 	},
 	"rMax":{
-	  enumerate:true,
+	  enumerable:true,
 	  get:function(){return sb.rMax;}
 	},
 	"period":{
-	  enumerate:true,
+	  enumerable:true,
 	  get:function(){return sb.period;}
 	}
       });
@@ -645,7 +645,7 @@
 
     Object.defineProperties(this, {
       "parent":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return parent;},
 	set:function(p){
 	  if (parent === null && p instanceof Star){
@@ -661,7 +661,7 @@
       },
 
       "localPosition":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  if (parent !== null){
 	    var cmp = parent.companions;
@@ -677,7 +677,7 @@
       },
 
       "localOrbit":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){
 	  if (parent !== null){
 	    var cmp = parent.companions;
@@ -693,7 +693,7 @@
       },
 
       "forbiddenZone":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  if (parent !== null){
 	    var cmp = parent.companions;
@@ -709,31 +709,31 @@
       },
 
       "sequence":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           return (typeof(this.data.sequence) === 'string') ? this.data.sequence : "UNIQUE";
         }
       },
 
       "class":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           return (typeof(this.data.lumClass) === 'string') ? this.data.lumClass : "";
         }
       },
 
       "mass":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return (typeof(this.data.mass) === 'number') ? this.data.mass : 0;}
       },
 
       "radius":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return this.data.radius;}
       },
 
       "radiusMiles":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var r = this.data.radius;
 	  return (r > 0) ? r*StellarBody.Conv.AU2Mile : StellarBody.Conv.E2Miles;
@@ -741,7 +741,7 @@
       },
 
       "radiusKM":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var r = this.data.radius;
 	  return (r > 0) ? r*StellarBody.Conv.AU2KM : StellarBody.Conv.E2KM;
@@ -749,27 +749,27 @@
       },
 
       "age":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return (typeof(this.data.age) === 'number') ? this.data.age : 0;}
       },
 
       "temperature":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return (typeof(this.data.temp) === 'number') ? this.data.temp : 0;}
       },
 
       "luminosity":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return (typeof(this.data.luminosity) === 'number') ? this.data.luminosity : 0;}
       },
 
       "limit":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return (typeof(this.data.limit) !== 'undefined') ? JSON.parse(JSON.stringify(this.data.limit)) : null;}
       },
 
       "goldielocks":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){
 	  var lum = this.data.luminosity;
 	  // Coldest is further out than hottest, therefore coldest is max.
@@ -781,12 +781,12 @@
       },
 
       "companionCount":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return (typeof(this.data.companion) !== 'undefined') ? this.data.companion.length : 0;}
       },
 
       "companions":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){
 	  var cmp = [];
 	  if (this.companionCount > 0){
@@ -799,7 +799,7 @@
       },
 
       "fullSystemRadius":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var size = this.data.limit.outerRadius;
 	  for (var c=0; c < this.companionCount; c++){
@@ -813,12 +813,12 @@
       },
 
       "bodyCount":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return (typeof(this.data.body) !== 'undefined') ? this.data.body.length : 0;}
       },
 
       "bodies":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){
 	  var sb = [];
 	  if (typeof(this.data.body) !== 'undefined'){
@@ -889,6 +889,23 @@
 	  this.data.body[i].body = StellarBody.BuildType(this.data.body[i].body._type, {from: this.data.body[i].body});
 	}
       }
+    };
+
+    this.contains = function(sb){
+      if (sb instanceof StellarBody && sb !== this){
+	if (typeof(this.data.body) !== 'undefined'){
+	  for (var i=0; i < this.data.body.length; i++){
+	    if (this.data.body[i].body === sb){return true;}
+	  }
+	}
+
+	if (typeof(this.data.companion) !== 'undefined'){
+	  for (var i=0; i < this.data.companion.length; i++){
+	    if (this.data.companion[i].body === sb){return true;}
+	  }
+	}
+      }
+      return false;
     };
 
     this.orbitRadiusAllowed = function(r, ecc){

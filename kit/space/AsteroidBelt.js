@@ -146,7 +146,7 @@
 
     Object.defineProperties(this, {
       "parent":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return parent;},
 	set:function(p){
 	  if (parent === null && p instanceof StellarBody){
@@ -162,12 +162,12 @@
       },
 
       "sizeIndex":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return this.data.size;}
       },
 
       "size":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  switch(this.data.size){
 	  case 0:
@@ -182,26 +182,26 @@
       },
 
       "blackbody":{
-        enumerate:true,
+        enumerable:true,
         get:function(){return this.data.blackbody;}
       },
 
       "resources":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           return StellarBody.Table.ResourceValueTable[this.data.resourceIndex].desc;
         }
       },
 
       "resourceModifier":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           return StellarBody.Table.ResourceValueTable[this.data.resourceIndex].mod;
         }
       },
 
       "temperature":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.temperature;}
       }
     });

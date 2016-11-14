@@ -80,7 +80,7 @@
 
     Object.defineProperties(this, {
       "mapSize":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return mapSize;},
 	set:function(size){
 	  if (typeof(size) === 'number' && size > 0){
@@ -96,7 +96,7 @@
       },
 
       "displayMode":{
-        enumerate:true,
+        enumerable:true,
         get:function(){return displayMode;},
         set:function(mode){
           if (typeof(mode) !== 'number'){
@@ -116,17 +116,17 @@
       },
 
       "mapScale":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return mapScale;}
       },
 
       "starScale":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return starScale;}
       },
 
       "region":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return r;},
 	set:function(reg){
 	  if (reg !== null && !(reg instanceof Region)){
@@ -137,7 +137,7 @@
       },
 
       "select":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return (selected !== null) ? {r:selected.r, a:selected.a} : null;},
 	set:function(s){
 	  if (s !== null && typeof(s) !== typeof({})){
@@ -156,7 +156,7 @@
       },
 
       "showPlacerCursor":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return showStarPlacerCursor;},
 	set:function(e){
 	  if (typeof(e) !== 'boolean'){
@@ -167,7 +167,7 @@
       },
 
       "placerCursorRadius":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return placerCursorPos[0];},
 	set:function(rad){
 	  if (typeof(rad) !== 'number'){
@@ -181,7 +181,7 @@
       },
 
       "placerCursorAngle":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return placerCursorPos[1];},
 	set:function(ang){
 	  if (typeof(ang) !== 'number'){
@@ -201,7 +201,7 @@
       },
 
       "placerCursor":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  return {
 	    radius: placerCursorPos[0],

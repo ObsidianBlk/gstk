@@ -230,6 +230,10 @@
     this.seed(options.seed);
   }
   PRng.prototype.constructor = PRng;
+  PRng.prototype.GenerateUUID = function(seed){
+    var p = new PRng({seed:seed, initDepth:2000});
+    return p.generateUUID();
+  };
 
   return PRng;
 

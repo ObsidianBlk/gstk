@@ -88,7 +88,7 @@
 
     Object.defineProperties(this, {
       "offsetX":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return posOffsetX;},
 	set:function(ox){
 	  if (typeof(ox) !== 'number'){
@@ -99,7 +99,7 @@
       },
 
       "offsetY":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return posOffsetY;},
 	set:function(oy){
 	  if (typeof(oy) !== 'number'){
@@ -110,7 +110,7 @@
       },
 
       "edge":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return stickyEdge;},
 	set:function(se){
 	  if (typeof(se) !== 'number'){
@@ -123,7 +123,7 @@
       },
 
       "flipEdge":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return stickyFlipEnabled;},
 	set:function(e){
 	  if (typeof(e) !== 'boolean'){
@@ -134,7 +134,7 @@
       },
 
       "events":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return BTNEvents;}
       }
     });

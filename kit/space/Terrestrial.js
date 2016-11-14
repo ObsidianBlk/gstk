@@ -848,7 +848,7 @@
     
     Object.defineProperties(this, {
       "parent":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return parent;},
 	set:function(p){
 	  if (parent === null && p instanceof StellarBody){
@@ -864,12 +864,12 @@
       },
 
       "sizeIndex":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return this.data.size;}
       },
 
       "size":{
-        enumerate: true,
+        enumerable: true,
 	get:function(){
 	  switch(this.data.size){
 	  case 0:
@@ -886,101 +886,101 @@
       },
 
       "classIndex":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return this.data.class;}
       },
 
       "class":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return StellarBody.Table.TerrestrialClassTable[this.data.class];}
       },
 
       "mass":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.mass;}
       },
 
       "density":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.density;}
       },
 
       "diameter":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.diameter;}
       },
 
       "diameterMiles":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.diameter*(StellarBody.Convert.E2Mile*2);}
       },
 
       "diameterKM":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.diameter*(StellarBody.Convert.E2KM*2);}
       },
 
       "surfaceGravity":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.surfaceGravity;}
       },
 
       "rotationalPeriod":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.rotationalPeriod;}
       },
 
       "axialTilt":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.axialTilt;}
       },
 
       "blackbody":{
-        enumerate:true,
+        enumerable:true,
         get:function(){return this.data.blackbody;}
       },
 
       "resources":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           return StellarBody.Table.ResourceValueTable[this.data.resourceIndex].desc;
         }
       },
 
       "resourceModifier":{
-        enumerate: true,
+        enumerable: true,
         get:function(){
           return StellarBody.Table.ResourceValueTable[this.data.resourceIndex].mod;
         }
       },
 
       "temperature":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.temperature;}
       },
 
       "hydrographics":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.hydrographics;}
       },
 
       "atmosphere":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return JSON.parse(JSON.stringify(this.data.atmosphere));}
       },
 
       "affinity":{
-        enumerate: true,
+        enumerable: true,
         get:function(){return this.data.affinity;}
       },
 
       "companionCount":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return (typeof(this.data.companion) !== 'undefined') ? this.data.companion.length : 0;}
       },
 
       "companions":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var list = [];
 	  if (typeof(this.data.companion) !== 'undefined'){

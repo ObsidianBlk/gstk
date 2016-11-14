@@ -48,7 +48,7 @@
 
     Object.defineProperties(this, {
       "name":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return data.name;},
 	set:function(name){
 	  if (typeof(name) !== 'string'){throw new TypeError("Expected string.");}
@@ -57,19 +57,19 @@
       },
 
       "type":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){
 	  return (typeof(data._type) === 'number') ? data._type : -1;
 	}
       },
 
       "data":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return data;}
       },
 
       "schema":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return loadSchema;},
 	set:function(schema){
 	  if (typeof(schema) === typeof({}) && loadSchema === null){

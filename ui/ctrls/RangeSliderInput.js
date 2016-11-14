@@ -70,7 +70,7 @@
 
     Object.defineProperties(this, {
       "value":{
-        enumerate:true,
+        enumerable:true,
         get:function(){return Number(dom.node().value);},
         set:function(v){
           if (typeof(v) !== 'number'){
@@ -83,7 +83,7 @@
       },
 
       "max":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return Number(dom.attr("max"));},
 	set:function(m){
 	  if (typeof(m) !== 'number'){
@@ -99,7 +99,7 @@
       },
 
       "min":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return Number(dom.attr("min"));},
 	set:function(m){
 	  if (typeof(m) !== 'number'){
@@ -115,7 +115,7 @@
       },
 
       "fixedSize":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return fixedSize;},
 	set:function(fs){
 	  if (typeof(fs) !== 'number'){

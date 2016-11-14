@@ -70,6 +70,7 @@
     var planetLayer = scroller.append("g");
 
     var star = null;
+    var focusStar = null;
     var mapSize = 1;
     var hmapSize = 1;
     var mapScale = d3.scale.linear().domain([0,1]).range([0,1]);
@@ -95,19 +96,41 @@
 
     var selectedBody = null;
 
-    var orbitFunc = null;
     var animateOrbits = false;
     var lastTimestamp = 0;
-    var timeDuration = 0;
     var timeYearsPerSecond = 1;
 
+    var info = {};
+
+
+    function PositionFromTime(body, rMin, rMax, period, days){
+      var res = {x:0, y:0};
+      if (body.name in info){
+	if (days > 0){
+	  info[body.name].days = (info[body.name].days + days)%(period*365.25);
+	}
+	var time = info[body.name].days / 365.25;
+	var progress = (time%period)/period;
+	res.x = mapScale(rMin * Math.cos(progress * 2 * Math.PI));
+	res.y = mapScale(rMax * Math.sin(progress * 2 * Math.PI));
+      }
+      return res;
+    }
 
     function OnRenderOrbits(timestamp){
+      var dt = 0;
       if (lastTimestamp !== 0){
-	timeDuration += (timestamp - lastTimestamp)/1000;
+	dt = (timestamp - lastTimestamp)/1000;
       }
       lastTimestamp = timestamp;
-      self.emit("updateorbit", timeDuration/timeYearsPerSecond);
+      if (timeYearsPerSecond > 0.0){
+	self.emit("updateorbit", (dt * (timeYearsPerSecond*365.25)));
+	if (focusStar !== null && focusStar.localOrbit !== null && focusStar.name in info){
+	  var orbit = focusStar.localOrbit;
+	  var focus = PositionFromTime(focusStar, orbit.rMin, orbit.rMax, orbit.period, 0);
+	  scroller.attr("transform", "translate(" + (renderOffset.x + focus.x) + ", " + (renderOffset.y + focus.y) + ")");
+	}
+      }
     }
 
     function zoomed() {
@@ -128,7 +151,15 @@
       renderOffset.x += d3.event.sourceEvent.movementX;
       renderOffset.y += d3.event.sourceEvent.movementY;
 
-      scroller.attr("transform", "translate(" + renderOffset.x + ", " + renderOffset.y + ")");
+      var focus = {x:0, y:0};
+      if (focusStar !== null && focusStar.localOrbit !== null){
+	if (focusStar.name in info){
+	  var orbit = focusStar.localOrbit;
+	  focus = PositionFromTime(focusStar, orbit.rMin, orbit.rMax, orbit.period, 0);
+	}
+      }
+
+      scroller.attr("transform", "translate(" + (renderOffset.x + focus.x) + ", " + (renderOffset.y + focus.y) + ")");
       self.render();
     }
     var zoom = d3.behavior.zoom()
@@ -145,7 +176,7 @@
 
     Object.defineProperties(this, {
       "star":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return star;},
 	set:function(s){
 	  if (s !== null && !(s instanceof Star)){
@@ -156,8 +187,20 @@
 	      s = s.parent;
 	    }
 	  }
+
+	  info = {};
 	  star = s;
 	  if (star !== null){
+	    if (focusStar !== null){
+	      if (focusStar !== star){
+		if (star.contains(focusStar) === false){
+		  focusStar = star;
+		}
+	      }
+	    } else {
+	      focusStar = star;
+	    }
+	    
 	    ocursorRadius = star.limit.innerRadius;
 	    selectedBody = null;
 	    var minExtent = star.limit.innerRadius/star.fullSystemRadius;
@@ -168,13 +211,35 @@
 	      renderScale = 1.0;
 	      zoom.scale(1.0);
 	    }
+	  } else {
+	    focusStar = null;
 	  }
 	  UpdateMapScale();
 	}
       },
 
+      "focusStar":{
+	enumerable: true,
+	get:function(){return focusStar;},
+	set:function(s){
+	  if (s !== null && !(s instanceof Star)){
+	    throw new TypeError("Expected Star instance or null.");
+	  }
+	  if (star !== null){
+	    if (s === null || s === star){
+	      focusStar = star;
+	    } else {
+	      if (star.contains(s) === false){
+		throw new Error("Star must be a companion of the primary star.");
+	      }
+	      focusStar = s;
+	    }
+	  }
+	}
+      },
+
       "mapSize":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return mapSize;},
 	set:function(size){
 	  if (typeof(size) === 'number' && size > 0){
@@ -186,7 +251,7 @@
       },
 
       "scaleGridShowing":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return (axis !== null);},
 	set:function(enable){
 	  if (enable === false && axis !== null){
@@ -204,7 +269,7 @@
       },
 
       "selectBody":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return selectedBody;},
 	set:function(b){
 	  if (b instanceof StellarBody){
@@ -220,7 +285,7 @@
       },
 
       "orbitCursorRadius":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return ocursorRadius;},
 	set:function(r){
 	  if (typeof(r) !== 'number'){
@@ -244,7 +309,7 @@
       },
 
       "orbitCursorEccentricity":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return ocursorEccentricity;},
 	set:function(e){
 	  if (typeof(e) !== 'number'){
@@ -258,7 +323,7 @@
       },
 
       "showOrbitCursor":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return showOrbitCursor;},
 	set:function(e){
 	  if (typeof(e) !== 'boolean'){
@@ -273,7 +338,7 @@
       },
 
       "showSnowline":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return showSnowline;},
 	set:function(e){
 	  if (typeof(e) !== 'boolean'){
@@ -284,7 +349,7 @@
       },
 
       "showForbiddenZone":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return showForbiddenZone;},
 	set:function(e){
 	  if (typeof(e) !== 'boolean'){
@@ -295,7 +360,7 @@
       },
 
       "showGoldielocks":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return showGoldielocks;},
 	set:function(e){
 	  if (typeof(e) !== 'boolean'){
@@ -312,11 +377,23 @@
 	  if (e === true){
 	    animateOrbits = true;
 	    lastTimestamp = 0;
-	    timeDuration = 0;
 	    DOMEventNotifier.on("renderframe", OnRenderOrbits);
 	  } else if (e === false){
 	    DOMEventNotifier.unlisten("renderframe", OnRenderOrbits);
 	  }
+	}
+      },
+
+      "animationYPS":{ // Animation Years Per Second
+	enumerable: true,
+	get:function(){return timeYearsPerSecond;},
+	set:function(yps){
+	  if (typeof(yps) !== 'number'){
+	    throw new TypeError("Expected a number.");
+	  } else if (yps <= 0){
+	    throw new Error("Value must be greater than zero.");
+	  }
+	  timeYearsPerSecond = yps;
 	}
       }
     });
@@ -328,85 +405,37 @@
       }
     }
 
-    function RenderOrbits(orbit, objs, clsname, noCircle){
-      noCircle = (noCircle === true) ? true : false;
-      if (selectedBody !== null){
-	objs.forEach(function(b){
-	  if (b.body === selectedBody){
-	    planetLayer.append("g")
-	      .attr("class", "orbit-selected")
-	      .attr("transform", "translate(" + mapScale(0) + ", " + mapScale(orbit.rMax) + ")")
-	      .append("ellipse")
-	      .attr("rx", mapScale(b.rMin))
-	      .attr("ry", mapScale(b.rMax));
-	  }
-	});
-      }
-      var group = planetLayer.append("g")
-	.attr("class", clsname)
-	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(orbit.rMax) + ")");
-	
-
-      group.selectAll("ellipse")
-	.data(objs).enter()
-	.append("ellipse")
-	.attr("rx", function(d){
-	  return mapScale(d.rMin);
-	})
-	.attr("ry", function(d){
-	  return mapScale(d.rMax);
-	})
-	.on("mouseover", function(d, i){self.emit("bodymouseover", d, i, d3.event);})
-	.on("mouseout", function(d, i){self.emit("bodymouseout", d, i, d3.event);})
-	.on("click", function(d, i){self.emit("bodyclick", d, i, d3.event);})
-	.on("dblclick", function(d, i){self.emit("bodydblclick", d, i, d3.event);});
-
-      orbitFunc = null;
-      if (noCircle === false){
-	group.selectAll("circle")
-	  .data(objs).enter()
-	  .append("circle")
-	  .attr("cy", function(d){
-	    return mapScale(d.rMax);
-	  })
-	  .attr("r", function(d){
-	    return bodyScale(d.body.diameter);
-	  })
-	  .on("mouseover", function(d, i){self.emit("bodymouseover", d, i, d3.event);})
-	  .on("mouseout", function(d, i){self.emit("bodymouseout", d, i, d3.event);})
-	  .on("click", function(d, i){self.emit("bodyclick", d, i, d3.event);})
-	  .on("dblclick", function(d, i){self.emit("bodydblclick", d, i, d3.event);});
-
-	self.on("updateorbit", function(time){
-	  group.selectAll("circle").data(objs)
-	    .attr("cx", function(d){
-	      var progress = (time%d.period)/d.period;
-	      return mapScale(d.rMin * Math.cos(progress * 2 * Math.PI));
-	    })
-	    .attr("cy", function(d){
-	      var progress = (time%d.period)/d.period;
-	      return mapScale(d.rMax * Math.sin(progress * 2 * Math.PI));
-	    });
-	});
-	
-      }
-    }
 
     function RenderStar(cdata, g){
       var s = cdata.body;
       var orbit = (typeof(cdata.orbit) !=='undefined') ? cdata.orbit : null;
       var fz = (typeof(cdata.forbiddenZone) !== 'undefined') ? cdata.forbiddenZone : null;
 
+      var g_orbit = (orbit !== null) ? g.append("g") : null;
+      var g_star = g.append("g");
+      
+      if (orbit !== null){
+	if (!(s.name in info)){
+	  info[s.name] = {days:0};
+	}
+	self.on("updateorbit", function(days){
+	  var res = PositionFromTime(s, orbit.rMin, orbit.rMax, orbit.period, days);
+	  g_star.attr("transform", "translate(" + res.x + ", " + res.y + ")");
+	});
+	(function(){
+	  var res = PositionFromTime(s, orbit.rMin, orbit.rMax, orbit.period, 0);
+	  g_star.attr("transform", "translate(" + res.x + ", " + res.y + ")");
+	})();
+      }
+
       var arc = null;
-      // NOTE: We only want to render the snowline for the primary star
-      // TODO: Perhaps there can be a method for selecting which star to render the snowline around?
       if (showSnowline === true && orbit === null){
 	arc = d3.svg.arc()
 	  .innerRadius(mapScale(s.limit.snowLine))
 	  .outerRadius(mapScale(s.fullSystemRadius))
 	  .startAngle(0)
 	  .endAngle(360*(Math.PI/180));
-	snowlineLayer.append("path")
+	g_star.append("g").append("path")
 	  .attr("d", arc)
 	  .attr("fill", "#007")
 	  .attr("stroke", "none")
@@ -426,9 +455,7 @@
 	    .outerRadius(mapScale(gl.max))
 	    .startAngle(0)
 	    .endAngle(360*(Math.PI/180));
-	  goldielocksLayer.append("g")
-	    .attr("transform", "translate(" + mapScale(0) + ", " + mapScale((orbit !== null) ? orbit.rMax : 0) + ")")
-	    .append("path")
+	  g_star.append("g").append("path")
 	    .attr("d", arc)
 	    .attr("fill", "#070")
 	    .attr("stroke", "none")
@@ -451,19 +478,24 @@
 	}
       }
 
-      g.attr("class", "star " + s.sequence.substring(0, 1));
       if (orbit !== null){
-	g.append("ellipse")
+	g_orbit.attr("class", "star " + s.sequence.substring(0, 1))
+	  .append("ellipse")
 	  .attr("cx", mapScale(0))
 	  .attr("cy", mapScale(0))
 	  .attr("rx", mapScale(orbit.rMin))
-	  .attr("ry", mapScale(orbit.rMax));
+	  .attr("ry", mapScale(orbit.rMax))
+	  .on("mouseover", function(){self.emit("starmouseover", s, d3.event);})
+	  .on("mouseout", function(){self.emit("starmouseout", s, d3.event);})
+	  .on("click", function(){self.emit("starclick", s, d3.event);})
+	  .on("dblclick", function(){self.emit("stardblclick", s, d3.event);});
       } else {
 	orbit = {rMin: 0, rMax: 0};
       }
 
-      g.append("circle")
-	.attr("cy", mapScale(orbit.rMax))
+      g_star.append("g")
+	.attr("class", "star " + s.sequence.substring(0,1))
+	.append("circle")
 	.attr("r", starScale(s.radius))
 	.on("mouseover", function(){self.emit("starmouseover", s, d3.event);})
 	.on("mouseout", function(){self.emit("starmouseout", s, d3.event);})
@@ -471,17 +503,76 @@
 	.on("dblclick", function(){self.emit("stardblclick", s, d3.event);});
 
       if (s.hasBodiesOfType(Terrestrial.Type)){
-	RenderOrbits(orbit, s.getBodiesOfType(Terrestrial.Type), "orbit-terrestrial");
+	s.getBodiesOfType(Terrestrial.Type).forEach(function(sborbit){
+	  RenderOrbit(g_star, sborbit, "orbit-terrestrial");
+	});
       }
 
       if (s.hasBodiesOfType(GasGiant.Type)){
-	RenderOrbits(orbit, s.getBodiesOfType(GasGiant.Type), "orbit-gasgiant");
+	s.getBodiesOfType(GasGiant.Type).forEach(function(sborbit){
+	  RenderOrbit(g_star, sborbit, "orbit-gasgiant");
+	});
       }
 
       if (s.hasBodiesOfType(AsteroidBelt.Type)){
-	RenderOrbits(orbit, s.getBodiesOfType(AsteroidBelt.Type), "orbit-asteroids", true);
+	s.getBodiesOfType(AsteroidBelt.Type).forEach(function(sborbit){
+	  RenderOrbit(g_star, sborbit, "orbit-asteroids", true);
+	});
       }
     }
+
+
+    function RenderOrbit(g, orbit, clsname, noCircle){
+      noCircle = (noCircle === true) ? true : false;
+      var g_group = g.append("g");
+      
+      if (selectedBody !== null && selectedBody === orbit.body){
+	g_group.append("g")
+	  .attr("class", "orbit-selected")
+	  .append("ellipse")
+	  .attr("rx", mapScale(orbit.rMin))
+	  .attr("ry", mapScale(orbit.rMax));
+      }
+      
+      // Stellar Body's orbital path...
+      g_group.append("g")
+	.attr("class", clsname)
+	.append("ellipse")
+	.attr("rx", mapScale(orbit.rMin))
+	.attr("ry", mapScale(orbit.rMax))
+      // NOTE: The "0" passed in the emit are there deprecated. Need to update the receiver.
+	.on("mouseover", function(){self.emit("bodymouseover", orbit, 0, d3.event);})
+	.on("mouseout", function(){self.emit("bodymouseout", orbit, 0, d3.event);})
+	.on("click", function(){self.emit("bodyclick", orbit, 0, d3.event);})
+	.on("dblclick", function(){self.emit("bodydblclick", orbit, 0, d3.event);});
+
+      
+      if (noCircle === false){
+	var g_body = g_group.append("g");
+	g_body.append("g")
+	  .attr("class", clsname)
+	  .append("circle")
+	  .attr("r", bodyScale(orbit.body.diameter))
+	// NOTE: The "0" passed in the emit are there deprecated. Need to update the receiver.
+	  .on("mouseover", function(){self.emit("bodymouseover", orbit, 0, d3.event);})
+	  .on("mouseout", function(){self.emit("bodymouseout", orbit, 0, d3.event);})
+	  .on("click", function(){self.emit("bodyclick", orbit, 0, d3.event);})
+	  .on("dblclick", function(){self.emit("bodydblclick", orbit, 0, d3.event);});
+
+	if (!(orbit.body.name in info)){
+	  info[orbit.body.name] = {days:0};
+	}
+	self.on("updateorbit", function(days){
+	  var res = PositionFromTime(orbit.body, orbit.rMin, orbit.rMax, orbit.period, days);
+	  g_body.attr("transform", "translate(" + res.x + ", " + res.y + ")");
+	});
+	(function(){
+	  var res = PositionFromTime(orbit.body, orbit.rMin, orbit.rMax, orbit.period, 0);
+	  g_body.attr("transform", "translate(" + res.x + ", " + res.y + ")");
+	})();
+      }
+    }
+    
 
     this.render = function(options){
       if (star === null){return;}
@@ -489,13 +580,12 @@
       self.unlistenEvent("updateorbit"); // Clear all current "updateorbit" listeners.
 
       svg.call(zoom);
-      //scroller.selectAll("*").remove();
       bgLayer.selectAll("*").remove();
       fzLayer.selectAll("*").remove();
-      snowlineLayer.selectAll("*").remove();
-      goldielocksLayer.selectAll("*").remove();
+      //snowlineLayer.selectAll("*").remove();
+      //goldielocksLayer.selectAll("*").remove();
       starLayer.selectAll("*").remove();
-      planetLayer.selectAll("*").remove();
+      //planetLayer.selectAll("*").remove();
       
       bgLayer.append("circle")
 	.attr("r", mapScale(star.fullSystemRadius))
@@ -503,16 +593,12 @@
 	.attr("stroke-width", "2")
 	.attr("fill", "#000");
 
-      var primary = starLayer.append("g")
-	.attr("transform", "translate(" + mapScale(0) + ", " + mapScale(0) + ")");
-      RenderStar({body:star}, primary);
+      RenderStar({body:star}, starLayer);
 
       if (star.companionCount > 0){
 	var companions = star.companions;
 	for (var i=0; i < star.companionCount; i++){
-	  var cdata = companions[i];
-	  var surf = starLayer.append("g");
-	  RenderStar(cdata, surf);
+	  RenderStar(companions[i], starLayer);
 	}
       }
 

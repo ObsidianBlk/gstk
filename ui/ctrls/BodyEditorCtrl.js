@@ -245,7 +245,7 @@
 
     Object.defineProperties(this, {
       "bodyName":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var value = d3.select("#body-name").node().value;
 	  if (value.length <= 0){
@@ -256,7 +256,7 @@
       },
 
       "star":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return star;},
 	set:function(s){
 	  if (s === null){
@@ -275,17 +275,17 @@
       },
 
       "orbitalRadius":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return OrbitRange.value;}
       },
 
       "orbitalEccentricity":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return EccentricityRange.value;}
       },
 
       "terrestrialConfig":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var ops = {
 	    size: TerrSizeRange.value,
@@ -306,7 +306,7 @@
       },
 
       "asteroidBeltConfig":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var ops = {
 	    resourceIndex: ResourceIndexRange.value,
@@ -321,7 +321,7 @@
       },
 
       "gasGiantConfig":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var ops = {
 	    size: GGSizeRange.value,
@@ -339,37 +339,37 @@
       },
 
       "blackbody":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return BlackbodyRange.value;}
       },
 
       "terrestrialClass":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return terrClass;}
       },
 
       "terrestrialSize":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return TerrSizeRange.value;}
       },
 
       "terrestrialDiameter":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return DiameterRange.value;}
       },
 
       "hydrographics":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return HydroRange.value;}
       },
 
       "atmosphericMass":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return AtmmassRange.value;}
       },
 
       "generationType":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return genType;}
       }
     });

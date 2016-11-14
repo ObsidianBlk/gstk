@@ -111,7 +111,7 @@
 
     Object.defineProperties(this, {
       "maxRegionRadius":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){return RadiusRange.max;},
 	set:function(r){
 	  if (typeof(r) !== 'number'){
@@ -126,7 +126,7 @@
       },
 
       "regionRadius":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return RadiusRange.value;},
 	set:function(r){
 	  if (typeof(r) !== 'number'){
@@ -140,7 +140,7 @@
       },
 
       "regionAngle":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return AngleRange.value;},
 	set:function(ang){
 	  if (typeof(ang) !== 'number'){
@@ -152,7 +152,7 @@
       },
 
       "starName":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  var value = d3.select("#star-name").node().value;
 	  if (value.length <= 0){
@@ -163,7 +163,7 @@
       },
 
       "starConfig":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){
 	  if (usingConfig === true){
 	    var sname = d3.select("#star-name").node().value;

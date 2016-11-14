@@ -67,7 +67,7 @@
 
     Object.defineProperties(this, {
       "data":{
-	enumerate: true,
+	enumerable: true,
 	get:function(){
 	  return source.node().value;
 	},

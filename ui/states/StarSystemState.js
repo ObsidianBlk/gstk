@@ -436,11 +436,11 @@
     });
 
     starView.on("starmouseout", function(s, event){
-      if (starPanelIntervalID !== null){
-	window.clearTimeout(starPanelIntervalID);
-	starPanelIntervalID = null;
+      if (infoPanelIntervalID !== null){
+	clearTimeout(infoPanelIntervalID);
+	infoPanelIntervalID = null;
       }
-      starPanel.show(false);
+      infoPanel.show(false);
     });
 
     starView.on("starclick", function(s, event){
