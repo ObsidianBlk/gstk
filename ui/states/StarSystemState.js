@@ -396,6 +396,8 @@
 	    var orb = s.localOrbit;
 	    items.push({name:"Apogee", value:orb.rMax.toFixed(2), unit:"AU"});
 	    items.push({name:"Perigee", value:orb.rMin.toFixed(2), unit:"AU"});
+	    items.push({name:"Orbit Type", value:s.localPosition});
+	    items.push({name:"Orbital Period", value:orb.period, unit:"earth years"});
 	  } else {
 	    items.push({name:"Position", value:s.localPosition});
 	  }
@@ -410,26 +412,6 @@
 	    item:items
 	  });
 
-	  /*var posDesc = s.localPosition;
-	  if (s.parent !== null){
-	    var orb = s.localOrbit;
-	    posDesc = "\"" + posDesc + "\" - Perigee: " + orb.rMin.toFixed(2) + " AU  |  Apogee: " + orb.rMax.toFixed(2) + " AU"; 
-	  }
-
-	  starPanel.set({
-	    position: posDesc,
-	    name: s.name,
-	    sequence: s.sequence + " / " + s.class,
-	    mass: "" + s.mass,
-	    radius: "" + s.radius.toFixed(4),
-	    age: "" + s.age.toFixed(2),
-	    temperature: "" + s.temperature,
-	    orbitals: "(" + 
-	      s.companionCount + " / " + 
-	      s.countBodiesOfType(GasGiant.Type) + " / " + 
-	      s.countBodiesOfType(Terrestrial.Type) + " / " + 
-	      s.countBodiesOfType(AsteroidBelt.Type) + ")"
-	  });*/
 	  infoPanel.show(true, x, y);
 	}, 1000);
       }
@@ -448,7 +430,11 @@
     });
 
     starView.on("stardblclick", function(s, event){
-      /* No event as of yet */
+      if (starView.focusStar !== s){
+	starView.focusStar = s;
+      } else if (s.parent !== null){
+	starView.focusStar = s.parent;
+      }
     });
 
 

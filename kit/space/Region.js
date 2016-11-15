@@ -108,7 +108,7 @@
       options.seed = Math.random().toString();
     }
     
-    var radius = (typeof(options.radius) === 'number') ? options.radius : 10;
+    var radius = (typeof(options.radius) === 'number') ? options.radius : 12;
     var zmin = (typeof(options.zmin) === 'number') ? Math.floor(options.zmin) : -1;
     var zmax = (typeof(options.zmax) === 'number') ? Math.floor(options.zmax) : zmin + 2;
 
@@ -126,6 +126,15 @@
     }
 
     Object.defineProperties(this, {
+      "seed":{
+	enumerable:true,
+	get:function(){return rng.state.seed;},
+	set:function(seed){
+	  options.seed = seed;
+	  rng = new PRng({seed:seed, initDepth:5000});
+	}
+      },
+      
       "systems":{
 	enumerable: true,
 	get:function(){
@@ -586,6 +595,46 @@
       return systems.length <= 0;
     };
 
+    this.generate = function(density, systemAtOrigin, forceEmpty){
+      if (forceEmpty === true){
+	this.empty(true);
+      }
+      var volume = Math.PI*(radius*radius); // TODO: Handle depth.
+      var count = 1; // Adding one to make sure we always generate at least one!
+      if (typeof(density) === 'number' && density > 0){
+	count += (density*0.01)*volume;
+      } else {
+	count += Math.round(rng.value(volume*0.1, volume*0.4));
+      }
+
+      var originSatisfied = false;
+      if (systems.length > 0){
+	count -= systems.length;
+	systems.forEach(function(sys){
+	  if (sys.r === 0 && sys.a === 0){
+	    originSatisfied = true;
+	  }
+	});
+      }
+
+      if (count > 0){
+	if (options.systemAtOrigin === true && originSatisfied === false){
+          this.addStar({
+            fullSystemGeneration:true,
+            r:0,
+            a:0,
+	    seed: rng.generateUUID()
+          });
+          count -= 1;
+	}
+	for (var i=0; i < count; i++){
+          this.addStar({
+	    fullSystemGeneration:true,
+	    seed:rng.generateUUID()
+	  });
+	}
+      }
+    };
 
 
     // ------
@@ -598,26 +647,8 @@
     } else {
       // ----------
       // Generating automatically if requested.
-      if (systems.length <= 0 && options.autoGenerate === true){
-        ((function(){
-          var volume = Math.PI*(radius*radius);
-          var sysCount = volume*(options.systemDensity*0.01);
-
-          var D2R = Math.PI/180;
-          var satisfiedOrigin = (options.systemAtOrigin === false);
-          for (var i=0; i < sysCount; i++){
-	    if (satisfiedOrigin === false){
-	      satisfiedOrigin = true;
-              this.addStar({
-                r: 0,
-                a: 0,
-                fullSystemGeneration: true
-              });
-	    } else {
-              this.addStar({fullSystemGeneration:true});
-            }
-          }
-        }).bind(this))();
+      if (options.autoGenerate === true){
+	this.generate(options.systemDensity, options.systemAtOrigin === true);
       }
     }
     

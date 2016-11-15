@@ -102,6 +102,8 @@ requirejs([
     });
     regionctrl.on("exportregion", function(jstr){
       regionctrl.show(false);
+      loader.filename = "region.json";
+      loader.description = "Region JSON";
       loader.data = jstr;
       loader.showSection("export", true, true);
       loader.show(true);
@@ -112,6 +114,8 @@ requirejs([
     });
     regionctrl.on("exportstar", function(data){
       regionctrl.show(false);
+      loader.filename = "star.json";
+      loader.description = "Star JSON";
       loader.data = data;
       loader.unlistenEvent("load");
       loader.unlistenEvent("close");
@@ -146,7 +150,19 @@ requirejs([
       loader.show(true);
     });
     mainmenu.on("quitapp", function(){
-      dialogBox.show(true, "Quit! ... Ummmm, not yet.");
+      var gui = null;
+      try{
+        gui = require('nw.gui');
+	if (typeof(gui) === 'undefined' || typeof(gui.App) === 'undefined'){
+	  gui = null;
+	}
+      } catch (e){;}
+
+      if (gui === null){
+	dialogBox.show(true, "Sadly... you can't quit your browser from this button, but you do have an address bar you can change!");
+      } else {
+	gui.App.quit();
+      }
     });
     mainmenu.show(true);
 

@@ -48,7 +48,10 @@
     HoverPanelCtrl.call(this, dom);
     var self = this;
     var source = dom.select("#srcdata");
-    var etarget = dom.select("#export-target");
+    var etarget = dom.select("div.section.export").select("#export");
+
+    var exportFilename = "export.json";
+    var exportDescription = "Export JSON";
     
     source.on("drop", function(){
       var event = d3.event;
@@ -65,7 +68,42 @@
       }
     });
 
+    function DefineExport(d){
+      if (d !== null){
+	var blob = new Blob([d], {type: "application/json"});
+	var url  = URL.createObjectURL(blob);
+
+	etarget.attr("download", exportFilename)
+	  .attr("href", url)
+	  .text(exportDescription);
+      }
+    };
+
     Object.defineProperties(this, {
+      "filename":{
+	enumerable:true,
+	get:function(){return exportFilename;},
+	set:function(filename){
+	  if (typeof(filename) !== 'string'){
+	    throw new TypeError("Expected string value.");
+	  }
+	  exportFilename = filename;
+	  DefineExport(source.node().value);
+	}
+      },
+
+      "description":{
+	enumerable:true,
+	get:function(){return exportDescription;},
+	set:function(description){
+	  if (typeof(description) !== 'string'){
+	    throw new TypeError("Expected string value.");
+	  }
+	  exportDescription = description;
+	  DefineExport(source.node().value);
+	}
+      },
+      
       "data":{
 	enumerable: true,
 	get:function(){
@@ -76,18 +114,7 @@
 	    throw new TypeError("Expected a string or null value.");
 	  }
 	  source.node().value = (d === null) ? "" : d;
-
-	  etarget.select("*").remove();
-
-	  if (d !== null){
-	    var blob = new Blob([d], {type: "application/json"});
-	    var url  = URL.createObjectURL(blob);
-
-	    etarget.append("a")
-	      .attr("download", "region.json")
-	      .attr("href", url)
-	      .text("Region JSON");
-	  }
+	  DefineExport(d);
 	}
       }
     });

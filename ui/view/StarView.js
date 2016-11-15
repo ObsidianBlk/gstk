@@ -128,7 +128,7 @@
 	if (focusStar !== null && focusStar.localOrbit !== null && focusStar.name in info){
 	  var orbit = focusStar.localOrbit;
 	  var focus = PositionFromTime(focusStar, orbit.rMin, orbit.rMax, orbit.period, 0);
-	  scroller.attr("transform", "translate(" + (renderOffset.x + focus.x) + ", " + (renderOffset.y + focus.y) + ")");
+	  scroller.attr("transform", "translate(" + (renderOffset.x - focus.x) + ", " + (renderOffset.y - focus.y) + ")");
 	}
       }
     }
@@ -159,7 +159,7 @@
 	}
       }
 
-      scroller.attr("transform", "translate(" + (renderOffset.x + focus.x) + ", " + (renderOffset.y + focus.y) + ")");
+      scroller.attr("transform", "translate(" + (renderOffset.x - focus.x) + ", " + (renderOffset.y - focus.y) + ")");
       self.render();
     }
     var zoom = d3.behavior.zoom()

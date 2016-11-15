@@ -128,7 +128,7 @@
 	});
       } else {
 	self.generate({
-	  seed: "Bryan Miller", // TODO: Add a "seed" field to the region generator!
+	  seed: createRegionPanel.seed,
 	  radius: createRegionPanel.radius,
 	  density: createRegionPanel.density,
 	  systemAtOrigin: true
@@ -387,34 +387,21 @@
 	}
       } else {
 	var r = regionView.region;
-        r.empty(true);
         r.setZBounds(
           (typeof(options.zmin) === 'number') ? options.zmin : 0,
           (typeof(options.zmax) === 'number') ? options.zmax : 0
         );
-        r.radius = (typeof(options.radius) === 'number' && options.radius > 0) ? options.radius : 10;
+        r.radius = (typeof(options.radius) === 'number' && options.radius > 0) ? options.radius : 12;
 
 	if (options.emptyRegion !== true){
-          var rng = new PRng({seed:(typeof(options.seed) !== 'undefined') ? options.seed : Math.random().toString(), initDepth:5000});
-          var volume = Math.PI*(r.radius*r.radius)*r.depth;
-          var count = 1; // Adding one to make sure we always generate at least one!
-	  if (typeof(options.density) === 'number' && options.density > 0){
-	    count += (options.density*0.01)*volume;
-	  } else {
-	    count += Math.round(rng.value(volume*0.1, volume*0.95));
+	  if (typeof(options.seed) !== 'undefined'){
+            r.seed = options.seed;
 	  }
-
-          if (options.systemAtOrigin === true){
-            r.addStar({
-              fullSystemGeneration:true,
-              r:0,
-              a:0
-            });
-            count -= 1;
-          }
-          for (var i=0; i < count; i++){
-            r.addStar({fullSystemGeneration:true});
-          }
+	  r.generate(
+	    (typeof(options.density) === 'number' && options.density >= 0) ? options.density : 0,
+	    options.systemAtOrigin === true,
+	    true
+	  );
 	}
       }
       regionView.render();

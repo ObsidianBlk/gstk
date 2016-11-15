@@ -6,7 +6,6 @@
     <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="css/fonts.css">
     <link rel="stylesheet" type="text/css" href="css/rangeslidertheme.css">
-    <link rel="stylesheet" type="text/css" href="css/textareatheme.css">
     <link rel="stylesheet" type="text/css" href="css/interface.css">
     <link rel="stylesheet" type="text/css" href="css/gstk.css">
 
@@ -39,7 +38,10 @@
       </div>
       <div class="section export hidden">
 	<div id="export-target"></div>
-	<ul class="hmenu"><li><a href="#" id="close">Close</a></li></ul>
+	<ul class="hmenu thin">
+	  <li><a href="#" id="export">Close</a></li>
+	  <li><a href="#" id="close">Close</a></li>
+	</ul>
       </div>
     </div>
 
@@ -136,12 +138,12 @@
       </div>
       <div class="gstkinput">
 	<label for="region-radius">Radius:</label>
-	<div class="field"><input type="range" min="3" max="99" value="3" step="3" id="region-radius"></div>
+	<div class="field"><input type="range" min="3" max="30" value="3" step="3" id="region-radius"></div>
 	<span class="value">3</span>
       </div>
       <div class="gstkinput">
 	<label for="region-density">Density:</label>
-	<div class="field"><input type="range" min="0" max="90" value="0" step="0.1" id="region-density"></div>
+	<div class="field"><input type="range" min="0" max="30" value="0" step="0.1" id="region-density"></div>
 	<span class="value">0</span>
       </div>
       <ul class="hmenu">

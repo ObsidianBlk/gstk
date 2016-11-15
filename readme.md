@@ -4,6 +4,12 @@
 ## **About**
 The _GURPS Space Toolkit_, or _GSTK_, is a web-app designed to quickly and easily create, modify, and manage regions of space using the [GURPS Space 4e](http://www.sjgames.com/gurps/books/Space/) rules.
 
+
+### **License**
+
+_GURPS 4e_ is a trademark of _Steve Jackson Games_, and its rules and art are copyrighted by _Steve Jackson Games_. All rights are reserved by _Steve Jackson Games_. This game aid is the original creation of Bryan Miller and is released for free distribution, and not for resale, under the permissions granted in the [Steve Jackson Games Online Policy](http://www.sjgames.com/general/online_policy.html).
+
+
 #### **What Can it Do?**
 
 Since the GURPS rules actually do not cover regions of space, the program (at present) allows the user to create regions in increments of 3 parsecs radially with no two stars being closer than 1 parsec.

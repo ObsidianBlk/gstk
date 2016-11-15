@@ -6,6 +6,7 @@
        ------------------------------------------------- */
     define([
       'd3',
+      'kit/common/PRng',
       'ui/common/Emitter',
       'ui/ctrls/RangeSliderInput',
       'ui/ctrls/HoverPanelCtrl'
@@ -17,6 +18,7 @@
     if(typeof module === "object" && module.exports){
       module.exports = factory(
 	require('d3'),
+	require('../../kit/common/PRng'),
 	require('../common/Emitter'),
 	require('./RangeSliderInput'),
 	require('./HoverPanelCtrl')
@@ -32,6 +34,7 @@
 
     if (root.$sys.exists(root, [
       'd3',
+      'GSTK.common.PRng',
       'ui.common.Emitter',
       'ui.ctrls.RangeSliderInput',
       'ui.ctrls.HoverPanelCtrl'
@@ -41,12 +44,13 @@
 
     root.$sys.def (root, "ui.ctrls.CreateRegionCtrl", factory(
       root.d3,
+      root.GSTK.common.PRng,
       root.ui.common.Emitter,
       root.ui.ctrls.RangeSliderInput,
       root.ui.ctrls.HoverPanelCtrl
     ));
   }
-})(this, function (d3, Emitter, RangeSliderInput, HoverPanelCtrl) {
+})(this, function (d3, PRng, Emitter, RangeSliderInput, HoverPanelCtrl) {
 
   function CreateRegionCtrl(dom){
     HoverPanelCtrl.call(this, dom);
@@ -63,16 +67,38 @@
     });
 
     Object.defineProperties(this, {
+      "seed":{
+	enumerable:true,
+	get:function(){
+	  return d3.select("#region-seed").node().value;
+	},
+	set:function(seed){
+	  if (typeof(seed) !== 'string'){
+	    throw new TypeError("Expected string value.");
+	  }
+	  d3.select("#region-seed").node().value = seed;
+	}
+      },
+      
       "radius":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return RegRadiusRange.value;}
       },
 
       "density":{
-	enumerate:true,
+	enumerable:true,
 	get:function(){return RegDensityRange.value;}
       }
     });
+
+
+    var Show = (this.show).bind(this);
+    this.show = function(enable, x, y){
+      if (enable === true){
+	d3.select("#region-seed").node().value = PRng.GenerateUUID();
+      }
+      Show(enable, x, y);
+    };
   }
   CreateRegionCtrl.prototype.__proto__ = HoverPanelCtrl.prototype;
   CreateRegionCtrl.prototype.constructor = CreateRegionCtrl;
