@@ -620,6 +620,12 @@
       }
     };
 
+    this.renderForPrint = function(page_svg, size){
+      if (star === null){return;}
+      var printScale = d3.scale.linear().domain([0,star.fullSystemRadius]).range([0,size]);
+      // TODO: Actually write this function!
+    };
+
     this.scaleGridPosition = function(x, y){
       scaleGridPos[0] = x;
       scaleGridPos[1] = y;

@@ -21,6 +21,14 @@
 	{{/each}}
     </script>
 
+    <script id="TMPL-StarSystemReport" type="text/x-handlebars-template">
+      {{#each stars}}
+      <div class="content">
+	<span class="heading large"><b>NAME:</b> {{this.name}}</span>
+      </div>
+      {{/each}}
+    </script>
+
   </head>
   <body>
     <div id="MainMenu" class="panel"></div>
@@ -90,6 +98,7 @@
       <span class="subheading">STAR: <span class="info" id="starname">NAME</span></span>
       <ul class="menu">
 	<li><a href="#" id="view">View</a></li>
+	<li><a href="#" id="report">Report</a></li>
 	<li><a href="#" id="remove">Remove</a></li>
 	<li><a href="#" id="export">Export Star</a></li>
 	<li><a href="#" id="cancel">Cancel</a></li>

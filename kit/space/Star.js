@@ -1527,6 +1527,7 @@
   Star.prototype.__proto__ = StellarBody.prototype;
   Star.prototype.constructor = Star;
   Star.Type = 0;
+  Star.TypeName = "Star";
 
   Star.ValidateData = function(data){
     if (typeof(data) === 'string'){

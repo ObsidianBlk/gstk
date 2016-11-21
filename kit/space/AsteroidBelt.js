@@ -217,6 +217,7 @@
   AsteroidBelt.prototype.__proto__ = StellarBody.prototype;
   AsteroidBelt.prototype.constructor = AsteroidBelt;
   AsteroidBelt.Type = 3;
+  AsteroidBelt.TypeName = "Asteroid Belt";
 
   AsteroidBelt.SizeToName = function(size){
     switch(size){

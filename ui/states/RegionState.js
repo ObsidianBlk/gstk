@@ -9,6 +9,7 @@
       'handlebars',
       'kit/common/PRng',
       'kit/space/Region',
+      'kit/space/StellarBody',
       'ui/common/Emitter',
       'ui/common/DOMEventNotifier',
       'ui/ctrls/HoverPanelCtrl',
@@ -26,6 +27,7 @@
 	require('handlebars'),
 	require('../../kit/common/PRng'),
 	require('../../kit/space/Region'),
+	require('../../kit/space/StellarBody'),
 	require('../common/Emitter'),
 	require('../common/DOMEventNotifier'),
 	require('../ctrls/HoverPanelCtrl'),
@@ -47,6 +49,7 @@
       'handlebars',
       'GSTK.common.PRng',
       'GSTK.space.Region',
+      'GSTK.space.StellarBody',
       'ui.common.Emitter',
       'ui.common.DOMEventNotifier',
       'ui.ctrls.HoverPanelCtrl',
@@ -62,6 +65,7 @@
       root.handlebars,
       root.GSTK.common.PRng,
       root.GSTK.space.Region,
+      root.GSTK.space.StellarBody,
       root.ui.common.Emitter,
       root.ui.common.DOMEventNotifier,
       root.ui.ctrls.HoverPanelCtrl,
@@ -70,7 +74,7 @@
       root.ui.view.RegionView
     ));
   }
-})(this, function (d3, handlebars, PRng, Region, Emitter, DOMEventNotifier, HoverPanelCtrl, StarEditorCtrl, CreateRegionCtrl, RegionView) {
+})(this, function (d3, handlebars, PRng, Region, StellarBody, Emitter, DOMEventNotifier, HoverPanelCtrl, StarEditorCtrl, CreateRegionCtrl, RegionView) {
 
   function BuildInfoPanel(context){
     var source   = d3.select("#TMPL-Infomation").html();
@@ -214,6 +218,54 @@
       selectedPanel.show(false);
       self.emit("starClicked", selectedStar);
       selectedStar = null;
+    });
+    selectedPanel.on("report", function(){
+      var data = {stars:[]};
+      var StarData = function(s){
+	var i = {};
+	i.name = s.name;
+	if (s.localOrbit !== null){
+	  i.orbit = {
+	    apogee: s.localOrbit.rMin.toFixed(2),
+	    perigee: s.localOrbit.rMax.toFixed(2),
+	    period: s.localOrbit.period.toFixed(2)
+	  };
+	}
+	i.sequence = s.sequence;
+	i.class = s.class;
+	i.mass = s.mass.toFixed(4);
+	i.radius = s.radius*StellarBody.Convert.AU2KM;
+	i.age = s.age.toFixed(2);
+	i.temperature = s.temperature.toFixed(2);
+	if (s.parent !== null){
+	  i.parent = s.parent.name;
+	}
+	if (s.companionCount > 0){
+	  s.companions = [];
+	  for (var c=0; c < s.companionCount; s++){
+	    s.companions.push(s.companions[c].body.name);
+	  }
+	}
+	if (s.bodyCount > 0){
+	  s.body = [];
+	  var body = s.bodies;
+	  for (var b=0; b < s.bodyCount; b++){
+	    s.body.push({
+	      type: StellarBody.TypeName(body[b].body.data._type),
+	      name: body[b].body.name
+	    });
+	  }
+	}
+
+	return i;
+      };
+
+      data.stars.push(StarData(selectedStar));
+      for (var i=0; i < selectedStar.companionCount; i++){
+	data.stars.push(StarData(selectedStar.companions[i].body));
+      }
+
+      self.emit("report", data);
     });
     selectedPanel.on("remove", function(){
       selectedPanel.show(false);

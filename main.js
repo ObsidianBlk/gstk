@@ -23,7 +23,7 @@ requirejs([
   'ui/ctrls/FileIOCtrl',
   'ui/states/RegionState',
   'ui/states/StarSystemState'
-], function(d3, Handlebars, Emitter, DOMEventNotifier, HoverPanelCtrl, RangeSliderInput, DialogBoxCtrl, FileIOCtrl, RegionState, StarSystemState){
+], function(d3, handlebars, Emitter, DOMEventNotifier, HoverPanelCtrl, RangeSliderInput, DialogBoxCtrl, FileIOCtrl, RegionState, StarSystemState){
 
   // --------------------------------
   // Defining a "Document Ready" function. This is only garanteed to work on Chrome at the moment.
@@ -46,6 +46,8 @@ requirejs([
 
   ready(function(){
 
+    var winReport = null;
+
     var dialogBox = new DialogBoxCtrl(d3.select(".hoverPanel.DialogBox"));
     dialogBox.edge = HoverPanelCtrl.Edge.Center;
     dialogBox.flipEdge = false;
@@ -53,6 +55,18 @@ requirejs([
     var loader = new FileIOCtrl(d3.select(".hoverPanel.FileIO"));
     loader.edge = HoverPanelCtrl.Edge.Center;
     loader.flipEdge = false;
+
+    function OpenReport(context){
+      var source   = d3.select("#TMPL-StarSystemReport").html();
+      var template = handlebars.compile(source);
+      var html = template(context);
+      if (winReport !== null){
+	winReport.close();
+	winReport = null;
+      }
+      winReport = window.open("report.html", "Star System Report", "status=0,toolbar=0,width=595,height=842");
+      winReport.document.body.innerHTML = html;
+    }
 
     function LoadRegion(){
       loader.show(false);
@@ -111,6 +125,9 @@ requirejs([
 	loader.show(false);
 	regionctrl.show(true);
       });
+    });
+    regionctrl.on("report", function(data){
+      OpenReport(data);
     });
     regionctrl.on("exportstar", function(data){
       regionctrl.show(false);

@@ -294,6 +294,7 @@
 	.attr("fill", "#000000");
 
       var stars = scroller.append("g");
+      
       // Rendering stars
       var starGroups = stars.selectAll("g")
 	.data(data)
@@ -321,6 +322,7 @@
 	  self.emit("stardblclick", d, i, d3.event);
 	});
 
+      
       starGroups.append("circle")
 	.attr("id", function(d, i){
 	  return "circle_" + i;

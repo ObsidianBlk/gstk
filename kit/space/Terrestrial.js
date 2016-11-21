@@ -1051,6 +1051,7 @@
   Terrestrial.prototype.__proto__ = StellarBody.prototype;
   Terrestrial.prototype.constructor = Terrestrial;
   Terrestrial.Type = 2;
+  Terrestrial.TypeName = "Terrestrial";
 
   Terrestrial.GetClassFromBlackbody = function(size, blackbody, makeGarden, rnd){
     var cls = 0; // 0 = Rock

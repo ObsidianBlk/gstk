@@ -111,12 +111,19 @@
   };
   StellarBody.prototype.constructor = StellarBody;
 
-  StellarBody.RegisterType = function(cls){
+  StellarBody.RegisterType = function(cls, name){
     if (cls.prototype.__proto__ === StellarBody.prototype && typeof(cls.Type) !== 'undefined'){
       if (!(cls.Type in REGISTERED_CLASS)){
 	REGISTERED_CLASS[cls.Type] = cls;
       }
     }
+  };
+
+  StellarBody.TypeName = function(typeid){
+    if (typeid in REGISTERED_CLASS){
+      return REGISTERED_CLASS[typeid].TypeName;
+    }
+    return "UNKNOWN";
   };
 
   StellarBody.BuildType = function(type, options){

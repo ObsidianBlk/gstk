@@ -503,6 +503,7 @@
   GasGiant.prototype.__proto__ = StellarBody.prototype;
   GasGiant.prototype.constructor = GasGiant;
   GasGiant.Type = 1;
+  GasGiant.TypeName = "Gas Giant";
 
   GasGiant.MassDensityRangeFromIndexAndSize = function(index, size){
     index = Math.max(0, Math.min(8, index));
