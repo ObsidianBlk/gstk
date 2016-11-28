@@ -4,28 +4,22 @@ body{
     font-size:10pt;
 }
 
-@media all{
-    div.content{
-	width:100%;
-	margin:0;
-	background:transparent;
-    }
-
-    span.heading{
-	font-size: 20pt;
-    }
-
-    span.heading.big{
-	font-size: 26pt;
-    }
-
-    span.heading.large{
-	font-size: 32pt;
-    }
+div.content{
+    width:100%;
+    margin:0;
+    background:transparent;
+    page-break-after:always;
 }
 
-@media print{
-    div.content{
-	page-break-after:always;
-    }
+span.heading{
+    font-size: 20pt;
 }
+
+span.heading.big{
+    font-size: 26pt;
+}
+
+span.heading.large{
+    font-size: 32pt;
+}
+

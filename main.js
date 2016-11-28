@@ -24,7 +24,7 @@ requirejs([
   'ui/states/RegionState',
   'ui/states/StarSystemState'
 ], function(d3, handlebars, Emitter, DOMEventNotifier, HoverPanelCtrl, RangeSliderInput, DialogBoxCtrl, FileIOCtrl, RegionState, StarSystemState){
-
+  
   // --------------------------------
   // Defining a "Document Ready" function. This is only garanteed to work on Chrome at the moment.
   function ready(callback){
@@ -40,13 +40,15 @@ requirejs([
   DOMEventNotifier.initialize(d3, window);
   DOMEventNotifier.enableRenderFrames();
 
+  var jsPDF = null;
+  requirejs(['./node_modules/jspdf/dist/jspdf.min'], function(jspdf){
+    jsPDF = jspdf;
+  });
 
   // -------------------------------------------------------------------------------------------------------------------------------------
   // MAIN
 
   ready(function(){
-
-    var winReport = null;
 
     var dialogBox = new DialogBoxCtrl(d3.select(".hoverPanel.DialogBox"));
     dialogBox.edge = HoverPanelCtrl.Edge.Center;
@@ -59,13 +61,39 @@ requirejs([
     function OpenReport(context){
       var source   = d3.select("#TMPL-StarSystemReport").html();
       var template = handlebars.compile(source);
+      // NOTE: I'm not a fan of having this HTML here, but, it's the quickest solution for a small amount of HTML.
+      // Pray I don't alter the deal any further :-/
+      //var html = "<!DOCTYPE html><html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"css/printable.css\"></head><body>";
       var html = template(context);
-      if (winReport !== null){
+      //html += "</body></html>"; // To close the HTML from above.
+
+      if (jsPDF !== null){
+	var doc = new jsPDF();
+	doc.fromHTML(html, 15, 15, {
+	  'width': 170
+	});
+	doc.save('report.pdf');
+      } else {
+	console.error("jsPDF not loaded.");
+      }
+
+
+      /*if (winReport !== null){
 	winReport.close();
 	winReport = null;
       }
       winReport = window.open("report.html", "Star System Report", "status=0,toolbar=0,width=595,height=842");
-      winReport.document.body.innerHTML = html;
+      (function(callback){
+	if (winReport.document.readyState === "complete"){
+	  callback();
+	} else {
+	  winReport.document.addEventListener('DOMContentLoaded', function (){
+	    callback();
+	  });
+	}
+      })(function(){
+	winReport.document.body.innerHTML = html;
+      });*/
     }
 
     function LoadRegion(){
